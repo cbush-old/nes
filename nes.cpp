@@ -88,20 +88,19 @@ class ROM {
         
       file.seekg(0x10);
       
-      cout << "PRG ROM SIZE (x16KB): " << prg_rom_size << '\n';
-      cout << "CHR ROM SIZE (x8KB): " << chr_rom_size << '\n';
-      cout << "PRG RAM SIZE (x8KB): " << prg_ram_size << '\n';
-      
       int mapper_id { (flag6 >> 4) | (flag7 & 0xf0) };
 
       switch(mapper_id){
         case 0:
-          mem.resize(0xA000);
+          mem.resize(0xa000);
           file.read((char*)mem.data() + 0x2000, 0x4000);
-          if(prg_rom_size == 1)
+          if(prg_rom_size == 1){
             file.seekg(0x10); // Loop data
+          }
+          
           file.read((char*)mem.data() + 0x6000, 0x4000);
           file.read((char*)mem.data(), 0x2000);
+          
           break;
         default:
           throw runtime_error ("Unsupported mapper");
@@ -260,7 +259,7 @@ class CPU {
     }
     
     inline uint16_t next2(){
-      uint16_t v = read(PC++);
+      uint16_t v = (uint16_t)read(PC++);
       return v | ((uint16_t)read(PC++) << 8);
     }
     
@@ -283,27 +282,27 @@ class CPU {
     
       PC = read(0xfffc) | (read(0xfffd) << 8);
       
-      PC = 0xc000;
       int SL = 0;
-      
-      cout << hex << PC << '\n';
       
       for(;;){
     
+        auto last_PC = PC;
+        
         uint8_t last_op = next();
       
         cout 
           << hex << std::uppercase << std::setfill('0')
-          << setw(4) << PC << "  "
-          << setw(2) << (int)last_op << " "
-          << opasm[last_op] << '\t'
+          << setw(4) << last_PC << "  "
+          << setw(2) << (int)last_op << "   "
+          //<< opasm[last_op] << '\t'
           << " A:" << setw(2) << (int)A
           << " X:" << setw(2) << (int)X
           << " Y:" << setw(2) << (int)Y
           << " P:" << setw(2) << (int)P
           << " SP:" << setw(2) << (int)SP
+          << std::setfill(' ')
           << " CYC:" << setw(3) << std::dec << (int)cyc
-          << " SL:" << setw(2) << (int)SL
+          //<< " SL:" << setw(2) << (int)SL
           << '\n';
           
         if(!last_op)
@@ -314,7 +313,7 @@ class CPU {
         for(int i = 0; i < cycles[last_op]; ++i)
           addcyc();
           
-        if(cyc > 341) cyc -= 341;
+        if(cyc >= 341) cyc -= 341;
 
       }
     
@@ -334,12 +333,12 @@ class CPU {
     inline uint16_t ABX(){ return next2() + X; }
     inline uint16_t ABY(){ return next2() + Y; }
     inline uint16_t IDX(){
-      uint16_t addr = next2() + X;
-      return read(addr&0xff)|(((uint16_t)read((addr+1)&0xff) << 8));
+      uint16_t addr = next() + X;
+      return read(addr&0xff)|((uint16_t)read((addr+1)&0xff) << 8);
     }
     inline uint16_t IDY(){
-      uint16_t addr = next2();
-      return ((uint16_t)read(addr))|(read((addr + 1)&0xff) << 8) + Y;
+      uint16_t addr = next();
+      return ((uint16_t)read(addr)|(read((addr+1)&0xff)<<8))+Y;
     }
     inline uint16_t IND(){
       // When on page boundary (i.e. $xxFF) IND gets LSB from $xxFF like normal 
@@ -351,9 +350,18 @@ class CPU {
     }
     
     // some modes add cycles if page crossed
-    inline uint16_t ABX_pgx(){}  
-    inline uint16_t ABY_pgx(){}
-    inline uint16_t IDY_pgx(){}
+    inline uint16_t ABX_pgx(){
+      return sum_check_pgx(next2(), X);
+    }
+  
+    inline uint16_t ABY_pgx(){
+      return sum_check_pgx(next2(), Y);
+    }
+  
+    inline uint16_t IDY_pgx(){
+      uint16_t addr { next() };
+      return sum_check_pgx((uint16_t)read(addr)|(read((addr + 1)&0xff) << 8), Y);
+    }
     
     // register read/write
     inline void Accumulator(uint8_t i){ setZN(A = i); }
@@ -381,12 +389,12 @@ class CPU {
     
     inline void BRK(){
       push2(PC + 1);
-      push(P);
+      stack_push<&CPU::ProcStatus>();
       PC = read(0xfffe) | (read(0xffff)<<8);
     }
     
     inline void RTI(){
-      P = pull();
+      stack_pull<&CPU::ProcStatus>();
       PC = pull2();
     }
     
@@ -409,6 +417,10 @@ class CPU {
 template<> uint8_t& CPU::getref<&CPU::ACC>(){ return A; }
 template<> uint8_t& CPU::getref<&CPU::X__>(){ return X; }
 template<> uint8_t& CPU::getref<&CPU::Y__>(){ return Y; }
+
+template<> uint8_t CPU::read<&CPU::IMM>(){
+  return (uint8_t)IMM();
+}
 
 #include "op_table.cc"
 #include "asm.cc"
