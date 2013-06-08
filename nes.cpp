@@ -1,4 +1,5 @@
 #include <iostream>
+#include <map>
 #include <iomanip>
 #include <functional>
 #include <cctype>
@@ -118,6 +119,78 @@ class ROM {
     
 };
 
+
+class IO {
+  
+  friend class CPU;
+  friend class PPU;
+  
+  private:
+    SDL_Window *window {
+      SDL_CreateWindow(
+        "",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,
+        512,480,SDL_WINDOW_OPENGL
+      )
+    };
+    
+    SDL_GLContext glcon {
+      SDL_GL_CreateContext(window)
+    };
+    
+  private:
+    uint8_t handle_input(){
+      SDL_Event e;
+      while(SDL_PollEvent(&e)){
+        switch(e.type){
+          case SDL_KEYDOWN:
+            switch(e.key.keysym.sym){
+            
+            }
+            return 0;
+          case SDL_QUIT:
+            return 1;
+        }
+      }
+    }
+    
+    void swap(){
+      SDL_GL_SwapWindow(window);
+    }
+    
+    void put_pixel(int x, int y, char r, char g, char b){
+      glColor3b(r,g,b);
+      glBegin(GL_QUADS);
+      glVertex2i(x,y);
+      glVertex2i(x+1,y);
+      glVertex2i(x+1,y+1);
+      glVertex2i(x,y+1);
+      glEnd();
+    }
+    
+  public:
+    IO(){
+      glMatrixMode(GL_PROJECTION|GL_MODELVIEW);
+      glLoadIdentity();
+      glOrtho(0,256,0,240,0,1);
+      glClearColor(0.2,0.2,0.2,1);
+      glClear(GL_COLOR_BUFFER_BIT);
+      /*
+      for(int i = 0; i < 240; ++i)
+        for(int j = 0; j < 256; ++j)
+          put_pixel(j, i, rand()%0xff, rand()%0xff, rand()%0xff);
+      */ 
+      swap();
+    }
+    
+    IO(IO const&) = delete;
+    ~IO(){
+      SDL_GL_DeleteContext(glcon);
+      SDL_DestroyWindow(window);
+    }
+
+
+};
+
 class PPU {
   
   friend class CPU;
@@ -180,157 +253,90 @@ class PPU {
       else plt[addr&0x1f] = value;
     }
     
-    uint8_t regr(uint16_t reg){
-      switch(reg&7){
-        case 2: {
-          // account for race condition
-          uint8_t res = (unsigned)(SL * 341 + cycle - 82180) < 2 ? 
-            status & 0x7F : status|(NMI_occurred << 7);
-          
-          // clear the latch, NMI occurred and vblank flag
-          wr2 = false;
-          NMI_occurred = false;
-          status = res & 0x7f;
-          return res;
-  
-        }
-        case 4: return oam[oamaddr];
-        case 7:
+    using regrf = std::function<uint8_t()>;
+    using regwf = std::function<void(uint8_t)>;
+    
+    regrf bad_read {[]{ return 0; }};
+    regwf bad_write {[](uint8_t){}};
+    
+    std::vector<regrf> regrfs {
+      /* 0 */ bad_read, 
+      /* 1 */ bad_read,
+      /* 2 */ [&] {
+        // account for race condition
+        uint8_t res = (unsigned)(SL * 341 + cycle - 82180) < 2 ? 
+          status & 0x7F : status|(NMI_occurred << 7);
         
-          if(loopy_v < 0x3f00){
-            
-            data = buffer2007;
-            buffer2007 = read(loopy_v);
-          
-          } else {
-          
-            data = read(loopy_v);
-          
-          }
-          
-          loopy_v += bool(ctrl & 4) * 31 + 1;
-          
-          return data;
-      
+        // clear the latch, NMI occurred and vblank flag
+        wr2 = false;//latch?
+        NMI_occurred = false;
+        status = res & 0x7f;
+        return res;
+        
+      },
+      /* 3 */ bad_read,
+      /* 4 */ [&] { return oam[oamaddr]; },
+      /* 5 */ bad_read, 
+      /* 6 */ bad_read,
+      /* 7 */ [&] {
+        if(loopy_v < 0x3f00){
+          data = buffer2007;
+          buffer2007 = read(loopy_v);
+        } else {
+          data = read(loopy_v);
+        }
+        loopy_v += bool(ctrl & 4) * 31 + 1;
+        return data;
       }
+    };
+    
+    std::vector<regwf> regwfs {
+      /* 0 */ [&](uint8_t value){
+        loopy_t = (loopy_t & 0x73ff)|((value&3) << 10);
+        NMI_output = (bool)(value&0x80);
+        ctrl = value;
+      },
+      
+      /* 1 */ [&](uint8_t value){ mask = value; },
+      /* 2 */ bad_write,
+      /* 3 */ [&](uint8_t value){ oamaddr = value; },
+      /* 4 */ [&](uint8_t value){ oam[oamaddr++] = value; },
+      /* 5 */ [&](uint8_t value){
+        if(toggle(wr2)){
+          loopy_t = (loopy_t & 0x7fe0) | (value >> 3);
+          loopy_x = value&7;
+        } else {
+          loopy_t = (loopy_t & 0x7c1f) | ((value & 0xf8) << 2);
+          loopy_t = (loopy_t & 0x0fff) | ((value & 7) << 12);
+        }
+      },
+      /* 6 */ [&](uint8_t value){
+        if(toggle(wr2)){
+          loopy_t = (loopy_t & 0xff) | ((value & 0x3f) << 8);
+        } else {
+          loopy_t = (loopy_t & 0x3f00)|value;
+          loopy_v = loopy_t;
+        }        
+      },
+      /* 7 */ [&](uint8_t value){
+        write(value, loopy_v);
+        loopy_v += bool(ctrl&4) * 31 + 1;
+      },
+    };
+    
+    uint8_t regr(uint8_t reg){
+      return regrfs[reg&7]();
     }
     
-    uint8_t regw(uint8_t value, uint16_t reg){
-      switch(reg&7){
-        case 0:
-          loopy_t = (loopy_t & 0x73ff)|((value&3) << 10);
-          NMI_output = (bool)(value&0x80);
-          return ctrl = value;
-        case 1: return mask = value;
-        case 3: return oamaddr = value;
-        case 4: return oam[oamaddr++] = value;
-        case 5: 
-          if(toggle(wr2)){
-            loopy_t = (loopy_t & 0x7fe0) | (value >> 3);
-            loopy_x = value&7;
-          } else {
-            loopy_t = (loopy_t & 0x7c1f) | ((value & 0xf8) << 2);
-            loopy_t = (loopy_t & 0x0fff) | ((value & 7) << 12);
-          }
-          return value;
-          
-        case 6:
-          if(toggle(wr2)){
-            loopy_t = (loopy_t & 0xff) | ((value & 0x3f) << 8);
-          } else {
-            loopy_t = (loopy_t & 0x3f00)|value;
-            loopy_v = loopy_t;
-          }
-          return value;
-          
-        case 7:
-          write(value, loopy_v);
-          loopy_v += bool(ctrl&4) * 31 + 1;
-          return value;
-        
-      }
+    uint8_t regw(uint8_t value, uint8_t reg){
+      regwfs[reg&7](value);
     }
     
     
   public:
-    PPU(): ram(0x800), plt(0x20), oam(0x100) {
-      
-      
-    
-    }
+    PPU(): ram(0x800), plt(0x20), oam(0x100) {}
   
   
-};
-
-
-class IO {
-  
-  friend class CPU;
-  
-  private:
-    SDL_Window *window {
-      SDL_CreateWindow(
-        "",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,
-        512,480,SDL_WINDOW_OPENGL
-      )
-    };
-    
-    SDL_GLContext glcon {
-      SDL_GL_CreateContext(window)
-    };
-    
-  private:
-    uint8_t handle_input(){
-      SDL_Event e;
-      while(SDL_PollEvent(&e)){
-        switch(e.type){
-          case SDL_KEYDOWN:
-            switch(e.key.keysym.sym){
-            
-            }
-            return 0;
-          case SDL_QUIT:
-            return 1;
-        }
-      }
-    }
-    
-    void swap(){
-      SDL_GL_SwapWindow(window);
-    }
-    
-    void put_pixel(int x, int y, char r, char g, char b){
-      glColor3b(r,g,b);
-      glBegin(GL_QUADS);
-      glVertex2i(x,y);
-      glVertex2i(x+1,y);
-      glVertex2i(x+1,y+1);
-      glVertex2i(x,y+1);
-      glEnd();
-    }
-    
-  public:
-    IO(){
-      glMatrixMode(GL_PROJECTION|GL_MODELVIEW);
-      glLoadIdentity();
-      glOrtho(0,256,0,240,0,1);
-      glClearColor(0.2,0.2,0.2,1);
-      glClear(GL_COLOR_BUFFER_BIT);
-      /*
-      for(int i = 0; i < 240; ++i)
-        for(int j = 0; j < 256; ++j)
-          put_pixel(j, i, rand()%0xff, rand()%0xff, rand()%0xff);
-      */
-      swap();
-    }
-    
-    IO(IO const&) = delete;
-    ~IO(){
-      SDL_GL_DeleteContext(glcon);
-      SDL_DestroyWindow(window);
-    }
-
-
 };
 
 class CPU {
@@ -671,7 +677,7 @@ namespace bus {
 }
 
 int main(int argc, char* argv[]){
-
+  
   vector<string> args (argv, argv + argc);
 
   try {
