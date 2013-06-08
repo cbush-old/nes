@@ -6,7 +6,10 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
+
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
+#include <SDL2/SDL_opengl.h>
 
 using std::cout;
 using std::setw;
@@ -59,6 +62,10 @@ class ROM {
   public:
     uint8_t& operator[](uint16_t addr){
       return mem.at(addr >= 0x8000 ? addr - 0x6000 : addr);
+    }
+    
+    void write(uint8_t value, uint16_t addr){
+      mem[addr] = value;
     }
 
   public:
@@ -116,19 +123,213 @@ class PPU {
   friend class CPU;
   
   private:
-    uint8_t x;
+    std::vector<uint8_t> ram, plt, oam;    
+    
+    // registers
+    uint8_t
+      ctrl, mask, status { 0xa0 }, 
+      oamaddr, oamdata,
+      ppuscroll[2], ppuaddr[2], data;
+
+    bool wr2;
+    
+    struct {
+      uint8_t sprindex, y, attr, x;
+      uint16_t pattern;
+    } OAM2[8], OAM3[8];
+    
+    uint16_t SL { 261 },
+      frame { 0 },
+      cycle { 340 },
+      SL_end;
+    
+    uint16_t bg_palette; // palette latch
+    uint16_t bg_shiftreg16[2]; // bmp data for two tiles
+    uint8_t bg_shiftreg8[2]; // palette attributes
+    
+    uint16_t loopy_v, loopy_t, loopy_x;
+    uint8_t buffer2007;
+    
+    bool NMI_occurred, NMI_output;
+  
     PPU& tick(){
+      
       return *this;
     }
     
-  public:
-    uint8_t read(uint16_t addr){
-      return 1;
+    inline bool toggle(bool& x){ return x ^= 1; }
+    
+    inline uint16_t nt_mirror(uint16_t addr){
+      addr &= 0xfff;
+      // horizontal?
+      if(addr < 0x400) return addr;
+      if(addr < 0x800) return addr - 0x400;
+      if(addr < 0xc00) return addr - 0x400;
+      return addr - 0x800;
     }
     
-    uint8_t write(uint8_t value, uint16_t addr){
-      return 0;
+    uint8_t read(uint16_t addr){
+      if(addr < 0x2000) return bus::rom()[addr];
+      if(addr < 0x3f00) return ram[nt_mirror(addr)];
+      return plt[addr&0x1f];
     }
+    
+    void write(uint8_t value, uint16_t addr){
+      if(addr < 0x2000) bus::rom().write(value, addr);
+      else if(addr < 0x3f00) ram[nt_mirror(addr)] = value;
+      else plt[addr&0x1f] = value;
+    }
+    
+    uint8_t regr(uint16_t reg){
+      switch(reg&7){
+        case 2: {
+          // account for race condition
+          uint8_t res = (unsigned)(SL * 341 + cycle - 82180) < 2 ? 
+            status & 0x7F : status|(NMI_occurred << 7);
+          
+          // clear the latch, NMI occurred and vblank flag
+          wr2 = false;
+          NMI_occurred = false;
+          status = res & 0x7f;
+          return res;
+  
+        }
+        case 4: return oam[oamaddr];
+        case 7:
+        
+          if(loopy_v < 0x3f00){
+            
+            data = buffer2007;
+            buffer2007 = read(loopy_v);
+          
+          } else {
+          
+            data = read(loopy_v);
+          
+          }
+          
+          loopy_v += bool(ctrl & 4) * 31 + 1;
+          
+          return data;
+      
+      }
+    }
+    
+    uint8_t regw(uint8_t value, uint16_t reg){
+      switch(reg&7){
+        case 0:
+          loopy_t = (loopy_t & 0x73ff)|((value&3) << 10);
+          NMI_output = (bool)(value&0x80);
+          return ctrl = value;
+        case 1: return mask = value;
+        case 3: return oamaddr = value;
+        case 4: return oam[oamaddr++] = value;
+        case 5: 
+          if(toggle(wr2)){
+            loopy_t = (loopy_t & 0x7fe0) | (value >> 3);
+            loopy_x = value&7;
+          } else {
+            loopy_t = (loopy_t & 0x7c1f) | ((value & 0xf8) << 2);
+            loopy_t = (loopy_t & 0x0fff) | ((value & 7) << 12);
+          }
+          return value;
+          
+        case 6:
+          if(toggle(wr2)){
+            loopy_t = (loopy_t & 0xff) | ((value & 0x3f) << 8);
+          } else {
+            loopy_t = (loopy_t & 0x3f00)|value;
+            loopy_v = loopy_t;
+          }
+          return value;
+          
+        case 7:
+          write(value, loopy_v);
+          loopy_v += bool(ctrl&4) * 31 + 1;
+          return value;
+        
+      }
+    }
+    
+    
+  public:
+    PPU(): ram(0x800), plt(0x20), oam(0x100) {
+      
+      
+    
+    }
+  
+  
+};
+
+
+class IO {
+  
+  friend class CPU;
+  
+  private:
+    SDL_Window *window {
+      SDL_CreateWindow(
+        "",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,
+        512,480,SDL_WINDOW_OPENGL
+      )
+    };
+    
+    SDL_GLContext glcon {
+      SDL_GL_CreateContext(window)
+    };
+    
+  private:
+    uint8_t handle_input(){
+      SDL_Event e;
+      while(SDL_PollEvent(&e)){
+        switch(e.type){
+          case SDL_KEYDOWN:
+            switch(e.key.keysym.sym){
+            
+            }
+            return 0;
+          case SDL_QUIT:
+            return 1;
+        }
+      }
+    }
+    
+    void swap(){
+      SDL_GL_SwapWindow(window);
+    }
+    
+    void put_pixel(int x, int y, char r, char g, char b){
+      glColor3b(r,g,b);
+      glBegin(GL_QUADS);
+      glVertex2i(x,y);
+      glVertex2i(x+1,y);
+      glVertex2i(x+1,y+1);
+      glVertex2i(x,y+1);
+      glEnd();
+    }
+    
+  public:
+    IO(){
+      glMatrixMode(GL_PROJECTION|GL_MODELVIEW);
+      glLoadIdentity();
+      glOrtho(0,256,0,240,0,1);
+      glClearColor(0.2,0.2,0.2,1);
+      glClear(GL_COLOR_BUFFER_BIT);
+      /*
+      for(int i = 0; i < 240; ++i)
+        for(int j = 0; j < 256; ++j)
+          put_pixel(j, i, rand()%0xff, rand()%0xff, rand()%0xff);
+      */
+      swap();
+    }
+    
+    IO(IO const&) = delete;
+    ~IO(){
+      SDL_GL_DeleteContext(glcon);
+      SDL_DestroyWindow(window);
+    }
+
 
 };
 
@@ -174,7 +375,7 @@ class CPU {
     
     uint8_t read(uint16_t addr){
       if(addr < 0x2000) return memory[addr&0x7ff];
-      if(addr < 0x4000) return bus::ppu().read(addr&7);
+      if(addr < 0x4000) return bus::ppu().regr(addr&7);
       if(addr < 0x4020){
         switch(addr&0x1f){
           case 0x15:
@@ -203,7 +404,7 @@ class CPU {
     
     uint8_t write(uint8_t value, uint16_t addr){
       if(addr < 0x2000) return memory[addr&0x7ff] = value;
-      if(addr < 0x4000) return bus::ppu().write(value, addr&7);
+      if(addr < 0x4000) return bus::ppu().regw(value, addr&7);
       if(addr < 0x4020){
         switch(addr&0x1f){
           case 0x14: {
@@ -290,6 +491,7 @@ class CPU {
         
         uint8_t last_op = next();
       
+#ifdef DEBUG_CPU
         cout 
           << hex << std::uppercase << std::setfill('0')
           << setw(4) << last_PC << "  "
@@ -304,7 +506,8 @@ class CPU {
           << " CYC:" << setw(3) << std::dec << (int)cyc
           //<< " SL:" << setw(2) << (int)SL
           << '\n';
-          
+#endif
+        
         if(!last_op)
           break;
         
@@ -315,6 +518,8 @@ class CPU {
           
         if(cyc >= 341) cyc -= 341;
 
+        if(bus::io().handle_input()) break;
+        
       }
     
     }
@@ -425,14 +630,9 @@ template<> uint8_t CPU::read<&CPU::IMM>(){
 #include "op_table.cc"
 #include "asm.cc"
 
-
 class APU {
 
 
-
-};
-
-class IO {
 
 };
 
@@ -485,5 +685,4 @@ int main(int argc, char* argv[]){
     
   }
   
-
 }
