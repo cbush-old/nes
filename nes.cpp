@@ -340,12 +340,23 @@ class PPU {
         }
       }
     }
-      
+    
+    uint16_t ntbyte { 0 }, atbyte { 0 };
+    
     std::vector<std::function<void()>> accessf {
       /* 0-1 */ [&]{  // Nametable byte
+        ntbyte
+          = base_nametable_addr() 
+          + 0x10 * loopy_v.coarse_y
+          + loopy_v.coarse_x;
         
       },
       /* 2-3 */ [&]{  // Attribute byte
+        atbyte
+          = base_nametable_addr()
+          + 0x23c0
+          + 8 * loopy_v.attr_coarse_y()
+          + loopy_v.attr_coarse_x();
       },
       /* 4-5 */ [&]{  // Tile bitmap low
       },
