@@ -222,6 +222,7 @@ class PPU {
     inline bool intensify_greens(){ return bool(mask & 0x40); }
     inline bool intensify_blues(){ return bool(mask & 0x80); }
     inline bool rendering_enabled(){
+      return true;
       return show_background() | show_sprites();
     }
     
@@ -281,11 +282,11 @@ class PPU {
       }
       
       operator uint16_t(){
-        return (coarse.x 
-          | (coarse.y << 5)
-          | (nametable_select.x << 10)
-          | (nametable_select.y << 11)
-          | (fine_y << 12)) & 0x7f;
+        return ((int)coarse.x 
+          | ((int)coarse.y << 5)
+          | ((int)nametable_select.x << 10)
+          | ((int)nametable_select.y << 11)
+          | ((int)fine_y << 12));
           
       }
       
@@ -347,8 +348,8 @@ class PPU {
       /* 0-1 */ [&]{  // Nametable byte
         ntbyte
           = base_nametable_addr() 
-          + 0x10 * loopy_v.coarse_y
-          + loopy_v.coarse_x;
+          + 0x10 * loopy_v.coarse.y
+          + loopy_v.coarse.x;
         
       },
       /* 2-3 */ [&]{  // Attribute byte
@@ -359,8 +360,12 @@ class PPU {
           + loopy_v.attr_coarse_x();
       },
       /* 4-5 */ [&]{  // Tile bitmap low
+        bg_shiftreg16[0] &= 0x00ff;
+        bg_shiftreg16[0] |= read(ntbyte) << 8;
       },
       /* 6-7 */ [&]{  // Tile bitmap high
+        bg_shiftreg16[1] &= 0x00ff;
+        bg_shiftreg16[1] |= read(ntbyte + 8) << 8;
       }
     
     };
@@ -393,11 +398,11 @@ class PPU {
         set_vblank_flag();
       }
       
-      
       dec_sprite_x();
       
       if(rendering_enabled())
         render();
+      
       
       return *this;
     }
@@ -426,7 +431,6 @@ class PPU {
     }
     
     using regrf = std::function<uint8_t()>;
-    using voidf = std::function<void()>;
     using regwf = std::function<void(uint8_t)>;
     
     regrf bad_read {[]{ return 0; }};
@@ -521,9 +525,14 @@ class PPU {
       }
     }
     
+
+    void clear_vblank_flag(){
+      status &=~ 0x80;
+    }
     
     void set_vblank_flag(){
-    
+      status |= 0x80;
+      bus::io().swap();
     }
     
     void render(){
@@ -540,6 +549,15 @@ class PPU {
       } else if(327 < dot || dot < 256){
         inc_loopy_x();
       }
+      
+      //cout << bg_shiftreg16[0] << '\n';
+      
+      bus::io().put_pixel(
+        dot, scanline, 
+        ((bg_shiftreg16[0] >> loopy_x) & 1) * 100,
+        ((bg_shiftreg16[1] >> loopy_x) & 1) * 100,
+        int(64 + sin((double)dot) * 64.0)
+      );
     
     }
     
@@ -713,7 +731,7 @@ class CPU {
           << hex << std::uppercase << std::setfill('0')
           << setw(4) << last_PC << "  "
           << setw(2) << (int)last_op << "   "
-          //<< opasm[last_op] << '\t'
+          << opasm[last_op] << '\t'
           << " A:" << setw(2) << (int)A
           << " X:" << setw(2) << (int)X
           << " Y:" << setw(2) << (int)Y
@@ -721,7 +739,7 @@ class CPU {
           << " SP:" << setw(2) << (int)SP
           << std::setfill(' ')
           << " CYC:" << setw(3) << std::dec << (int)cyc
-          //<< " SL:" << setw(2) << (int)SL
+          << " SL:" << setw(2) << (int)bus::ppu().scanline
           << '\n';
 #endif
         
