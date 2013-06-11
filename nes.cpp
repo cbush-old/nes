@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include <sstream>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_audio.h>
@@ -33,11 +34,12 @@ namespace bus {
   PPU& ppu();
   APU& apu();
   IO& io();
+  void pull_NMI();
 }
 
 // CPU cycle chart
 static const uint8_t cycles[256] {
-      // 0 1 2 3 4 5 6 7 8 9 A B C D E F
+//////// 0 1 2 3 4 5 6 7 8 9 A B C D E F
 /*0x00*/ 7,6,0,8,3,3,5,5,3,2,2,2,4,4,6,6,
 /*0x10*/ 2,5,0,8,4,4,6,6,2,4,2,7,4,4,7,7,
 /*0x20*/ 6,6,0,8,3,3,5,5,4,2,2,2,4,4,6,6,
@@ -100,6 +102,7 @@ class ROM {
 
       switch(mapper_id){
         case 0:
+        default:
           mem.resize(0xa000);
           file.read((char*)mem.data() + 0x2000, 0x4000);
           if(prg_rom_size == 1){
@@ -110,7 +113,7 @@ class ROM {
           file.read((char*)mem.data(), 0x2000);
           
           break;
-        default:
+        //default:
           throw runtime_error ("Unsupported mapper");
       
       }
@@ -155,6 +158,12 @@ class IO {
     
     void swap(){
       SDL_GL_SwapWindow(window);
+      glClear(GL_COLOR_BUFFER_BIT);
+    }
+    
+    void clear(){
+      glClear(GL_COLOR_BUFFER_BIT);
+      SDL_GL_SwapWindow(window);
     }
     
     void put_pixel(int x, int y, char r, char g, char b){
@@ -171,17 +180,11 @@ class IO {
     IO(){
       glMatrixMode(GL_PROJECTION|GL_MODELVIEW);
       glLoadIdentity();
-      glOrtho(0,256,0,240,0,1);
+      glOrtho(0,256,240,0,0,1);
       glClearColor(0.2,0.2,0.2,1);
       glClear(GL_COLOR_BUFFER_BIT);
-      /*
-      for(int i = 0; i < 240; ++i)
-        for(int j = 0; j < 256; ++j)
-          put_pixel(j, i, rand()%0xff, rand()%0xff, rand()%0xff);
-      */ 
       swap();
     }
-    
     IO(IO const&) = delete;
     ~IO(){
       SDL_GL_DeleteContext(glcon);
@@ -191,382 +194,476 @@ class IO {
 
 };
 
+
+// sexy bisqwit
+template<size_t position, size_t length, typename T=uint32_t>
+struct bit {
+  T value;
+  constexpr unsigned mask(){ return (1u << length) - 1u; };
+  constexpr unsigned not_mask_at_pos(){ return ~(mask() << position); };
+  template<typename T2>
+  bit& operator= (T2 that){
+    value &= not_mask_at_pos();
+    value |= (that & mask()) << position;
+  }
+  operator unsigned() const {
+    return (value >> position) & mask();
+  }
+  bit& operator++(){
+    return *this = *this + 1;
+  }
+  unsigned operator++(int){
+    unsigned r = *this;
+    ++*this;
+    return r;
+  }
+};
+
 class PPU {
   
   friend class CPU;
   
   private:
-    std::vector<uint8_t> ram, plt, oam;    
-    
-    // registers
-    uint8_t
-      ctrl, mask, status { 0xa0 }, 
-      oamaddr, oamdata, data, NMI_occurred;
-    
-    // PPUCTRL helpers
-    inline uint16_t base_nametable_addr(){ return 0x2000 + (ctrl & 0x03) * 0x400; }
-    inline uint8_t increment_coarse_y(){ return bool(ctrl & 0x04); }
-    inline uint16_t sprite_pattern_table_addr(){ return bool(ctrl & 0x08) * 0x1000; }
-    inline uint16_t background_pattern_table_addr(){ return bool(ctrl & 0x10) * 0x1000; }
-    inline bool sprites_are_8x16(){ return bool(ctrl & 0x20); }
-    inline bool ppu_master_mode(){ return bool(ctrl & 0x40); }
-    inline bool generate_NMI_at_vertical_blank(){ return bool(ctrl & 0x80); }
+    union {
+      
+      uint32_t raw;
+      
+      bit< 0,8> PPUCTRL;
+      bit< 0,2> base_nta;
+      bit< 2,1> vramincr;
+      bit< 3,1> sp_addr;
+      bit< 4,1> bg_addr;
+      bit< 5,1> sprite_size;
+      bit< 6,1> slave_flag;
+      bit< 7,1> NMI_enabled;
 
-    // PPUMASK helpers
-    inline bool grayscale_mode(){ return bool(mask & 0x01); }
-    inline bool background_clip_off(){ return bool(mask & 0x02); }
-    inline bool sprite_clip_off(){ return bool(mask & 0x04); }
-    inline bool show_background(){ return bool(mask & 0x08); }
-    inline bool show_sprites(){ return bool(mask & 0x10); }
-    inline bool intensify_reds(){ return bool(mask & 0x20); }
-    inline bool intensify_greens(){ return bool(mask & 0x40); }
-    inline bool intensify_blues(){ return bool(mask & 0x80); }
-    inline bool rendering_enabled(){
-      return true;
-      return show_background() | show_sprites();
-    }
+      bit< 8,8> PPUMASK;
+      bit< 8,1> grayscale;
+      bit< 9,1> show_bg8;
+      bit<10,1> show_sp8;
+      bit<11,1> show_bg;
+      bit<12,1> show_sp;
+      bit<11,2> rendering_enabled;
+      bit<13,1> intensify_red;
+      bit<14,1> intensify_green;
+      bit<15,1> intensify_blue;
+      
+      bit<16,8> PPUSTATUS;
+      bit<21,1> spr_overflow;
+      bit<22,1> spr0_hit;
+      bit<23,1> vblanking;
+      
+      bit<24,8> OAMADDR;
+      bit<24,2> OAM_data;
+      bit<26,6> OAM_index;
+      
+    } reg;
+    
+    uint8_t palette[0x20], OAM[0x100];
+
+    union {
+      bit< 3,16> raw;
+      bit< 0,8> xscroll;
+      bit< 0,3> xfine;
+      bit< 3,5> xcoarse;
+      bit< 8,5> ycoarse;
+      bit<13,2> base_nta;
+      bit<13,1> base_nta_x;
+      bit<14,1> base_nta_y;
+      bit<15,3> yfine;
+      bit< 3,8> vaddr_lo;
+      bit<11,8> vaddr_hi;
+    } scroll, vram;
+    
+    bool loopy_w { false }, NMI_pulled { false };
     
     int
-      scanline { 261 },
-      frame { 0 },
-      cycle { 340 },
-      SL_end;
+      cycle { 0 }, 
+      scanline { 241 },
+      scanline_end { 341 },
+      read_buffer { 0 },
+      vblank_state { 0 };
     
-    int& dot { cycle };
-    
-    uint8_t loopy_x; // three-bit
-    bool loopy_w;
-    uint8_t buffer2007;
-
-    struct loopy_struct {
-      struct {
-        uint8_t x, y;
-      } coarse, nametable_select;
-      uint8_t fine_y; 
+    std::vector<uint8_t> memory;
       
-      void inc_x(){
-        if(coarse.x == 31){
-          coarse.x = 0;
-          nametable_select.x ^= 1;
-        } else {
-          ++coarse.x;
-        }
-      }
-      
-      void inc_y(){
-        if(fine_y < 7){
-          ++fine_y;
-        } else {
-          fine_y = 0;
-          if(coarse.y == 29){
-            coarse.y = 0;
-            nametable_select.y ^= 1;
-          } else if(coarse.y == 31){
-            coarse.y = 0;
-          } else {
-            ++coarse.y;
-          }
-        }
-      }
-      
-      uint8_t attr_coarse_x(){
-        return coarse.x & 7;
-      }
-      
-      uint8_t attr_coarse_y(){
-        return ((coarse.x >> 3) | (coarse.y << 2)) & 7;
-      }
-      
-      uint8_t attr_offset(){
-        return coarse.y >> 1;
-      }
-      
-      operator uint16_t(){
-        return ((int)coarse.x 
-          | ((int)coarse.y << 5)
-          | ((int)nametable_select.x << 10)
-          | ((int)nametable_select.y << 11)
-          | ((int)fine_y << 12));
-          
-      }
-      
-      loopy_struct& operator=(loopy_struct const& that){
-        coarse.x = that.coarse.x;
-        coarse.y = that.coarse.y;
-        fine_y = that.fine_y;
-        nametable_select.x = that.nametable_select.x;
-        nametable_select.y = that.nametable_select.y;
-        return *this;
-      }
-    } loopy_v, loopy_t;
-    
-
-    uint16_t bg_shiftreg16[2]; // bmp data for two tiles
-    uint8_t 
-      bg_shiftreg8[2], // background palette attributes
-      bg_latch; // background attribute latch
-    
-    uint8_t 
-      spr_shiftreg8[8][2],
-      spr_latch[8],
-      spr_x_pos[8];
-    
-    
-    uint8_t next_bg_pixel(){
-      uint8_t pixel =
-        uint8_t(bg_shiftreg16[0] >> loopy_x)
-        | (uint8_t(bg_shiftreg16[1] >> loopy_x) << 1)
-        | ((bg_shiftreg8[0] >> loopy_x) << 2)
-        | ((bg_shiftreg8[1] >> loopy_x) << 3);
-      
-      bg_shiftreg16[0] >>= 1;
-      bg_shiftreg16[1] >>= 1;
-      bg_shiftreg8[0] >>= 1;
-      bg_shiftreg8[1] >>= 1;
-    
-      return pixel;
-      
+    uint8_t& mmap(uint16_t addr){
+      addr &= 0x3fff;
+      if(addr < 0x2000) return bus::rom()[addr];
+      if(addr < 0x3f00) return memory[addr&0x7ff];
+      return palette[addr&3 == 0 ? addr & 0xf : addr & 0x1f];
     }
     
-    uint8_t load_bg_pixel(){
-      
     
-    }
-    
-    inline void dec_sprite_x(){
-      for(int i = 0; i < 8; ++i){
-        if(!--spr_x_pos[i]){
-          spr_shiftreg8[i][0] >>= 1;
-          spr_shiftreg8[i][1] >>= 1;
+    #define SKIP []{}
+    const std::vector<std::function<void()>> renderf {
+      /* 0 */ [&]{
+        ioaddr = 0x2000 + (vram.raw & 0xfff);
+        if(cycle == 0){
+          sprinpos = sproutpos = 0;
+          if(reg.show_sp)
+            reg.OAMADDR = 0;
         }
-      }
-    }
-    
-    uint16_t ntbyte { 0 }, atbyte { 0 };
-    
-    std::vector<std::function<void()>> accessf {
-      /* 0-1 */ [&]{  // Nametable byte
-        ntbyte
-          = base_nametable_addr() 
-          + 0x10 * loopy_v.coarse.y
-          + loopy_v.coarse.x;
+        
+        if(!reg.show_bg) return;
+        
+        if(scanline == -1 && cycle == 304)
+          vram.raw = (unsigned)scroll.raw;
+        
+        if(cycle == 256){
+          vram.xcoarse = (unsigned)scroll.xcoarse;
+          vram.base_nta_x = (unsigned)scroll.base_nta_x;
+          sprrenpos = 0;
+        }
         
       },
-      /* 2-3 */ [&]{  // Attribute byte
-        atbyte
-          = base_nametable_addr()
-          + 0x23c0
-          + 8 * loopy_v.attr_coarse_y()
-          + loopy_v.attr_coarse_x();
+      /* 1 */ [&]{
+        if(scanline == -1 && cycle == 337 && loopy_w && reg.show_bg){
+          scanline_end = 340;
+        }
+        
+        pat_addr = 0x1000 * reg.bg_addr + 16 * mmap(ioaddr) + vram.yfine;
+        
+        if(!tile_decode_mode) return;
+        
+        bg_shift_pat = (bg_shift_pat >> 16) + 0x00010000 * tilepat;
+        bg_shift_attr = (bg_shift_attr >> 16) + 0x55550000 * tileattr;
+        
       },
-      /* 4-5 */ [&]{  // Tile bitmap low
-        bg_shiftreg16[0] &= 0x00ff;
-        bg_shiftreg16[0] |= read(ntbyte) << 8;
+      /* 2 */ [&]{
+        ioaddr = 0x23c0 + 0x400 * vram.base_nta 
+          + 8 * vram.ycoarse / 4 + vram.xcoarse / 4; 
+        if(!tile_decode_mode)
+          renderf[0]();
       },
-      /* 6-7 */ [&]{  // Tile bitmap high
-        bg_shiftreg16[1] &= 0x00ff;
-        bg_shiftreg16[1] |= read(ntbyte + 8) << 8;
+      /* 3 */ [&]{
+        if(tile_decode_mode){
+          tileattr = 
+            (mmap(ioaddr) >> ((vram.xcoarse & 2)
+            + 2 * (vram.ycoarse&2))) & 3;
+          
+          if(!++vram.xcoarse) vram.base_nta_x = 1 - vram.base_nta_x;
+          
+          if(cycle==251 && !++vram.yfine && ++vram.ycoarse == 30){
+            vram.ycoarse = 0;
+            vram.base_nta_y = 1 - vram.base_nta_y;
+          }
+        
+        } else if(sprrenpos < sproutpos){
+          auto& o = OAM3[sprrenpos];
+          memcpy(&o, &OAM2[sprrenpos], sizeof(o));
+          unsigned y = scanline - o.y;
+          if(o.attr & 0x80){
+            y ^= 7 + reg.sprite_size * 8;
+          }
+          pat_addr = 0x1000 * (reg.sprite_size ? o.index & 0x01 : reg.sp_addr);
+          pat_addr += 0x10 * (reg.sprite_size ? o.index & 0xfe : o.index & 0xff);
+          pat_addr += (y&7) + (y&8) * 2;
+        }
+        
+      },
+      /* 4 */ SKIP,
+      /* 5 */ [&]{
+        tilepat = mmap(pat_addr | 0);
+      },
+      /* 6 */ SKIP,
+      /* 7 */ [&]{
+        unsigned p = tilepat | (mmap(pat_addr|8) << 8);
+        p = (p&0xf00f) | ((p&0x0f00)>>4) | ((p&0x00f0)<<4);
+        p = (p&0xc3c3) | ((p&0x3030)>>2) | ((p&0x0c0c)<<2);
+        p = (p&0x9999) | ((p&0x4444)>>1) | ((p&0x2222)<<1);
+        tilepat = p;
+        if(!tile_decode_mode && sprrenpos < sproutpos)
+          OAM3[sprrenpos++].pattern = tilepat;
+          
       }
-    
     };
+    #undef SKIP
+    
+    void render(){
+      tile_decode_mode = 0x10ffff & (1u << (cycle/16));
+      renderf[cycle & 7]();
+      switch(cycle & 1 && cycle >= 64 && cycle < 256 ? reg.OAMADDR++&3 : 4){
+        default:
+          sprtmp = OAM[reg.OAMADDR];
+          break;
+        case 0:
+          if(sprinpos >= 64){
+            reg.OAMADDR = 0;
+            break;
+          }
+          ++sprinpos;
+          if(sproutpos < 8){
+            OAM2[sproutpos].y = sprtmp;
+            OAM2[sproutpos].sprindex = reg.OAM_index;
+          }
+          {
+            int y1 = sprtmp, y2 = sprtmp + 8 + reg.sprite_size * 8;
+            if(!(y1 <= scanline && scanline < y2)){
+              reg.OAMADDR = sprinpos != 2 ? reg.OAMADDR + 3 : 8;
+            }
+          }
+          break;
+        case 1:
+          if(sproutpos < 8)
+            OAM2[sproutpos].index = sprtmp;
+          break;
+        case 2:
+          if(sproutpos < 8)
+            OAM2[sproutpos].index = sprtmp;
+          break;
+        case 3:
+          if(sproutpos < 8){
+            OAM2[sproutpos].x = sprtmp;
+            ++sproutpos;
+          } else {
+            reg.spr_overflow = true;
+          }
+          
+          if(sprinpos == 2)
+            reg.OAMADDR = 8;
+          
+          break;
+      }
+    }
+    
+    void render_pixel(){
+      bool edge = uint8_t(cycle + 8) < 16;
+      bool 
+        showbg = reg.show_bg && (!edge || reg.show_bg8),
+        showsp = reg.show_sp && (!edge || reg.show_sp8);
+      
+      unsigned fx = scroll.xfine, 
+        xpos = 15 - (( (cycle & 7) + fx + 8 * bool(cycle&7) ) & 15);
+        
+      unsigned pixel { 0 }, attr { 0 };
+      if(showbg){
+        pixel = (bg_shift_pat >> (xpos * 2)) & 3;
+        attr = (bg_shift_attr >> (xpos * 2)) & (!!pixel * 3);
+      } else if(
+        (vram.raw & 0x3f00) == 0x3f00 && !reg.rendering_enabled
+      ){
+        pixel = vram.raw;
+      }
+      
+      if(showsp){
+        for(unsigned sno = 0; sno < sprrenpos; ++sno){
+          auto& s = OAM3[sno];
+          
+          unsigned xdiff = cycle - s.x;
+          if(xdiff >= 8)
+            continue;
+            
+          if(!(s.attr & 0x40)) 
+            xdiff = 7 - xdiff;
+          
+          uint8_t spritepixel = (s.pattern >> (xdiff * 2)) & 3;
+          
+          if(!spritepixel) 
+            continue;
+          
+          if(cycle < 255 && pixel && s.sprindex == 0)
+            reg.spr0_hit = true;
+          
+          if(!pixel || !(s.attr & 0x20)){
+            attr = (s.attr & 3) + 4;
+            pixel = spritepixel;
+          }
+          
+          break;
+        
+        }
+      }
+      
+      pixel = palette[(attr * 4 + pixel) & 0x1f] & (reg.grayscale ? 0x30 : 0x3f);
+      
+      bus::io().put_pixel(cycle, scanline, (pixel & 1) * 100, bool(pixel & 2) * 100, 0);
+      
+    }
     
     PPU& tick(){
       
-      if(++cycle > 341){
-        cycle = 0;
-        
-        if(++scanline > 261){
-          scanline = 0;
-        }
+      switch(vblank_state){
+        case -5: reg.PPUSTATUS = 0; break;
+        case 2: reg.vblanking = true; NMI_pulled = false; break;
+        case 0: 
+          if(!NMI_pulled && reg.vblanking && reg.NMI_enabled){
+            bus::pull_NMI();
+            NMI_pulled = true;
+          }
+          break;
+      }
+      
+      if(vblank_state != 0){
+        vblank_state += vblank_state < 0 ? 1 : -1;
       }
       
       if(scanline < 240){
-        if(cycle & 1){
-          if(cycle < 257){
-            accessf[(cycle&7)/2]();
-            // sprite evaluation
-          } else if(cycle < 321){
-            accessf[(cycle&7)/2]();
-            // load x pos and attr for sprites from 2nd OAM
-          } else if(cycle < 337){
-            accessf[(cycle&7)/2]();
-          } else if(cycle < 341){
-            accessf[0](); // dummy nametable byte?
-          }
-        } 
-      } else if(scanline == 241 && cycle == 1){
-        set_vblank_flag();
+        if(reg.rendering_enabled) render();
+        if(scanline >= 0 && cycle < 256) render_pixel();
       }
       
-      dec_sprite_x();
-      
-      if(rendering_enabled())
-        render();
-      
-      
+      if(++cycle > scanline_end){
+        //bus::io().swap();
+        cycle = 0;
+        scanline_end = 341;
+        switch(++scanline){
+          case 261:
+            scanline = -1;
+            loopy_w ^= 1;
+            vblank_state = -5;
+            break;
+          case 241:
+            // events
+            bus::io().swap();
+            vblank_state = 2;
+            break;
+        }
+      }
       return *this;
     }
-    
-    inline bool toggle(bool& x){ return x ^= 1; }
-    
-    inline uint16_t nt_mirror(uint16_t addr){
-      addr &= 0xfff;
-      // horizontal?
-      if(addr < 0x400) return addr;
-      if(addr < 0x800) return addr - 0x400;
-      if(addr < 0xc00) return addr - 0x400;
-      return addr - 0x800;
-    }
-    
-    uint8_t read(uint16_t addr){
-      if(addr < 0x2000) return bus::rom()[addr];
-      if(addr < 0x3f00) return ram[nt_mirror(addr)];
-      return plt[addr&0x1f];
-    }
-    
-    void write(uint8_t value, uint16_t addr){
-      if(addr < 0x2000) bus::rom().write(value, addr);
-      else if(addr < 0x3f00) ram[nt_mirror(addr)] = value;
-      else plt[addr&0x1f] = value;
-    }
-    
-    using regrf = std::function<uint8_t()>;
-    using regwf = std::function<void(uint8_t)>;
-    
-    regrf bad_read {[]{ return 0; }};
-    regwf bad_write {[](uint8_t){}};
-    
-    std::vector<regrf> regr {
-      /* 0 */ bad_read, 
-      /* 1 */ bad_read,
-      /* 2 */ [&] {
-        // account for race condition
-        uint8_t res = (unsigned)(scanline * 341 + cycle - 82180) < 2 ? 
-          status & 0x7F : 
-          status|(NMI_occurred << 7);
-        
-        // clear the toggle, NMI occurred and vblank flag
-        loopy_w = false;
-        NMI_occurred = false;
-        status = res & 0x7f;
-        return res;
-        
-      },
-      /* 3 */ bad_read,
-      /* 4 */ [&] { return oam[oamaddr]; },
-      /* 5 */ bad_read, 
-      /* 6 */ bad_read,
-      /* 7 */ [&] {
-        if(increment_coarse_y()){
-          loopy_v.inc_y();
-        } else {
-          loopy_v.inc_x();
-        }
-        return data;
-      }
-    };
-    
-    std::vector<regwf> regw {
-      /* Reg# */
-      /* 0 */ [&](uint8_t value){
-        loopy_t.nametable_select.x = value & 1;
-        loopy_t.nametable_select.y = bool(value & 2);
-        //NMI_output = (bool)(value&0x80);
-        ctrl = value;
-      },
-      
-      /* 1 */ [&](uint8_t value){ mask = value; },
-      /* 2 */ bad_write,
-      /* 3 */ [&](uint8_t value){ oamaddr = value; },
-      /* 4 */ [&](uint8_t value){ oam[oamaddr++] = value; },
-      /* 5 */ [&](uint8_t value){
-        if(!loopy_w){
-          loopy_t.coarse.x = value >> 3;
-          loopy_x = value & 7;
-          loopy_w = 1;
-        } else {
-          loopy_t.coarse.y = value >> 3;
-          loopy_t.fine_y = value & 7;
-          loopy_w = 0;
-        }
-      },
-      /* 6 */ [&](uint8_t value){
-        if(!loopy_w){
-          loopy_t.fine_y = (value >> 3) & 7;
-          loopy_t.nametable_select.x = bool((value >> 1) & 1);
-          loopy_t.nametable_select.y = bool((value >> 1) & 2);
-          loopy_t.coarse.y 
-            = (loopy_t.coarse.y & 0xf) | ((value & 1) << 5);
-          loopy_w = 1;
-        } else {
-          loopy_t.coarse.x = value & 0xf;
-          loopy_t.coarse.y 
-            = (loopy_t.coarse.y & 0x18) | (value >> 5);
-          loopy_v = loopy_t;
-          loopy_w = 0;
-        }        
-      },
-      /* 7 */ [&](uint8_t value){
-        write(value, loopy_v);
-        if(increment_coarse_y()){
-          loopy_v.inc_y();
-        } else {
-          loopy_v.inc_x();
-        }
-      },
-    };
-    
-    void inc_loopy_x(){
-      if(loopy_x == 7){
-        loopy_x = 0;
-        loopy_v.inc_x();
-      } else {
-        ++loopy_x;
-      }
-    }
-    
 
-    void clear_vblank_flag(){
-      status &=~ 0x80;
+    unsigned pat_addr, sprinpos, sproutpos, sprrenpos, sprtmp;
+    uint16_t tileattr, tilepat, ioaddr;
+    uint32_t bg_shift_pat, bg_shift_attr;
+    
+    bool tile_decode_mode;
+    
+    struct { 
+      uint8_t sprindex, y, index, attr, x; 
+      uint16_t pattern; 
+    } OAM2[8], OAM3[8];
+    
+    
+    #define BAD_READ [&]{ return 0; }
+    const std::vector<std::function<uint8_t()>> regr {
+      /* 0 */ BAD_READ,
+      /* 1 */ BAD_READ,
+      /* 2 */ [&]{
+        uint8_t result { reg.PPUSTATUS };
+        reg.vblanking = false;
+        loopy_w = false;
+        return result;
+      },
+      /* 3 */ BAD_READ,
+      /* 4 */ [&]{
+        return OAM[reg.OAMADDR] & (reg.OAM_data == 2 ? 0xE3 : 0xFF);
+      },
+      /* 5 */ BAD_READ,
+      /* 6 */ BAD_READ,
+      /* 7 */ [&]{
+        uint8_t result = read_buffer;
+        read_buffer = mmap(vram.raw);
+        vram.raw = vram.raw + (!!reg.vramincr * 31 + 1);
+        return result;
+      }
+    };
+    #undef BAD_READ
+
+    #define BAD_WRITE [&](uint8_t){ return; }    
+    const std::vector<std::function<void(uint8_t)>> regw {
+      /* 0 */ [&](uint8_t x) {
+        reg.PPUCTRL = x; 
+        scroll.base_nta = reg.base_nta; 
+      },
+      /* 1 */ [&](uint8_t x) { reg.PPUMASK = x; },
+      /* 2 */ BAD_WRITE,
+      /* 3 */ [&](uint8_t x) { reg.OAMADDR = x; },
+      /* 4 */ [&](uint8_t x) { OAM[reg.OAMADDR++] = x; },
+      /* 5 */ [&](uint8_t x) { 
+        if(loopy_w){
+          scroll.yfine = x & 7;
+          scroll.ycoarse = x >> 3;
+        } else {
+          scroll.xscroll = x;
+        }
+        loopy_w ^= 1;
+      },
+      /* 6 */ [&](uint8_t x) {
+        if(loopy_w){
+          scroll.vaddr_lo = x;
+          vram.raw = (unsigned)scroll.raw;
+        } else {
+          scroll.vaddr_hi = x & 0x3f;
+        }
+        loopy_w ^= 1;
+      },
+      /* 7 */ [&](uint8_t x) {
+        mmap(vram.raw) = x;
+        vram.raw = vram.raw + (bool(reg.vramincr) * 31 + 1);
+      }
+    };
+    #undef BAD_WRITE
+  
+  public:
+    PPU():memory(0x800){
+      reg.PPUSTATUS = 0x80;
+    }
+    ~PPU(){
+      dump_nametables();
+      print_status();
     }
     
-    void set_vblank_flag(){
-      status |= 0x80;
-      bus::io().swap();
+    string color(int x){
+      std::stringstream ss;
+      ss << "\033[";
+      ss << ((x%7)+31) << ';' << ((x%8)+40) << 'm';
+      return ss.str();
     }
     
-    void render(){
+    void dump_nametables(){
+      cout << '\n';
       
-      if(dot == 256){
-        loopy_v.inc_y();
-      } else if(dot == 257){
-        loopy_v.coarse.x = loopy_t.coarse.x;
-        loopy_v.nametable_select.x = loopy_t.nametable_select.x;
-      } else if(279 < dot && dot < 305){
-        loopy_v.coarse.y = loopy_t.coarse.y;
-        loopy_v.nametable_select.y = loopy_t.nametable_select.y;
-        loopy_v.fine_y = loopy_t.fine_y;
-      } else if(327 < dot || dot < 256){
-        inc_loopy_x();
+      for(int i = 0x2000; i < 0x2400; ++i){
+        //if((i&63) > 31) continue;
+          
+        int x = mmap(i);
+        cout 
+          << color(x)
+          << setw(3) 
+          << std::setfill(' ') 
+          << hex 
+          << x 
+          << "\033[0m";
+        
+        if((i%32)==31)
+          cout << "\n";
+          
+      }
+    
+    }
+    
+    void print_status(){
+      cout 
+        << "SL:" << (int)scanline << " "
+        << "CYC:" << (int)cycle << "  "
+        << "VBS:" << (int)vblank_state << "  "
+        << hex
+        << "REG:" << (unsigned)reg.raw << "  "
+        << "LPV:" << (unsigned)vram.raw << "  "
+        << "LPT:" << (unsigned)scroll.raw << "\n";
+    
+    }
+    
+    vector<std::function<void()>> tests {
+      [&]{
+        scroll.base_nta = 1;
+        cout << (int)scroll.base_nta << '\n';
+      },
+    };
+    
+    void test(){
+      
+      
+      for(auto& f : tests){
+        f();
+        print_status();
       }
       
-      //cout << bg_shiftreg16[0] << '\n';
-      
-      bus::io().put_pixel(
-        dot, scanline, 
-        ((bg_shiftreg16[0] >> loopy_x) & 1) * 100,
-        ((bg_shiftreg16[1] >> loopy_x) & 1) * 100,
-        int(64 + sin((double)dot) * 64.0)
-      );
-    
     }
     
-    
-  public:
-    PPU(): ram(0x800), plt(0x20), oam(0x100) {}
-  
   
 };
+
 
 class CPU {
   private:
@@ -610,7 +707,13 @@ class CPU {
     
     uint8_t read(uint16_t addr){
       if(addr < 0x2000) return memory[addr&0x7ff];
-      if(addr < 0x4000) return bus::ppu().regr[addr&7]();
+      if(addr < 0x4000){
+        auto x = bus::ppu().regr[addr&7]();
+        #ifdef DEBUG_PPU
+        cout << "Read PPU " << (addr&7) << " --> " << (int)x << '\n';
+        #endif
+        return x;
+      }
       if(addr < 0x4020){
         switch(addr&0x1f){
           case 0x15:
@@ -632,27 +735,36 @@ class CPU {
         // this shouldn't happen
         return memory[0];
       }
-      
       return bus::rom()[addr];
-    
     }
     
     uint8_t write(uint8_t value, uint16_t addr){
       if(addr < 0x2000) return memory[addr&0x7ff] = value;
-      if(addr < 0x4000) return bus::ppu().regw[addr&7](value), 0;
+      if(addr < 0x4000){
+        #ifdef DEBUG_PPU
+        cout << "Write PPU " << (addr&7) << " value " << (int)value << '\n';
+        #endif
+        return bus::ppu().regw[addr&7](value), 0;
+      }
       if(addr < 0x4020){
         switch(addr&0x1f){
           case 0x14: {
             // DMA transfer
             PPU& ppu = bus::ppu();
             for(int i=0; i < 256; ++i){
-              ppu.write(read((value&7)*0x100 + i), 0x4);
+              ppu.regw[4](read((value&7)*0x100 + i));
             }
           } break;
           
           default: return 0;
           
         }
+      }
+      if(addr < 0x8000){
+        // The alternate output...
+        if(!value) cout << '\n';
+        cout << hex << std::setw(2) << std::setfill(' ') << value << ' ';
+        
       }
       
       return bus::rom()[addr] = value;
@@ -674,7 +786,7 @@ class CPU {
     
     uint16_t pull2(){
       uint16_t r = memory[++SP + 0x100];
-      return r | memory[++SP + 0x100] << 8;    
+      return r | (memory[++SP + 0x100] << 8);    
     }
     
     void addcyc(){
@@ -710,7 +822,7 @@ class CPU {
     
     void pull_NMI(){
       push2(PC);
-      push(P);
+      stack_push<&CPU::ProcStatus>();
       PC = read(0xfffa) | (read(0xfffb) << 8);
     }
     
@@ -731,7 +843,9 @@ class CPU {
           << hex << std::uppercase << std::setfill('0')
           << setw(4) << last_PC << "  "
           << setw(2) << (int)last_op << "   "
-          << opasm[last_op] << '\t'
+          << std::setfill(' ') << setw(16) 
+          << std::left << opasm[last_op]
+          << std::setfill('0')
           << " A:" << setw(2) << (int)A
           << " X:" << setw(2) << (int)X
           << " Y:" << setw(2) << (int)Y
@@ -739,12 +853,13 @@ class CPU {
           << " SP:" << setw(2) << (int)SP
           << std::setfill(' ')
           << " CYC:" << setw(3) << std::dec << (int)cyc
-          << " SL:" << setw(2) << (int)bus::ppu().scanline
+          << " SL:" << setw(3) << (int)bus::ppu().scanline
+          << hex << std::setfill('0')
+          << " ST0:" << setw(2) << (int)memory[0x101 + SP]
+          << " ST1:" << setw(2) << (int)memory[0x102 + SP]
+          << " ST2:" << setw(2) << (int)memory[0x103 + SP]
           << '\n';
 #endif
-        
-        if(!last_op)
-          break;
         
         (this->*ops[last_op])();
         
@@ -899,6 +1014,10 @@ namespace bus {
     return _io;
   }
   
+  void pull_NMI(){
+    _cpu.pull_NMI();
+  }
+  
   void play(std::string const& path){
     _rom = ROM(path);
   }
@@ -906,17 +1025,28 @@ namespace bus {
 }
 
 int main(int argc, char* argv[]){
-  
+
   vector<string> args (argv, argv + argc);
 
   try {
-  
     bus::play(args[1]);
+  #ifndef PPU_TEST
+    
     bus::cpu().run();
+    
+  #else
+    
+    bus::ppu().test();
+    
+  #endif
   
   } catch(exception const& e){
     
     cout << e.what() << '\n';
+    
+  } catch(...){
+  
+    cout << "died\n";
     
   }
   
