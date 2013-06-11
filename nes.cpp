@@ -1,4 +1,5 @@
 #include <iostream>
+#include <tuple>
 #include <map>
 #include <iomanip>
 #include <functional>
@@ -27,6 +28,8 @@ class CPU;
 class PPU;
 class APU;
 class IO;
+
+using rgb8 = std::tuple<uint8_t, uint8_t, uint8_t>;
 
 namespace bus {
   CPU& cpu();
@@ -102,7 +105,6 @@ class ROM {
 
       switch(mapper_id){
         case 0:
-        default:
           mem.resize(0xa000);
           file.read((char*)mem.data() + 0x2000, 0x4000);
           if(prg_rom_size == 1){
@@ -113,7 +115,7 @@ class ROM {
           file.read((char*)mem.data(), 0x2000);
           
           break;
-        //default:
+        default:
           throw runtime_error ("Unsupported mapper");
       
       }
@@ -121,7 +123,6 @@ class ROM {
     }
     
 };
-
 
 class IO {
   
@@ -133,6 +134,7 @@ class IO {
       SDL_CreateWindow(
         "",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,
         512,480,SDL_WINDOW_OPENGL
+        //256,240,SDL_WINDOW_OPENGL
       )
     };
     
@@ -168,12 +170,32 @@ class IO {
     
     void put_pixel(int x, int y, char r, char g, char b){
       glColor3b(r,g,b);
+      glBegin(GL_POINTS);
+      glVertex2i(x,y);
+      glEnd();
+      /*
       glBegin(GL_QUADS);
       glVertex2i(x,y);
       glVertex2i(x+1,y);
       glVertex2i(x+1,y+1);
       glVertex2i(x,y+1);
       glEnd();
+      */
+    }
+    
+    void draw_screen(rgb8 const pixels[]){
+      glBegin(GL_POINTS);
+      
+      for(int i = 0; i < 240; ++i){
+        for(int j = 0; j < 256; ++j){
+          const rgb8& pixel = pixels[i * 256 + j];
+          glColor3b(std::get<0>(pixel), std::get<1>(pixel), std::get<2>(pixel));
+          glVertex2i(j % 256, i);
+        }
+      }
+      
+      glEnd();
+      
     }
     
   public:
@@ -260,6 +282,7 @@ class PPU {
     } reg;
     
     uint8_t palette[0x20], OAM[0x100];
+    rgb8 screen[256*240];
 
     union {
       bit< 3,16> raw;
@@ -290,150 +313,161 @@ class PPU {
       addr &= 0x3fff;
       if(addr < 0x2000) return bus::rom()[addr];
       if(addr < 0x3f00) return memory[addr&0x7ff];
-      return palette[addr&3 == 0 ? addr & 0xf : addr & 0x1f];
+      //return palette[addr&3 == 0 ? addr & 0xf : addr & 0x1f];
+      return palette[addr & (0xf + ((!(addr&3 == 0))*0x10))];
     }
     
     
-    #define SKIP []{}
-    const std::vector<std::function<void()>> renderf {
-      /* 0 */ [&]{
-        ioaddr = 0x2000 + (vram.raw & 0xfff);
-        if(cycle == 0){
-          sprinpos = sproutpos = 0;
-          if(reg.show_sp)
-            reg.OAMADDR = 0;
-        }
-        
-        if(!reg.show_bg) return;
-        
-        if(scanline == -1 && cycle == 304)
-          vram.raw = (unsigned)scroll.raw;
-        
-        if(cycle == 256){
-          vram.xcoarse = (unsigned)scroll.xcoarse;
-          vram.base_nta_x = (unsigned)scroll.base_nta_x;
-          sprrenpos = 0;
-        }
-        
-      },
-      /* 1 */ [&]{
-        if(scanline == -1 && cycle == 337 && loopy_w && reg.show_bg){
-          scanline_end = 340;
-        }
-        
-        pat_addr = 0x1000 * reg.bg_addr + 16 * mmap(ioaddr) + vram.yfine;
-        
-        if(!tile_decode_mode) return;
-        
-        bg_shift_pat = (bg_shift_pat >> 16) + 0x00010000 * tilepat;
-        bg_shift_attr = (bg_shift_attr >> 16) + 0x55550000 * tileattr;
-        
-      },
-      /* 2 */ [&]{
-        ioaddr = 0x23c0 + 0x400 * vram.base_nta 
-          + 8 * vram.ycoarse / 4 + vram.xcoarse / 4; 
-        if(!tile_decode_mode)
-          renderf[0]();
-      },
-      /* 3 */ [&]{
-        if(tile_decode_mode){
-          tileattr = 
-            (mmap(ioaddr) >> ((vram.xcoarse & 2)
-            + 2 * (vram.ycoarse&2))) & 3;
-          
-          if(!++vram.xcoarse) vram.base_nta_x = 1 - vram.base_nta_x;
-          
-          if(cycle==251 && !++vram.yfine && ++vram.ycoarse == 30){
-            vram.ycoarse = 0;
-            vram.base_nta_y = 1 - vram.base_nta_y;
-          }
-        
-        } else if(sprrenpos < sproutpos){
-          auto& o = OAM3[sprrenpos];
-          memcpy(&o, &OAM2[sprrenpos], sizeof(o));
-          unsigned y = scanline - o.y;
-          if(o.attr & 0x80){
-            y ^= 7 + reg.sprite_size * 8;
-          }
-          pat_addr = 0x1000 * (reg.sprite_size ? o.index & 0x01 : reg.sp_addr);
-          pat_addr += 0x10 * (reg.sprite_size ? o.index & 0xfe : o.index & 0xff);
-          pat_addr += (y&7) + (y&8) * 2;
-        }
-        
-      },
-      /* 4 */ SKIP,
-      /* 5 */ [&]{
-        tilepat = mmap(pat_addr | 0);
-      },
-      /* 6 */ SKIP,
-      /* 7 */ [&]{
-        unsigned p = tilepat | (mmap(pat_addr|8) << 8);
-        p = (p&0xf00f) | ((p&0x0f00)>>4) | ((p&0x00f0)<<4);
-        p = (p&0xc3c3) | ((p&0x3030)>>2) | ((p&0x0c0c)<<2);
-        p = (p&0x9999) | ((p&0x4444)>>1) | ((p&0x2222)<<1);
-        tilepat = p;
-        if(!tile_decode_mode && sprrenpos < sproutpos)
-          OAM3[sprrenpos++].pattern = tilepat;
-          
-      }
-    };
-    #undef SKIP
-    
-    void render(){
-      tile_decode_mode = 0x10ffff & (1u << (cycle/16));
-      renderf[cycle & 7]();
-      switch(cycle & 1 && cycle >= 64 && cycle < 256 ? reg.OAMADDR++&3 : 4){
-        default:
-          sprtmp = OAM[reg.OAMADDR];
-          break;
+    template<int X>
+    const void render() {
+      enum {
+        tdm = 0x10ffff & (1u << (X/16))
+      };
+      
+      tile_decode_mode = tdm;
+      
+      switch(X&7){
+        case 2: {
+          ioaddr = 0x23c0 + 0x400 * vram.base_nta 
+            + 8 * vram.ycoarse / 4 + vram.xcoarse / 4; 
+          if(tile_decode_mode) break;
+        } 
         case 0:
-          if(sprinpos >= 64){
-            reg.OAMADDR = 0;
-            break;
+        /* 0 */ {
+          ioaddr = 0x2000 + (vram.raw & 0xfff);
+          if(cycle == 0){
+            sprinpos = sproutpos = 0;
+            if(reg.show_sp)
+              reg.OAMADDR = 0;
           }
-          ++sprinpos;
-          if(sproutpos < 8){
-            OAM2[sproutpos].y = sprtmp;
-            OAM2[sproutpos].sprindex = reg.OAM_index;
+          
+          if(!reg.show_bg) break;
+          
+          if(scanline == -1 && cycle == 304)
+            vram.raw = (unsigned)scroll.raw;
+          
+          if(cycle == 256){
+            vram.xcoarse = (unsigned)scroll.xcoarse;
+            vram.base_nta_x = (unsigned)scroll.base_nta_x;
+            sprrenpos = 0;
           }
-          {
-            int y1 = sprtmp, y2 = sprtmp + 8 + reg.sprite_size * 8;
-            if(!(y1 <= scanline && scanline < y2)){
-              reg.OAMADDR = sprinpos != 2 ? reg.OAMADDR + 3 : 8;
+          
+        } break;
+        case 1: {
+          if(scanline == -1 && cycle == 337 && loopy_w && reg.show_bg){
+            scanline_end = 340;
+          }
+          
+          pat_addr = 0x1000 * reg.bg_addr + 16 * mmap(ioaddr) + vram.yfine;
+          
+          if(!tile_decode_mode) break;
+          
+          bg_shift_pat = (bg_shift_pat >> 16) + 0x00010000 * tilepat;
+          bg_shift_attr = (bg_shift_attr >> 16) + 0x55550000 * tileattr;
+          
+        } break;
+        
+        case 3: {
+          if(tile_decode_mode){
+            tileattr = 
+              (mmap(ioaddr) >> ((vram.xcoarse & 2)
+              + 2 * (vram.ycoarse&2))) & 3;
+            
+            if(!++vram.xcoarse) vram.base_nta_x = 1 - vram.base_nta_x;
+            
+            if(cycle==251 && !++vram.yfine && ++vram.ycoarse == 30){
+              vram.ycoarse = 0;
+              vram.base_nta_y = 1 - vram.base_nta_y;
             }
-          }
-          break;
-        case 1:
-          if(sproutpos < 8)
-            OAM2[sproutpos].index = sprtmp;
-          break;
-        case 2:
-          if(sproutpos < 8)
-            OAM2[sproutpos].index = sprtmp;
-          break;
-        case 3:
-          if(sproutpos < 8){
-            OAM2[sproutpos].x = sprtmp;
-            ++sproutpos;
-          } else {
-            reg.spr_overflow = true;
+          
+          } else if(sprrenpos < sproutpos){
+            auto& o = OAM3[sprrenpos];
+            memcpy(&o, &OAM2[sprrenpos], sizeof(o));
+            unsigned y = scanline - o.y;
+            if(o.attr & 0x80){
+              y ^= 7 + reg.sprite_size * 8;
+            }
+            pat_addr = 0x1000 * (reg.sprite_size ? o.index & 0x01 : reg.sp_addr);
+            pat_addr += 0x10 * (reg.sprite_size ? o.index & 0xfe : o.index & 0xff);
+            pat_addr += (y&7) + (y&8) * 2;
           }
           
-          if(sprinpos == 2)
-            reg.OAMADDR = 8;
-          
-          break;
+        } break;
+        case 5: {
+          tilepat = mmap(pat_addr | 0);
+        } break;
+        case 7: {
+          unsigned p = tilepat | (mmap(pat_addr|8) << 8);
+          p = (p&0xf00f) | ((p&0x0f00)>>4) | ((p&0x00f0)<<4);
+          p = (p&0xc3c3) | ((p&0x3030)>>2) | ((p&0x0c0c)<<2);
+          p = (p&0x9999) | ((p&0x4444)>>1) | ((p&0x2222)<<1);
+          tilepat = p;
+          if(!tile_decode_mode && sprrenpos < sproutpos)
+            OAM3[sprrenpos++].pattern = tilepat;
+        } break;
       }
+
+      if(X & 1 && X >= 64 && X < 256){
+        
+        switch(reg.OAMADDR++&3){
+          case 0:
+            if(sprinpos >= 64){
+              reg.OAMADDR = 0;
+              break;
+            }
+            ++sprinpos;
+            if(sproutpos < 8){
+              OAM2[sproutpos].y = sprtmp;
+              OAM2[sproutpos].sprindex = reg.OAM_index;
+            }
+            {
+              int y1 = sprtmp, y2 = sprtmp + 8 + reg.sprite_size * 8;
+              if(!(y1 <= scanline && scanline < y2)){
+                reg.OAMADDR = sprinpos != 2 ? reg.OAMADDR + 3 : 8;
+              }
+            }
+            break;
+          case 1:
+            if(sproutpos < 8)
+              OAM2[sproutpos].index = sprtmp;
+            break;
+          case 2:
+            if(sproutpos < 8)
+              OAM2[sproutpos].attr = sprtmp;
+            break;
+          case 3:
+            if(sproutpos < 8){
+              OAM2[sproutpos].x = sprtmp;
+              ++sproutpos;
+            } else {
+              reg.spr_overflow = true;
+            }
+            
+            if(sprinpos == 2)
+              reg.OAMADDR = 8;
+            
+            break;
+        }
+      } else {
+        sprtmp = OAM[reg.OAMADDR];
+      }
+      
+      if(X < 256){
+        if(scanline >= 0) render_pixel();
+      }
+      
     }
     
     void render_pixel(){
+    
+        
       bool edge = uint8_t(cycle + 8) < 16;
       bool 
-        showbg = reg.show_bg && (!edge || reg.show_bg8),
-        showsp = reg.show_sp && (!edge || reg.show_sp8);
+        showbg = (!edge || reg.show_bg8) && reg.show_bg,
+        showsp = (!edge || reg.show_sp8) && reg.show_sp;
       
-      unsigned fx = scroll.xfine, 
-        xpos = 15 - (( (cycle & 7) + fx + 8 * bool(cycle&7) ) & 15);
+      unsigned fx = scroll.xfine,
+        xpos = 15 - (( (cycle&7) + fx + 8 * bool(cycle&7) ) & 15);
         
       unsigned pixel { 0 }, attr { 0 };
       if(showbg){
@@ -450,6 +484,7 @@ class PPU {
           auto& s = OAM3[sno];
           
           unsigned xdiff = cycle - s.x;
+          
           if(xdiff >= 8)
             continue;
             
@@ -473,18 +508,53 @@ class PPU {
         
         }
       }
+    
       
-      pixel = palette[(attr * 4 + pixel) & 0x1f] & (reg.grayscale ? 0x30 : 0x3f);
+      pixel = palette[(attr * 4 + pixel) & 0x1f] & (0x30 + !reg.grayscale * 0xf);
       
-      bus::io().put_pixel(cycle, scanline, (pixel & 1) * 100, bool(pixel & 2) * 100, 0);
+      //bus::io().put_pixel(cycle, scanline, (pixel & 1) * 100, bool(pixel & 2) * 100, 0);
+/*
+      screen[scanline * 256 + cycle] = rgb8(
+        (pixel & 1) * 100, 
+        bool(pixel & 2) * 100, 
+        0
+      );
+    */
+      glColor3b(
+        bool(pixel & 1) * 100,
+        bool(pixel & 2) * 100, 
+        0
+      );
       
+      int x = cycle&0xff;
+      glVertex2i(x, scanline);
+      glVertex2i(x+1, scanline);
+      glVertex2i(x+1, scanline+1);
+      glVertex2i(x, scanline+1);
+
     }
     
-    PPU& tick(){
-      
+    #define r(n) &PPU::render<n>
+    #define s(n) r(n),r(n+1),r(n+2),r(n+3)
+    #define t(n) s(n),s(n+4),s(n+8),s(n+12)
+    const void(PPU::*renderfs[342])() {
+      t(0),t(16),t(32),t(48),t(64),t(80),
+      t(96),t(112),t(128),t(144),t(160),t(176),
+      t(192),t(208),t(224),t(240),t(256),
+      t(272),t(288),t(304),t(320),
+      s(336),r(340),r(341)
+    };
+    
+    inline void tick(){
+
       switch(vblank_state){
-        case -5: reg.PPUSTATUS = 0; break;
-        case 2: reg.vblanking = true; NMI_pulled = false; break;
+        case -5: 
+          reg.PPUSTATUS = 0; 
+          break;
+        case 2: 
+          reg.vblanking = true; 
+          NMI_pulled = false; 
+          break;
         case 0: 
           if(!NMI_pulled && reg.vblanking && reg.NMI_enabled){
             bus::pull_NMI();
@@ -494,12 +564,13 @@ class PPU {
       }
       
       if(vblank_state != 0){
-        vblank_state += vblank_state < 0 ? 1 : -1;
+        vblank_state += (vblank_state < 0) * 2 - 1;
       }
       
       if(scanline < 240){
-        if(reg.rendering_enabled) render();
-        if(scanline >= 0 && cycle < 256) render_pixel();
+        if(reg.rendering_enabled){
+          (this->*(renderfs[cycle]))();
+        }
       }
       
       if(++cycle > scanline_end){
@@ -514,12 +585,15 @@ class PPU {
             break;
           case 241:
             // events
+            //bus::io().draw_screen(screen);
+            glEnd();
             bus::io().swap();
+            glBegin(GL_QUADS);
             vblank_state = 2;
             break;
         }
       }
-      return *this;
+
     }
 
     unsigned pat_addr, sprinpos, sproutpos, sprrenpos, sprtmp;
@@ -597,9 +671,13 @@ class PPU {
   public:
     PPU():memory(0x800){
       reg.PPUSTATUS = 0x80;
+      glBegin(GL_POINTS);
     }
     ~PPU(){
+      glEnd();
+      #ifdef DUMP_NT
       dump_nametables();
+      #endif
       print_status();
     }
     
@@ -762,9 +840,10 @@ class CPU {
       }
       if(addr < 0x8000){
         // The alternate output...
+        /*
         if(!value) cout << '\n';
         cout << hex << std::setw(2) << std::setfill(' ') << value << ' ';
-        
+        */
       }
       
       return bus::rom()[addr] = value;
@@ -791,7 +870,9 @@ class CPU {
     
     void addcyc(){
       cyc += 3;
-      bus::ppu().tick().tick().tick();
+      bus::ppu().tick();
+      bus::ppu().tick();
+      bus::ppu().tick();
     }
     
     template<typename T> 
@@ -972,7 +1053,6 @@ class CPU {
 template<> uint8_t& CPU::getref<&CPU::ACC>(){ return A; }
 template<> uint8_t& CPU::getref<&CPU::X__>(){ return X; }
 template<> uint8_t& CPU::getref<&CPU::Y__>(){ return Y; }
-
 template<> uint8_t CPU::read<&CPU::IMM>(){
   return (uint8_t)IMM();
 }
@@ -988,11 +1068,12 @@ class APU {
 
 namespace bus {
   
+  IO _io;
   PPU _ppu;
   CPU _cpu;
   APU _apu;
   ROM _rom;
-  IO _io;
+
   
   PPU& ppu(){    
     return _ppu;
