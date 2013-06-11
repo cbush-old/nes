@@ -546,7 +546,7 @@ class PPU {
     };
     
     inline void tick(){
-
+      for(int i = 0; i < 3; ++i){
       switch(vblank_state){
         case -5: 
           reg.PPUSTATUS = 0; 
@@ -593,7 +593,7 @@ class PPU {
             break;
         }
       }
-
+      }
     }
 
     unsigned pat_addr, sprinpos, sproutpos, sprrenpos, sprtmp;
@@ -870,8 +870,6 @@ class CPU {
     
     void addcyc(){
       cyc += 3;
-      bus::ppu().tick();
-      bus::ppu().tick();
       bus::ppu().tick();
     }
     
