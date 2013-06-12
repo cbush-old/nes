@@ -251,8 +251,8 @@ class IO {
     SDL_Window *window {
       SDL_CreateWindow(
         "",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,
-        //512,480,SDL_WINDOW_OPENGL
-        256,240,SDL_WINDOW_OPENGL
+        512,480,SDL_WINDOW_OPENGL
+        //256,240,SDL_WINDOW_OPENGL
       )
     };
     
