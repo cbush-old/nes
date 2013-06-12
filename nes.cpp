@@ -1,4 +1,5 @@
 #include <iostream>
+#include <thread>
 #include <cmath>
 #include <ctime>
 #include <map>
@@ -19,6 +20,7 @@ using std::cout;
 using std::setw;
 using std::hex;
 using std::vector;
+using std::thread;
 using std::string;
 using std::ifstream;
 using std::exception;
@@ -29,8 +31,6 @@ class CPU;
 class PPU;
 class APU;
 class IO;
-
-using rgb8 = std::tuple<uint8_t, uint8_t, uint8_t>;
 
 namespace bus {
   CPU& cpu();
@@ -337,21 +337,6 @@ class IO {
       */
     }
     
-    void draw_screen(rgb8 const pixels[]){
-      glBegin(GL_POINTS);
-      
-      for(int i = 0; i < 240; ++i){
-        for(int j = 0; j < 256; ++j){
-          const rgb8& pixel = pixels[i * 256 + j];
-          glColor3b(std::get<0>(pixel), std::get<1>(pixel), std::get<2>(pixel));
-          glVertex2i(j % 256, i);
-        }
-      }
-      
-      glEnd();
-      
-    }
-    
   public:
     IO(){
       glMatrixMode(GL_PROJECTION|GL_MODELVIEW);
@@ -414,7 +399,6 @@ class PPU {
     } reg;
     
     uint8_t palette[0x20], OAM[0x100];
-    rgb8 screen[256*240];
 
     union {
       bit< 3,16> raw;
@@ -448,9 +432,68 @@ class PPU {
       //return palette[addr&3 == 0 ? addr & 0xf : addr & 0x1f];
       return palette[addr & (0xf + ((!(addr&3 == 0))*0x10))];
     }
-    
-    #include "render1.cc"
 
+    void render_pixel(){
+
+      bool edge = uint8_t(cycle + 8) < 16;
+      bool 
+        showbg = (!edge || reg.show_bg8) && reg.show_bg,
+        showsp = (!edge || reg.show_sp8) && reg.show_sp;
+      
+      unsigned fx = scroll.xfine,
+        xpos = 15 - (( (cycle&7) + fx + 8 * bool(cycle&7) ) & 15);
+        
+      unsigned pixel { 0 }, attr { 0 };
+      if(showbg){
+        pixel = (bg_shift_pat >> (xpos * 2)) & 3;
+        attr = (bg_shift_attr >> (xpos * 2)) & (!!pixel * 3);
+      } else if(
+        (vram.raw & 0x3f00) == 0x3f00 && !reg.rendering_enabled
+      ){
+        pixel = vram.raw;
+      }
+      
+      if(showsp){
+        for(unsigned sno = 0; sno < sprrenpos; ++sno){
+          auto& s = OAM3[sno];
+          
+          unsigned xdiff = cycle - s.x;
+          
+          if(xdiff >= 8)
+            continue;
+            
+          if(!(s.attr & 0x40)) 
+            xdiff = 7 - xdiff;
+          
+          uint8_t spritepixel = (s.pattern >> (xdiff * 2)) & 3;
+          
+          if(!spritepixel) 
+            continue;
+          
+          if(cycle < 255 && pixel && s.sprindex == 0)
+            reg.spr0_hit = true;
+          
+          if(!pixel || !(s.attr & 0x20)){
+            attr = (s.attr & 3) + 4;
+            pixel = spritepixel;
+          }
+          
+          break;
+        
+        }
+      }
+    
+      pixel = palette[(attr * 4 + pixel) & 0x1f] & (0x30 + !reg.grayscale * 0xf);
+      
+      //bisqwit_putpixel(cycle, scanline, pixel, 0);
+      lookup_putpixel(cycle, scanline, pixel);
+
+    }
+    
+    #ifdef RENDER1
+    #include "render1.cc"
+    #else
+    
     template<int X, int X_MOD_8, int TDM, bool X_ODD_64_TO_256, bool X_LT_256>
     const void render2(){
       if(X_MOD_8 == 2){
@@ -466,17 +509,17 @@ class PPU {
             reg.OAMADDR = 0;
         }
         
-        if(X == 304){
-          if(scanline == -1 && reg.show_bg)
-            vram.raw = (unsigned)scroll.raw;
-        } 
-        
         if(X == 256){
           if(reg.show_bg){
             vram.xcoarse = (unsigned)scroll.xcoarse;
             vram.base_nta_x = (unsigned)scroll.base_nta_x;
             sprrenpos = 0;
           }
+        }
+        
+        if(X == 304){
+          if(scanline == -1 && reg.show_bg)
+            vram.raw = (unsigned)scroll.raw;
         }
         
       } 
@@ -496,12 +539,17 @@ class PPU {
       
       if(X_MOD_8 == 3){
         if(TDM){
-          tileattr = (mmap(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse&2))) & 3;
-          if(!++vram.xcoarse) vram.base_nta_x = 1 - vram.base_nta_x;
+          tileattr = 
+            (mmap(ioaddr) >> 
+            ((vram.xcoarse & 2) + 2 * (vram.ycoarse&2))) & 3;
+            
+          if(!++vram.xcoarse) 
+            vram.base_nta_x = 1 - vram.base_nta_x;
+            
           if(X==251){
             if(!++vram.yfine && ++vram.ycoarse == 30){
-            vram.ycoarse = 0;
-            vram.base_nta_y = 1 - vram.base_nta_y;
+              vram.ycoarse = 0;
+              vram.base_nta_y = 1 - vram.base_nta_y;
             }
           }
         } else {
@@ -512,8 +560,15 @@ class PPU {
             if(o.attr & 0x80){
               y ^= 7 + reg.sprite_size * 8;
             }
-            pat_addr = 0x1000 * (reg.sprite_size ? o.index & 0x01 : reg.sp_addr);
-            pat_addr += 0x10 * (reg.sprite_size ? o.index & 0xfe : o.index & 0xff);
+            if(reg.sprite_size){
+              pat_addr = 
+                0x1000 * (o.index & 0x01)
+                + 0x10 * (o.index & 0xfe);
+            } else {
+              pat_addr = 
+                0x1000 * reg.sp_addr
+                + 0x10 * (o.index & 0xff);
+            }
             pat_addr += (y&7) + (y&8) * 2;
           }
         }
@@ -530,8 +585,9 @@ class PPU {
         p = (p&0xc3c3) | ((p&0x3030)>>2) | ((p&0x0c0c)<<2);
         p = (p&0x9999) | ((p&0x4444)>>1) | ((p&0x2222)<<1);
         tilepat = p;
-        if(!tile_decode_mode && sprrenpos < sproutpos)
-          OAM3[sprrenpos++].pattern = tilepat;
+        if(!TDM){
+          if(sprrenpos < sproutpos)
+            OAM3[sprrenpos++].pattern = tilepat;
 
       }
       
@@ -587,100 +643,6 @@ class PPU {
     }
     
     
-    void render_pixel(){
-
-      bool edge = uint8_t(cycle + 8) < 16;
-      bool 
-        showbg = (!edge || reg.show_bg8) && reg.show_bg,
-        showsp = (!edge || reg.show_sp8) && reg.show_sp;
-      
-      unsigned fx = scroll.xfine,
-        xpos = 15 - (( (cycle&7) + fx + 8 * bool(cycle&7) ) & 15);
-        
-      unsigned pixel { 0 }, attr { 0 };
-      if(showbg){
-        pixel = (bg_shift_pat >> (xpos * 2)) & 3;
-        attr = (bg_shift_attr >> (xpos * 2)) & (!!pixel * 3);
-      } else if(
-        (vram.raw & 0x3f00) == 0x3f00 && !reg.rendering_enabled
-      ){
-        pixel = vram.raw;
-      }
-      
-      if(showsp){
-        for(unsigned sno = 0; sno < sprrenpos; ++sno){
-          auto& s = OAM3[sno];
-          
-          unsigned xdiff = cycle - s.x;
-          
-          if(xdiff >= 8)
-            continue;
-            
-          if(!(s.attr & 0x40)) 
-            xdiff = 7 - xdiff;
-          
-          uint8_t spritepixel = (s.pattern >> (xdiff * 2)) & 3;
-          
-          if(!spritepixel) 
-            continue;
-          
-          if(cycle < 255 && pixel && s.sprindex == 0)
-            reg.spr0_hit = true;
-          
-          if(!pixel || !(s.attr & 0x20)){
-            attr = (s.attr & 3) + 4;
-            pixel = spritepixel;
-          }
-          
-          break;
-        
-        }
-      }
-    
-      
-      pixel = palette[(attr * 4 + pixel) & 0x1f] & (0x30 + !reg.grayscale * 0xf);
-      
-      //bus::io().put_pixel(cycle, scanline, (pixel & 1) * 100, bool(pixel & 2) * 100, 0);
-/*
-      screen[scanline * 256 + cycle] = rgb8(
-        (pixel & 1) * 100, 
-        bool(pixel & 2) * 100, 
-        0
-      );
-    
-      glColor3b(
-        bool(pixel & 1) * 100,
-        bool(pixel & 2) * 100, 
-        0
-      );
-      
-      int x = cycle&0xff;
-      glVertex2i(x, scanline);
-      
-      */
-      
-      //bisqwit_putpixel(cycle, scanline, pixel, 0);
-      lookup_putpixel(cycle, scanline, pixel);
-      //glVertex2i(x+1, scanline);
-      //glVertex2i(x+1, scanline+1);
-      //glVertex2i(x, scanline+1);
-
-    }
-    
-    #define r(n) &PPU::render<n>
-    #define s(n) r(n),r(n+1),r(n+2),r(n+3)
-    #define t(n) s(n),s(n+4),s(n+8),s(n+12)
-    const void(PPU::*renderfs[342])() {
-      t(0),t(16),t(32),t(48),t(64),t(80),
-      t(96),t(112),t(128),t(144),t(160),t(176),
-      t(192),t(208),t(224),t(240),t(256),
-      t(272),t(288),t(304),t(320),
-      s(336),r(340),r(341)
-    };
-    #undef r
-    #undef s
-    #undef t
-  
     //<int X, int X_MOD_8, int TDM, bool X_ODD_64_TO_256, bool X_LT_256>
     #define X(a) &PPU::render2<(\
       ((a)==0)||((a)==251)||((a)==256)||((a)==304)||((a)==337)?(a):1),\
@@ -697,7 +659,7 @@ class PPU {
     };
     #undef X
     #undef Y
-    
+    #endif
     
     inline void tick3(){
       for(int i = 0; i < 3; ++i){
@@ -721,12 +683,12 @@ class PPU {
         vblank_state += (vblank_state < 0) * 2 - 1;
       }
       
-      if(scanline < 240){
-        if(reg.rendering_enabled){
-          #ifndef RENDER1
-          (this->*(render2funcs[cycle]))();
-          #else
+      if(reg.rendering_enabled){
+        if(scanline < 240){
+          #ifdef RENDER1
           (this->*(renderfs[cycle]))();
+          #else
+          (this->*(render2funcs[cycle]))();
           #endif
         }
       }
@@ -745,7 +707,6 @@ class PPU {
             // events
             if(bus::io().handle_input()) 
               throw 1;
-            //bus::io().draw_screen(screen);
             glEnd();
             bus::io().swap();
             glBegin(GL_POINTS);
@@ -844,10 +805,6 @@ class PPU {
       print_status();
       print_framerate();
       
-      for(int i = 0; i < 342; ++i){
-        cout << &render2funcs[i] << '\n';
-      
-      }
     }
     
     string color(int x){
@@ -931,6 +888,7 @@ class CPU {
       Y { 0 },
       SP { 0xfd };
     uint16_t PC, cyc { 0 };
+    int result_cycle { 0 };
     
   private:
     typedef void(CPU::*op)(); // operation
@@ -1041,8 +999,9 @@ class CPU {
     }
     
     void addcyc(){
-      cyc += 3;
-      bus::ppu().tick3();
+      //cyc += 3;
+      ++result_cycle;
+//      bus::ppu().tick3();
     }
     
     template<typename T> 
@@ -1088,7 +1047,7 @@ class CPU {
         auto last_PC = PC;
         
         uint8_t last_op = next();
-      
+        
 #ifdef DEBUG_CPU
         cout 
           << hex << std::uppercase << std::setfill('0')
@@ -1110,18 +1069,23 @@ class CPU {
           << " ST1:" << setw(2) << (int)memory[0x102 + SP]
           << " ST2:" << setw(2) << (int)memory[0x103 + SP]
           << '\n';
-        if(cyc >= 341) cyc -= 341;
+        //if(cyc >= 341) cyc -= 341;
 #endif
         
         (this->*ops[last_op])();
-        
+      
         for(int i = 0; i < cycles[last_op]; ++i)
-          addcyc();
+          bus::ppu().tick3();
+            
+        for(int i = 0; i < result_cycle; ++i)
+          bus::ppu().tick3();
+          
+        result_cycle = 0;
           
       }
     
     }
-  
+    
   private:
   
     // addressing modes

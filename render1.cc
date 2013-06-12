@@ -143,3 +143,16 @@ const void render() {
   
 }
 
+#define r(n) &PPU::render<n>
+#define s(n) r(n),r(n+1),r(n+2),r(n+3)
+#define t(n) s(n),s(n+4),s(n+8),s(n+12)
+const void(PPU::*renderfs[342])() {
+  t(0),t(16),t(32),t(48),t(64),t(80),
+  t(96),t(112),t(128),t(144),t(160),t(176),
+  t(192),t(208),t(224),t(240),t(256),
+  t(272),t(288),t(304),t(320),
+  s(336),r(340),r(341)
+};
+#undef r
+#undef s
+#undef t

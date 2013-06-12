@@ -1,5 +1,5 @@
 all:
-	g++ -std=c++11 nes.cpp -lSDL2 -lGL
+	g++ -std=c++11 nes.cpp -lSDL2 -lGL -pthread
 
 debug:
 	g++ -std=c++11 nes.cpp -lSDL2 -lGL -DDEBUG_CPU
