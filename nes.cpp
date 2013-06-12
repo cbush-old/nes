@@ -588,7 +588,7 @@ class PPU {
         if(!TDM){
           if(sprrenpos < sproutpos)
             OAM3[sprrenpos++].pattern = tilepat;
-
+        }
       }
       
       if(X_ODD_64_TO_256){
