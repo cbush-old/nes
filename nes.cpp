@@ -449,7 +449,8 @@ class PPU {
       return palette[addr & (0xf + ((!(addr&3 == 0))*0x10))];
     }
     
-    
+    #include "render1.cc"
+
     template<int X, int X_MOD_8, int TDM, bool X_ODD_64_TO_256, bool X_LT_256>
     const void render2(){
       if(X_MOD_8 == 2){
@@ -679,8 +680,14 @@ class PPU {
     #undef r
     #undef s
     #undef t
+  
     //<int X, int X_MOD_8, int TDM, bool X_ODD_64_TO_256, bool X_LT_256>
-    #define X(a) &PPU::render2<a,((a)%8),(0x10ffff & (1u << ((a)/16))),(((a) & 1) && ((a) >= 64) && ((a) < 256)),((a) < 256)>
+    #define X(a) &PPU::render2<(\
+      ((a)==0)||((a)==251)||((a)==256)||((a)==304)||((a)==337)?(a):1),\
+      ((a)%8),\
+      bool(0x10ffff & (1u << ((a)/16))),\
+      bool(((a) & 1) && ((a) >= 64) && ((a) < 256)),\
+      bool((a) < 256)>
     #define Y(a) X(a),X(a+1),X(a+2),X(a+3),X(a+4),X(a+5),X(a+6),X(a+7),X(a+8),X(a+9)
     const void(PPU::*render2funcs[342])(){
       Y(  0),Y( 10),Y( 20),Y( 30),Y( 40),Y( 50),Y( 60),Y( 70),Y( 80),Y( 90),
@@ -836,6 +843,11 @@ class PPU {
       #endif
       print_status();
       print_framerate();
+      
+      for(int i = 0; i < 342; ++i){
+        cout << &render2funcs[i] << '\n';
+      
+      }
     }
     
     string color(int x){
