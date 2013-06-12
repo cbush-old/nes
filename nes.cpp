@@ -1,5 +1,4 @@
 #include <iostream>
-#include <tuple>
 #include <map>
 #include <iomanip>
 #include <functional>
@@ -59,6 +58,30 @@ static const uint8_t cycles[256] {
 /*0xD0*/ 2,5,0,8,4,4,6,6,2,4,2,7,4,4,7,7,
 /*0xE0*/ 2,6,2,8,3,3,5,5,2,2,2,2,4,4,6,6,
 /*0xF0*/ 2,5,0,8,4,4,6,6,2,4,2,7,4,4,7,7
+};
+
+// sexy bisqwit
+template<size_t position, size_t length=1, typename T=uint32_t>
+struct bit {
+  T value;
+  constexpr unsigned mask(){ return (1u << length) - 1u; };
+  constexpr unsigned not_mask_at_pos(){ return ~(mask() << position); };
+  template<typename T2>
+  bit& operator= (T2 that){
+    value &= not_mask_at_pos();
+    value |= (that & mask()) << position;
+  }
+  operator unsigned() const {
+    return (value >> position) & mask();
+  }
+  bit& operator++(){
+    return *this = *this + 1;
+  }
+  unsigned operator++(int){
+    unsigned r = *this;
+    ++*this;
+    return r;
+  }
 };
 
 class ROM {
@@ -142,6 +165,7 @@ class IO {
       SDL_GL_CreateContext(window)
     };
     
+    
   private:
     uint8_t handle_input(){
       SDL_Event e;
@@ -149,13 +173,48 @@ class IO {
         switch(e.type){
           case SDL_KEYDOWN:
             switch(e.key.keysym.sym){
-            
+              #define BUTTON_ON 0xff
+              case SDLK_RIGHT: button_state[0] = BUTTON_ON; break;
+              case SDLK_LEFT:  button_state[1] = BUTTON_ON; break;
+              case SDLK_DOWN:  button_state[2] = BUTTON_ON; break;
+              case SDLK_UP:    button_state[3] = BUTTON_ON; break;
+              case SDLK_r:  button_state[4] = BUTTON_ON; break;
+              case SDLK_s:  button_state[5] = BUTTON_ON; break;
+              case SDLK_d:  button_state[6] = BUTTON_ON; break;
+              case SDLK_f:  button_state[7] = BUTTON_ON; break;
+              #undef BUTTON_ON
+            }
+            return 0;
+          case SDL_KEYUP:
+            switch(e.key.keysym.sym){
+              case SDLK_RIGHT: button_state[0] = 0x0; break;
+              case SDLK_LEFT:  button_state[1] = 0x0; break;
+              case SDLK_DOWN:  button_state[2] = 0x0; break;
+              case SDLK_UP:    button_state[3] = 0x0; break;
+              case SDLK_r:    button_state[4] = 0x0; break;
+              case SDLK_s:   button_state[5] = 0x0; break;
+              case SDLK_d:  button_state[6] = 0x0; break;
+              case SDLK_f: button_state[7] = 0x0; break;
             }
             return 0;
           case SDL_QUIT:
             return 1;
         }
       }
+    }
+    
+    int button_index { 0 };
+    uint8_t button_state[8];
+    
+    uint8_t input_state(uint8_t i){
+      if(i == 2) return 0;
+      if(button_index == -1)
+        return 1;
+      return button_state[button_index--];
+    }
+    
+    void strobe(){
+      button_index = 7;
     }
     
     void swap(){
@@ -217,29 +276,7 @@ class IO {
 };
 
 
-// sexy bisqwit
-template<size_t position, size_t length, typename T=uint32_t>
-struct bit {
-  T value;
-  constexpr unsigned mask(){ return (1u << length) - 1u; };
-  constexpr unsigned not_mask_at_pos(){ return ~(mask() << position); };
-  template<typename T2>
-  bit& operator= (T2 that){
-    value &= not_mask_at_pos();
-    value |= (that & mask()) << position;
-  }
-  operator unsigned() const {
-    return (value >> position) & mask();
-  }
-  bit& operator++(){
-    return *this = *this + 1;
-  }
-  unsigned operator++(int){
-    unsigned r = *this;
-    ++*this;
-    return r;
-  }
-};
+
 
 class PPU {
   
@@ -394,7 +431,7 @@ class PPU {
           
         } break;
         case 5: {
-          tilepat = mmap(pat_addr | 0);
+          tilepat = mmap(pat_addr);
         } break;
         case 7: {
           unsigned p = tilepat | (mmap(pat_addr|8) << 8);
@@ -545,7 +582,7 @@ class PPU {
       s(336),r(340),r(341)
     };
     
-    inline void tick(){
+    inline void tick3(){
       for(int i = 0; i < 3; ++i){
       switch(vblank_state){
         case -5: 
@@ -585,6 +622,8 @@ class PPU {
             break;
           case 241:
             // events
+            if(bus::io().handle_input()) 
+              throw 1;
             //bus::io().draw_screen(screen);
             glEnd();
             bus::io().swap();
@@ -795,8 +834,8 @@ class CPU {
       if(addr < 0x4020){
         switch(addr&0x1f){
           case 0x15:
-          case 0x16: // controller 1
-          case 0x17: // controller 2
+          case 0x16: return bus::io().input_state(1);
+          case 0x17: return bus::io().input_state(2);
           default: return 0;
         }
       }
@@ -833,7 +872,10 @@ class CPU {
               ppu.regw[4](read((value&7)*0x100 + i));
             }
           } break;
-          
+          case 0x16: 
+            if(value&1) 
+              bus::io().strobe();
+            break;
           default: return 0;
           
         }
@@ -870,7 +912,7 @@ class CPU {
     
     void addcyc(){
       cyc += 3;
-      bus::ppu().tick();
+      bus::ppu().tick3();
     }
     
     template<typename T> 
@@ -938,6 +980,7 @@ class CPU {
           << " ST1:" << setw(2) << (int)memory[0x102 + SP]
           << " ST2:" << setw(2) << (int)memory[0x103 + SP]
           << '\n';
+        if(cyc >= 341) cyc -= 341;
 #endif
         
         (this->*ops[last_op])();
@@ -945,10 +988,6 @@ class CPU {
         for(int i = 0; i < cycles[last_op]; ++i)
           addcyc();
           
-        if(cyc >= 341) cyc -= 341;
-
-        if(bus::io().handle_input()) break;
-        
       }
     
     }
