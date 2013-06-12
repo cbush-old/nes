@@ -1,0 +1,224 @@
+#include "cpu.h"
+
+using std::cout;
+using std::setw;
+using std::hex;
+using std::vector;
+using std::thread;
+using std::string;
+using std::ifstream;
+using std::exception;
+using std::runtime_error;
+
+
+// CPU cycle chart
+static const uint8_t cycles[256] {
+//////// 0 1 2 3 4 5 6 7 8 9 A B C D E F
+/*0x00*/ 7,6,0,8,3,3,5,5,3,2,2,2,4,4,6,6,
+/*0x10*/ 2,5,0,8,4,4,6,6,2,4,2,7,4,4,7,7,
+/*0x20*/ 6,6,0,8,3,3,5,5,4,2,2,2,4,4,6,6,
+/*0x30*/ 2,5,0,8,4,4,6,6,2,4,2,7,4,4,7,7,
+/*0x40*/ 6,6,0,8,3,3,5,5,3,2,2,2,3,4,6,6,
+/*0x50*/ 2,5,0,8,4,4,6,6,2,4,2,7,4,4,7,7,
+/*0x60*/ 6,6,0,8,3,3,5,5,4,2,2,2,5,4,6,6,
+/*0x70*/ 2,5,0,8,4,4,6,6,2,4,2,7,4,4,7,7,
+/*0x80*/ 2,6,2,6,3,3,3,3,2,2,2,2,4,4,4,4,
+/*0x90*/ 2,6,0,6,4,4,4,4,2,5,2,5,5,5,5,5,
+/*0xA0*/ 2,6,2,6,3,3,3,3,2,2,2,2,4,4,4,4,
+/*0xB0*/ 2,5,0,5,4,4,4,4,2,4,2,4,4,4,4,4,
+/*0xC0*/ 2,6,2,8,3,3,5,5,2,2,2,2,4,4,6,6,
+/*0xD0*/ 2,5,0,8,4,4,6,6,2,4,2,7,4,4,7,7,
+/*0xE0*/ 2,6,2,8,3,3,5,5,2,2,2,2,4,4,6,6,
+/*0xF0*/ 2,5,0,8,4,4,6,6,2,4,2,7,4,4,7,7
+};
+
+
+uint8_t CPU::read(uint16_t addr){
+  if(addr < 0x2000) return memory[addr&0x7ff];
+  if(addr < 0x4000){
+    auto x = bus::ppu().regr[addr&7]();
+    #ifdef DEBUG_PPU
+    cout << "Read PPU " << (addr&7) << " --> " << (int)x << '\n';
+    #endif
+    return x;
+  }
+  if(addr < 0x4020){
+    switch(addr&0x1f){
+      case 0x15:
+      case 0x16: return bus::io().input_state(1);
+      case 0x17: return bus::io().input_state(2);
+      default: return 0;
+    }
+  }
+  
+  return bus::rom()[addr];
+  
+}
+
+uint8_t CPU::write(uint8_t value, uint16_t addr){
+  if(addr < 0x2000) return memory[addr&0x7ff] = value;
+  if(addr < 0x4000){
+    #ifdef DEBUG_PPU
+    cout << "Write PPU " << (addr&7) << " value " << (int)value << '\n';
+    #endif
+    return bus::ppu().regw[addr&7](value), 0;
+  }
+  if(addr < 0x4020){
+    switch(addr&0x1f){
+      case 0x14: {
+        // DMA transfer
+        PPU& ppu = bus::ppu();
+        for(int i=0; i < 256; ++i){
+          ppu.regw[4](read((value&7)*0x100 + i));
+        }
+      } break;
+      case 0x16: 
+        if(value&1) 
+          bus::io().strobe();
+        break;
+      default: return 0;
+      
+    }
+  }
+  if(addr < 0x8000){
+    // The alternate output...
+    /*
+    if(!value) cout << '\n';
+    cout << hex << std::setw(2) << std::setfill(' ') << value << ' ';
+    */
+  }
+  
+  return bus::rom()[addr] = value;
+  
+}
+
+void CPU::push(uint8_t x){
+  memory[0x100 + SP--] = x;
+}
+
+void CPU::push2(uint16_t x){
+  memory[0x100 + SP--] = (uint8_t)(x >> 8);
+  memory[0x100 + SP--] = (uint8_t)(x&0xff);
+}
+
+uint8_t CPU::pull(){
+  return memory[++SP + 0x100];
+}
+
+uint16_t CPU::pull2(){
+  uint16_t r = memory[++SP + 0x100];
+  return r | (memory[++SP + 0x100] << 8);    
+}
+
+void CPU::addcyc(){
+  ++result_cycle;
+}
+
+uint8_t CPU::next(){
+  return read(PC++);
+}
+
+uint16_t CPU::next2(){
+  uint16_t v = (uint16_t)read(PC++);
+  return v | ((uint16_t)read(PC++) << 8);
+}
+
+CPU::CPU():memory(0x800, 0xff){
+  memory[0x008] = 0xf7;
+  memory[0x009] = 0xef;
+  memory[0x00a] = 0xdf;
+  memory[0x00f] = 0xbf;
+  memory[0x1fc] = 0x69;
+}
+
+void CPU::pull_NMI(){
+  push2(PC);
+  stack_push<&CPU::ProcStatus>();
+  PC = read(0xfffa) | (read(0xfffb) << 8);
+}
+
+void CPU::run(){
+
+  PC = read(0xfffc) | (read(0xfffd) << 8);
+  
+  int SL = 0;
+  
+  for(;;){
+
+    auto last_PC = PC;
+    
+    uint8_t last_op = next();
+    
+#ifdef DEBUG_CPU
+    cout 
+      << hex << std::uppercase << std::setfill('0')
+      << setw(4) << last_PC << "  "
+      << setw(2) << (int)last_op << "   "
+      << std::setfill(' ') << setw(16) 
+      << std::left << opasm[last_op]
+      << std::setfill('0')
+      << " A:" << setw(2) << (int)A
+      << " X:" << setw(2) << (int)X
+      << " Y:" << setw(2) << (int)Y
+      << " P:" << setw(2) << (int)P
+      << " SP:" << setw(2) << (int)SP
+      << std::setfill(' ')
+      << " CYC:" << setw(3) << std::dec << (int)cyc
+      << " SL:" << setw(3) << (int)bus::ppu().scanline
+      << hex << std::setfill('0')
+      << " ST0:" << setw(2) << (int)memory[0x101 + SP]
+      << " ST1:" << setw(2) << (int)memory[0x102 + SP]
+      << " ST2:" << setw(2) << (int)memory[0x103 + SP]
+      << '\n';
+    //if(cyc >= 341) cyc -= 341;
+#endif
+    
+    (this->*ops[last_op])();
+  
+    for(int i = 0; i < cycles[last_op]; ++i)
+      bus::ppu().tick3();
+        
+    for(int i = 0; i < result_cycle; ++i)
+      bus::ppu().tick3();
+      
+    result_cycle = 0;
+      
+  }
+
+}
+
+void CPU::JSR(){
+  push2(PC + 1);
+  PC = ABS();
+}
+
+void CPU::RTS(){
+  PC = pull2() + 1;
+}
+
+void CPU::BRK(){
+  push2(PC + 1);
+  stack_push<&CPU::ProcStatus>();
+  PC = read(0xfffe) | (read(0xffff)<<8);
+}
+
+void CPU::RTI(){
+  stack_pull<&CPU::ProcStatus>();
+  PC = pull2();
+}
+
+void CPU::NOP(){}
+
+void CPU::BAD_OP(){
+  throw runtime_error("Kil");
+}
+
+template<> uint8_t& CPU::getref<&CPU::ACC>(){ return A; }
+template<> uint8_t& CPU::getref<&CPU::X__>(){ return X; }
+template<> uint8_t& CPU::getref<&CPU::Y__>(){ return Y; }
+template<> uint8_t CPU::read<&CPU::IMM>(){
+  return (uint8_t)IMM();
+}
+
+#include "op_table.cc"
+#include "asm.cc"

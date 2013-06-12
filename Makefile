@@ -9,3 +9,7 @@ pputest:
 
 render1:	
 	g++ -std=c++11 nes.cpp -lSDL2 -lGL -DRENDER1
+
+o:
+	g++ *.o -lSDL2 -lGL
+
