@@ -1,4 +1,6 @@
 #include <iostream>
+#include <cmath>
+#include <ctime>
 #include <map>
 #include <iomanip>
 #include <functional>
@@ -59,6 +61,99 @@ static const uint8_t cycles[256] {
 /*0xE0*/ 2,6,2,8,3,3,5,5,2,2,2,2,4,4,6,6,
 /*0xF0*/ 2,5,0,8,4,4,6,6,2,4,2,7,4,4,7,7
 };
+
+void bisqwit_putpixel(unsigned px,unsigned py, unsigned pixel, int offset){
+  // The input value is a NES color index (with de-emphasis bits).
+  // We need RGB values. To produce a RGB value, we emulate the NTSC circuitry.
+  // For most part, this process is described at:
+  //    http://wiki.nesdev.com/w/index.php/NTSC_video
+  // Incidentally, this code is shorter than a table of 64*8 RGB values.
+  static unsigned palette[3][64][512] = {}, prev=~0u;
+  // Caching the generated colors
+  if(prev == ~0u)
+      for(int o=0; o<3; ++o)
+      for(int u=0; u<3; ++u)
+      for(int p0=0; p0<512; ++p0)
+      for(int p1=0; p1<64; ++p1)
+      {
+          // Calculate the luma and chroma by emulating the relevant circuits:
+          auto s = "\372\273\32\305\35\311I\330D\357}\13D!}N";
+          int y=0, i=0, q=0;
+          for(int p=0; p<12; ++p) // 12 samples of NTSC signal constitute a color.
+          {
+              // Sample either the previous or the current pixel.
+              int r = (p+o*4)%12, pixel = r < 8-u*2 ? p0 : p1; // Use pixel=p0 to disable artifacts.
+              // Decode the color index.
+              int c = pixel%16, l = c<0xE ? pixel/4 & 12 : 4, e=p0/64;
+              // NES NTSC modulator (square wave between up to four voltage levels):
+              int b = 40 + s[(c > 12*((c+8+p)%12 < 6)) + 2*!(0451326 >> p/2*3 & e) + l];
+              // Ideal TV NTSC demodulator:
+              y += b;
+              i += b * int(std::cos(M_PI * p / 6) * 5909);
+              q += b * int(std::sin(M_PI * p / 6) * 5909);
+          }
+          // Convert the YIQ color into RGB
+          auto gammafix = [=](float f) { return f <= 0.f ? 0.f : std::pow(f, 2.2f / 1.8f); };
+          auto clamp    = [](int v) { return v>255 ? 255 : v; };
+          // Store color at subpixel precision
+          if(u==2) palette[o][p1][p0] += 0x100000*clamp(255 * gammafix(y/1980.f + i* 0.947f/9e6f + q* 0.624f/9e6f));
+          if(u==1) palette[o][p1][p0] += 0x001000*clamp(255 * gammafix(y/1980.f + i*-0.275f/9e6f + q*-0.636f/9e6f));
+          if(u==0) palette[o][p1][p0] += 0x000010*clamp(255 * gammafix(y/1980.f + i*-1.109f/9e6f + q* 1.709f/9e6f));
+      }
+  // Store the RGB color into the frame buffer.
+  //((u32*) s->pixels) [py * 256 + px] = palette[offset][prev%64][pixel];
+  glColor3b(
+    (palette[offset][prev%64][pixel] >> 8) & 0xff,
+    (palette[offset][prev%64][pixel] >> 16) & 0xff,
+    (palette[offset][prev%64][pixel] >> 24) & 0xff
+  );
+  
+  glVertex2i(px,py);
+  
+  prev = pixel;
+}
+
+void lookup_putpixel(unsigned px,unsigned py, unsigned pixel){
+  static uint16_t palette[64] {
+    0x333, 0x002, 0x102, 0x203, 0x303, 0x300, 0x320, 0x200, 0x230, 0x030, 0x020, 0x010, 0x114, 0x000, 0x000, 0x000,
+    0x666, 0x006, 0x306, 0x406, 0x606, 0x600, 0x640, 0x400, 0x460, 0x060, 0x040, 0x020, 0x228, 0x000, 0x000, 0x000,
+    0xccc, 0x00c, 0x60c, 0x80c, 0xc0c, 0xc00, 0xc80, 0x800, 0x8c0, 0x0c0, 0x080, 0x040, 0x44e, 0x333, 0x000, 0x000,
+    0xeee, 0xaae, 0xeae, 0xeac, 0xfef, 0xeee, 0xef0, 0xffe, 0xddd, 0xafa, 0xaff, 0xfff, 0xffe, 0xfff, 0x000, 0x000
+  };
+  
+  glColor3b(
+    ((palette[64-pixel] >> 8) & 0xf) * 0xf,
+    ((palette[64-pixel] >> 4) & 0xf) * 0xf,
+    ((palette[64-pixel]) & 0xf) * 0xf
+  );
+  
+  glVertex2i(px,py);
+  
+}
+
+#define N_FRAMERATES 256
+double framerate[N_FRAMERATES];
+void print_framerate(){
+  
+  double sum = 0;
+  for(int i = 0; i < N_FRAMERATES; ++i){
+    sum += framerate[i];
+  }
+  sum /= N_FRAMERATES;
+  cout << "Average framerate: " << (1.0/(sum/CLOCKS_PER_SEC)) << "/s\n";
+
+}
+
+void clock_frame(){
+  static clock_t last_clock { 0 };
+  static int i { 0 };
+  clock_t tick = clock();
+  framerate[i++%N_FRAMERATES] = difftime(tick, last_clock);
+  last_clock = tick;
+  if(i%N_FRAMERATES==0)
+    print_framerate();
+}
+
 
 // sexy bisqwit
 template<size_t position, size_t length=1, typename T=uint32_t>
@@ -156,8 +251,8 @@ class IO {
     SDL_Window *window {
       SDL_CreateWindow(
         "",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,
-        512,480,SDL_WINDOW_OPENGL
-        //256,240,SDL_WINDOW_OPENGL
+        //512,480,SDL_WINDOW_OPENGL
+        256,240,SDL_WINDOW_OPENGL
       )
     };
     
@@ -355,10 +450,145 @@ class PPU {
     }
     
     
+    template<int X, int X_MOD_8, int TDM, bool X_ODD_64_TO_256, bool X_LT_256>
+    const void render2(){
+      if(X_MOD_8 == 2){
+        ioaddr = 0x23c0 + 0x400 * vram.base_nta + 8 * vram.ycoarse / 4 + vram.xcoarse / 4; 
+      } 
+      
+      if(X_MOD_8 == 0 || (X_MOD_8 == 2 && !TDM)){
+        ioaddr = 0x2000 + (vram.raw & 0xfff);
+        
+        if(X == 0){
+          sprinpos = sproutpos = 0;
+          if(reg.show_sp)
+            reg.OAMADDR = 0;
+        }
+        
+        if(X == 304){
+          if(scanline == -1 && reg.show_bg)
+            vram.raw = (unsigned)scroll.raw;
+        } 
+        
+        if(X == 256){
+          if(reg.show_bg){
+            vram.xcoarse = (unsigned)scroll.xcoarse;
+            vram.base_nta_x = (unsigned)scroll.base_nta_x;
+            sprrenpos = 0;
+          }
+        }
+        
+      } 
+      
+      if(X_MOD_8 == 1){
+        if(X==337){
+          if(scanline == -1 && loopy_w && reg.show_bg){
+            scanline_end = 340;
+          }
+        }
+        pat_addr = 0x1000 * reg.bg_addr + 16 * mmap(ioaddr) + vram.yfine;
+        if(TDM){
+          bg_shift_pat = (bg_shift_pat >> 16) + 0x00010000 * tilepat;
+          bg_shift_attr = (bg_shift_attr >> 16) + 0x55550000 * tileattr;
+        }
+      }
+      
+      if(X_MOD_8 == 3){
+        if(TDM){
+          tileattr = (mmap(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse&2))) & 3;
+          if(!++vram.xcoarse) vram.base_nta_x = 1 - vram.base_nta_x;
+          if(X==251){
+            if(!++vram.yfine && ++vram.ycoarse == 30){
+            vram.ycoarse = 0;
+            vram.base_nta_y = 1 - vram.base_nta_y;
+            }
+          }
+        } else {
+          if(sprrenpos < sproutpos){
+            auto& o = OAM3[sprrenpos];
+            memcpy(&o, &OAM2[sprrenpos], sizeof(o));
+            unsigned y = scanline - o.y;
+            if(o.attr & 0x80){
+              y ^= 7 + reg.sprite_size * 8;
+            }
+            pat_addr = 0x1000 * (reg.sprite_size ? o.index & 0x01 : reg.sp_addr);
+            pat_addr += 0x10 * (reg.sprite_size ? o.index & 0xfe : o.index & 0xff);
+            pat_addr += (y&7) + (y&8) * 2;
+          }
+        }
+        
+      }
+      
+      if(X_MOD_8 == 5){
+        tilepat = mmap(pat_addr);
+      } 
+      
+      if(X_MOD_8 == 7){
+        unsigned p = tilepat | (mmap(pat_addr|8) << 8);
+        p = (p&0xf00f) | ((p&0x0f00)>>4) | ((p&0x00f0)<<4);
+        p = (p&0xc3c3) | ((p&0x3030)>>2) | ((p&0x0c0c)<<2);
+        p = (p&0x9999) | ((p&0x4444)>>1) | ((p&0x2222)<<1);
+        tilepat = p;
+        if(!tile_decode_mode && sprrenpos < sproutpos)
+          OAM3[sprrenpos++].pattern = tilepat;
+
+      }
+      
+      if(X_ODD_64_TO_256){
+        switch(reg.OAMADDR++&3){
+          case 0:
+            if(sprinpos >= 64){
+              reg.OAMADDR = 0;
+              break;
+            }
+            ++sprinpos;
+            if(sproutpos < 8){
+              OAM2[sproutpos].y = sprtmp;
+              OAM2[sproutpos].sprindex = reg.OAM_index;
+            }
+            {
+              int y1 = sprtmp, y2 = sprtmp + 8 + reg.sprite_size * 8;
+              if(!(y1 <= scanline && scanline < y2)){
+                reg.OAMADDR = sprinpos != 2 ? reg.OAMADDR + 3 : 8;
+              }
+            }
+            break;
+          case 1:
+            if(sproutpos < 8)
+              OAM2[sproutpos].index = sprtmp;
+            break;
+          case 2:
+            if(sproutpos < 8)
+              OAM2[sproutpos].attr = sprtmp;
+            break;
+          case 3:
+            if(sproutpos < 8){
+              OAM2[sproutpos].x = sprtmp;
+              ++sproutpos;
+            } else {
+              reg.spr_overflow = true;
+            }
+            
+            if(sprinpos == 2)
+              reg.OAMADDR = 8;
+            
+            break;
+        }
+      } else {
+        sprtmp = OAM[reg.OAMADDR];
+      }
+      
+      if(X_LT_256){
+        if(scanline >= 0) 
+          render_pixel();
+      }
+      
+    }
+    
     template<int X>
     const void render() {
       enum {
-        tdm = 0x10ffff & (1u << (X/16))
+        tdm = 0x10ffff & (1u << (X/16)) // When x is 0..255, 320..335
       };
       
       tile_decode_mode = tdm;
@@ -372,7 +602,7 @@ class PPU {
         case 0:
         /* 0 */ {
           ioaddr = 0x2000 + (vram.raw & 0xfff);
-          if(cycle == 0){
+          if(X == 0){
             sprinpos = sproutpos = 0;
             if(reg.show_sp)
               reg.OAMADDR = 0;
@@ -380,10 +610,11 @@ class PPU {
           
           if(!reg.show_bg) break;
           
-          if(scanline == -1 && cycle == 304)
-            vram.raw = (unsigned)scroll.raw;
+          if(X == 304)
+            if(scanline == -1)
+              vram.raw = (unsigned)scroll.raw;
           
-          if(cycle == 256){
+          if(X == 256){
             vram.xcoarse = (unsigned)scroll.xcoarse;
             vram.base_nta_x = (unsigned)scroll.base_nta_x;
             sprrenpos = 0;
@@ -391,8 +622,10 @@ class PPU {
           
         } break;
         case 1: {
-          if(scanline == -1 && cycle == 337 && loopy_w && reg.show_bg){
-            scanline_end = 340;
+          if(X==337){
+            if(scanline == -1 && loopy_w && reg.show_bg){
+              scanline_end = 340;
+            }
           }
           
           pat_addr = 0x1000 * reg.bg_addr + 16 * mmap(ioaddr) + vram.yfine;
@@ -412,9 +645,11 @@ class PPU {
             
             if(!++vram.xcoarse) vram.base_nta_x = 1 - vram.base_nta_x;
             
-            if(cycle==251 && !++vram.yfine && ++vram.ycoarse == 30){
+            if(X==251){
+              if(!++vram.yfine && ++vram.ycoarse == 30){
               vram.ycoarse = 0;
               vram.base_nta_y = 1 - vram.base_nta_y;
+              }
             }
           
           } else if(sprrenpos < sproutpos){
@@ -495,9 +730,10 @@ class PPU {
       
     }
     
-    void render_pixel(){
     
-        
+    
+    void render_pixel(){
+
       bool edge = uint8_t(cycle + 8) < 16;
       bool 
         showbg = (!edge || reg.show_bg8) && reg.show_bg,
@@ -556,7 +792,7 @@ class PPU {
         bool(pixel & 2) * 100, 
         0
       );
-    */
+    
       glColor3b(
         bool(pixel & 1) * 100,
         bool(pixel & 2) * 100, 
@@ -565,9 +801,14 @@ class PPU {
       
       int x = cycle&0xff;
       glVertex2i(x, scanline);
-      glVertex2i(x+1, scanline);
-      glVertex2i(x+1, scanline+1);
-      glVertex2i(x, scanline+1);
+      
+      */
+      
+      //bisqwit_putpixel(cycle, scanline, pixel, 0);
+      lookup_putpixel(cycle, scanline, pixel);
+      //glVertex2i(x+1, scanline);
+      //glVertex2i(x+1, scanline+1);
+      //glVertex2i(x, scanline+1);
 
     }
     
@@ -581,6 +822,21 @@ class PPU {
       t(272),t(288),t(304),t(320),
       s(336),r(340),r(341)
     };
+    #undef r
+    #undef s
+    #undef t
+    //<int X, int X_MOD_8, int TDM, bool X_ODD_64_TO_256, bool X_LT_256>
+    #define X(a) &PPU::render2<a,((a)%8),(0x10ffff & (1u << ((a)/16))),(((a) & 1) && ((a) >= 64) && ((a) <= 256)),((a) < 256)>
+    #define Y(a) X(a),X(a+1),X(a+2),X(a+3),X(a+4),X(a+5),X(a+6),X(a+7),X(a+8),X(a+9)
+    const void(PPU::*render2funcs[342])(){
+      Y(  0),Y( 10),Y( 20),Y( 30),Y( 40),Y( 50),Y( 60),Y( 70),Y( 80),Y( 90),
+      Y(100),Y(110),Y(120),Y(130),Y(140),Y(150),Y(160),Y(170),Y(180),Y(190),
+      Y(200),Y(210),Y(220),Y(230),Y(240),Y(250),Y(260),Y(270),Y(280),Y(290),
+      Y(300),Y(310),Y(320),Y(330),X(340),X(341)
+    };
+    #undef X
+    #undef Y
+    
     
     inline void tick3(){
       for(int i = 0; i < 3; ++i){
@@ -606,7 +862,11 @@ class PPU {
       
       if(scanline < 240){
         if(reg.rendering_enabled){
+          #ifndef RENDER1
+          (this->*(render2funcs[cycle]))();
+          #else
           (this->*(renderfs[cycle]))();
+          #endif
         }
       }
       
@@ -627,7 +887,10 @@ class PPU {
             //bus::io().draw_screen(screen);
             glEnd();
             bus::io().swap();
-            glBegin(GL_QUADS);
+            glBegin(GL_POINTS);
+            
+            clock_frame();
+            
             vblank_state = 2;
             break;
         }
@@ -718,6 +981,7 @@ class PPU {
       dump_nametables();
       #endif
       print_status();
+      print_framerate();
     }
     
     string color(int x){
