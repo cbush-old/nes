@@ -61,6 +61,9 @@ void bisqwit_putpixel(unsigned px,unsigned py, unsigned pixel, int offset)
     );
   
     glVertex2i(px,py);
+    glVertex2i(px+1,py);
+    glVertex2i(px+1,py+1);
+    glVertex2i(px,py+1);
 
     prev = pixel;
     
@@ -433,7 +436,8 @@ void PPU::tick3(){
             throw 1;
           glEnd();
           bus::io().swap();
-          glBegin(GL_POINTS);
+          //glBegin(GL_POINTS);
+          glBegin(GL_QUADS);
           
           clock_frame();
           
@@ -511,7 +515,7 @@ PPU::PPU(): memory(0x800), palette(0x20), OAM(0x100),
     
   {
   reg.PPUSTATUS = 0x80;
-  glBegin(GL_POINTS);
+  glBegin(GL_QUADS);
 }
 
 PPU::~PPU(){
