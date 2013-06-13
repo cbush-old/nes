@@ -51,9 +51,7 @@ class PPU {
       bit<11,1> show_bg;
       bit<12,1> show_sp;
       bit<11,2> rendering_enabled;
-      bit<13,1> intensify_red;
-      bit<14,1> intensify_green;
-      bit<15,1> intensify_blue;
+      bit<13,3> intensify_rgb;
       
       bit<16,8> PPUSTATUS;
       bit<21,1> spr_overflow;
