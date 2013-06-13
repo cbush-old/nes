@@ -474,6 +474,7 @@ PPU::PPU(): memory(0x800), palette(0x20), OAM(0x100),
   reg.PPUSTATUS = 0x80;
   glBegin(GL_POINTS);
 }
+
 PPU::~PPU(){
   glEnd();
   #ifdef DUMP_NT
@@ -522,6 +523,31 @@ void PPU::print_status(){
     << "REG:" << (unsigned)reg.raw << "  "
     << "LPV:" << (unsigned)vram.raw << "  "
     << "LPT:" << (unsigned)scroll.raw << "\n";
+
+}
+
+
+void PPU::load_state(State const& state) {
+  memory = state.ppu_memory;
+  reg.raw = state.ppu_reg;
+  scroll.data = state.scroll;
+  vram.data = state.vram;
+  read_buffer = state.read_buffer;
+  vblank_state = state.vblank_state;
+  loopy_w = state.loopy_w;
+  NMI_pulled = state.NMI_pulled;
+  
+}
+
+void PPU::save_state(State& state) const {
+  state.ppu_memory = memory;
+  state.ppu_reg = reg.raw;
+  state.scroll = scroll.data;
+  state.vram = vram.data;
+  state.read_buffer = read_buffer;
+  state.vblank_state = vblank_state;
+  state.loopy_w = loopy_w;
+  state.NMI_pulled = NMI_pulled;
 
 }
 

@@ -187,32 +187,6 @@ void CPU::run(){
 
 }
 
-void CPU::JSR(){
-  push2(PC + 1);
-  PC = ABS();
-}
-
-void CPU::RTS(){
-  PC = pull2() + 1;
-}
-
-void CPU::BRK(){
-  push2(PC + 1);
-  stack_push<&CPU::ProcStatus>();
-  PC = read(0xfffe) | (read(0xffff)<<8);
-}
-
-void CPU::RTI(){
-  stack_pull<&CPU::ProcStatus>();
-  PC = pull2();
-}
-
-void CPU::NOP(){}
-
-void CPU::BAD_OP(){
-  throw runtime_error("Kil");
-}
-
 template<> uint8_t& CPU::getref<&CPU::ACC>(){ return A; }
 template<> uint8_t& CPU::getref<&CPU::X__>(){ return X; }
 template<> uint8_t& CPU::getref<&CPU::Y__>(){ return Y; }
@@ -220,5 +194,28 @@ template<> uint8_t CPU::read<&CPU::IMM>(){
   return (uint8_t)IMM();
 }
 
-#include "op_table.cc"
-#include "asm.cc"
+#include "cpu-map.cc"
+#include "cpu-asm.cc"
+
+void CPU::load_state(State const& state){
+  P = state.P;
+  A = state.A;
+  X = state.X;
+  Y = state.Y;
+  SP = state.SP;
+  PC = state.PC;
+  result_cycle = state.result_cycle;
+  memory = state.cpu_memory;
+}
+
+void CPU::save_state(State& state) const {
+  state.P = P;
+  state.A = A;
+  state.X = X;
+  state.Y = Y;
+  state.SP = SP;
+  state.PC = PC;
+  state.result_cycle = result_cycle;
+  state.cpu_memory = memory;
+}
+

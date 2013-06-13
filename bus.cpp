@@ -41,5 +41,17 @@ namespace bus {
     _rom = ROM(path);
   }
   
+  State state1;
+  
+  void save_state(){
+    _ppu.save_state(state1);
+    _cpu.save_state(state1);
+  }
+  
+  void restore_state(){
+    _ppu.load_state(state1);
+    _cpu.load_state(state1);
+  }
+  
 }
 

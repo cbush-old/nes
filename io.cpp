@@ -1,4 +1,5 @@
 #include "io.h"
+#include "bus.h"
 
 using std::ifstream;
 using std::cout;
@@ -26,6 +27,14 @@ uint8_t IO::handle_input(){
           case SDLK_d:  button_state[6] = BUTTON_ON; break;
           case SDLK_f:  button_state[7] = BUTTON_ON; break;
           #undef BUTTON_ON
+          case SDLK_1:  
+            bus::save_state(); 
+            e.type = 0;
+            break;
+          case SDLK_2:  
+            bus::restore_state(); 
+            e.type = 0;
+            break;
         }
         return 0;
       case SDL_KEYUP:
@@ -38,6 +47,7 @@ uint8_t IO::handle_input(){
           case SDLK_s:   button_state[5] = 0x0; break;
           case SDLK_d:  button_state[6] = 0x0; break;
           case SDLK_f: button_state[7] = 0x0; break;
+          
         }
         return 0;
       case SDL_QUIT:

@@ -1,15 +1,14 @@
 all:
-	g++ -std=c++11 nes.cpp -lSDL2 -lGL -pthread
-
-debug:
-	g++ -std=c++11 nes.cpp -lSDL2 -lGL -DDEBUG_CPU
-
-pputest:
-	g++ -std=c++11 nes.cpp -lSDL2 -lGL -DPPU_TEST
-
-render1:	
-	g++ -std=c++11 nes.cpp -lSDL2 -lGL -DRENDER1
+	g++ -std=c++11 -c *.cpp -I. -Iinclude; make o
 
 o:
 	g++ *.o -lSDL2 -lGL
 
+clean:
+	rm *.o
+
+ppu:
+	g++ -std=c++11 -c ppu.cpp -I. -Iinclude; make o
+
+cpu:
+	g++ -std=c++11 -c cpu.cpp -I. -Iinclude; make o
