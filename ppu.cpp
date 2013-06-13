@@ -321,7 +321,7 @@ uint8_t& PPU::mmap(uint16_t addr){
     addr &= 0xfff;
     // horizontal?
     if(addr < 0x400) return memory[addr];
-    if(addr < 0x800) return memory[addr];
+    if(addr < 0x800) return memory[addr - 0x400];
     if(addr < 0xc00) return memory[addr - 0x800];
     return memory[addr - 0x800];
     return memory[addr&0x7ff];
