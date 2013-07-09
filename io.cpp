@@ -76,8 +76,30 @@ void IO::swap(){
     256,
     240,
     GL_RGBA, 
-    GL_UNSIGNED_SHORT_4_4_4_4, 
+    GL_UNSIGNED_INT_8_8_8_8, 
     (const GLvoid*)canvas.data()
+  );
+  glBegin(GL_TRIANGLE_STRIP);
+  glTexCoord2f(0.0, 0.0f);  glVertex2i(0,0);
+  glTexCoord2f(1.0, 0.0f);  glVertex2i(256,0);
+  glTexCoord2f(0.0, 1.0f);  glVertex2i(0,240);
+  glTexCoord2f(1.0, 1.0f);  glVertex2i(256,240);
+  glEnd();
+  SDL_GL_SwapWindow(window);
+  glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void IO::swap_with(std::vector<uint32_t> const& buffer){
+  glTexSubImage2D(
+    GL_TEXTURE_2D,
+    0, 
+    0,
+    0,
+    256,
+    240,
+    GL_RGBA, 
+    GL_UNSIGNED_INT_8_8_8_8, 
+    (const GLvoid*)buffer.data()
   );
   glBegin(GL_TRIANGLE_STRIP);
   glTexCoord2f(0.0, 0.0f);  glVertex2i(0,0);
@@ -104,10 +126,9 @@ void IO::put_pixel(int x, int y, char r, char g, char b){
   
   try {
   canvas.at(y * 256 + x) = 
-    ((uint16_t)(r/8)<<12) |
-    ((uint16_t)(g/8)<<8) |
-    ((uint16_t)(b/8)<<4) |
-    0x000f;
+    (uint32_t(r)<<24) |
+    (uint32_t(g)<<16) |
+    (uint32_t(b)<<8);
   } catch(...){
     std::cout << "AHH at " << (y * 256 + x) << " with y = " << y << " and x = " << x << "\n";
     throw 1;
@@ -149,7 +170,7 @@ IO::IO():
     240,
     0,
     GL_RGBA,
-    GL_UNSIGNED_SHORT_4_4_4_4, 
+    GL_UNSIGNED_INT_8_8_8_8, 
     (const GLvoid*)canvas.data()
   );
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

@@ -29,8 +29,12 @@ void lookup_putpixel(unsigned px,unsigned py, unsigned pixel);
 class PPU {
   
   friend class CPU;
+  friend void put_pixel();
   
   private:
+    
+    std::vector<uint32_t> framebuffer;
+    
     union {
       
       uint32_t raw;

@@ -31,7 +31,7 @@ class IO {
   friend class PPU;
   
   private:
-    std::vector<uint16_t> canvas;
+    std::vector<uint32_t> canvas;
     SDL_Window *window;
     SDL_GLContext glcon;
     GLuint texture;
@@ -54,6 +54,7 @@ class IO {
 
   public:
     void put_pixel(int x, int y, char r, char g, char b);
+    void swap_with(std::vector<uint32_t> const&);
     
 };
 
