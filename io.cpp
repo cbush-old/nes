@@ -11,8 +11,31 @@ using std::string;
 using std::exception;
 using std::runtime_error;
 
+uint8_t spool_i = 0;
+size_t spool_l = 0;
+bool unwinding = false;
+std::vector<State> spool (256);
+
 uint8_t IO::handle_input(){
+
+  if(unwinding){
+    if(spool_l > 0){
+      bus::restore_state(spool[--spool_i]);
+      spool_l--;
+    } else {
+      bus::restore_state(spool[spool_i]);
+    }
+  } else {
+    bus::get_state(spool[spool_i++]);
+    if(spool_l < 255)
+      spool_l++;
+    
+  }
+  
   SDL_Event e;
+
+  
+  
   while(SDL_PollEvent(&e)){
     switch(e.type){
       case SDL_KEYDOWN:
@@ -35,6 +58,9 @@ uint8_t IO::handle_input(){
             bus::restore_state(); 
             e.type = 0;
             break;
+          case SDLK_q:
+            unwinding = true;
+            break;
         }
         return 0;
       case SDL_KEYUP:
@@ -47,6 +73,9 @@ uint8_t IO::handle_input(){
           case SDLK_s:   button_state[5] = 0x0; break;
           case SDLK_d:  button_state[6] = 0x0; break;
           case SDLK_f: button_state[7] = 0x0; break;
+          case SDLK_q: 
+            unwinding = false; 
+            break;
           
         }
         return 0;

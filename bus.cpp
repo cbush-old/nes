@@ -53,5 +53,15 @@ namespace bus {
     _cpu.load_state(state1);
   }
   
+  void restore_state(State const& s){
+    _ppu.load_state(s);
+    _cpu.load_state(s);
+  }
+  
+  void get_state(State& s){
+    _ppu.save_state(s);
+    _cpu.save_state(s);
+  }
+  
 }
 

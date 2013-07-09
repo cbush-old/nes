@@ -29,7 +29,6 @@ void lookup_putpixel(unsigned px,unsigned py, unsigned pixel);
 class PPU {
   
   friend class CPU;
-  friend void put_pixel();
   
   private:
     

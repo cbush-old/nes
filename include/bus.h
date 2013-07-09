@@ -23,6 +23,7 @@ namespace bus {
   void save_state();
   void restore_state();
   
+  
 }
 
 struct State {
@@ -31,7 +32,7 @@ struct State {
   uint16_t PC;
   int result_cycle;
 
-  std::vector<uint8_t> cpu_memory, ppu_memory;
+  std::vector<uint8_t> cpu_memory, ppu_memory, palette;
 
   uint32_t ppu_reg, scroll, vram;
   
@@ -40,9 +41,15 @@ struct State {
   
   State():
     cpu_memory(0x800, 0xff),
-    ppu_memory(0x800)
+    ppu_memory(0x800),
+    palette(0x20)
     {}
 
 };
+
+namespace bus {
+  void get_state(State&);
+  void restore_state(State const&);
+}
 
 #endif

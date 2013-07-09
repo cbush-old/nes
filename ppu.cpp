@@ -396,10 +396,10 @@ void PPU::tick3(){
           if(bus::io().handle_input()) 
             throw 1;
           
-          //if((skipframe++%5)==0)
+          //if((skipframe++&3)==0)
             bus::io().swap_with(framebuffer);
           
-          //SDL_Delay(10);
+          SDL_Delay(10);
           clock_frame();
         
           vblank_state = 2;
@@ -534,6 +534,7 @@ void PPU::print_status(){
 
 void PPU::load_state(State const& state) {
   memory = state.ppu_memory;
+  palette = state.palette;
   reg.raw = state.ppu_reg;
   scroll.data = state.scroll;
   vram.data = state.vram;
@@ -546,6 +547,7 @@ void PPU::load_state(State const& state) {
 
 void PPU::save_state(State& state) const {
   state.ppu_memory = memory;
+  state.palette = palette;
   state.ppu_reg = reg.raw;
   state.scroll = scroll.data;
   state.vram = vram.data;
@@ -553,6 +555,6 @@ void PPU::save_state(State& state) const {
   state.vblank_state = vblank_state;
   state.loopy_w = loopy_w;
   state.NMI_pulled = NMI_pulled;
-
+  
 }
 
