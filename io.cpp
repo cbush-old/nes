@@ -68,17 +68,6 @@ void IO::strobe(){
 }
 
 void IO::swap(){
-  glTexSubImage2D(
-    GL_TEXTURE_2D,
-    0, 
-    0,
-    0,
-    256,
-    240,
-    GL_RGBA, 
-    GL_UNSIGNED_INT_8_8_8_8, 
-    (const GLvoid*)canvas.data()
-  );
   glBegin(GL_TRIANGLE_STRIP);
   glTexCoord2f(0.0, 0.0f);  glVertex2i(0,0);
   glTexCoord2f(1.0, 0.0f);  glVertex2i(256,0);
@@ -116,32 +105,14 @@ void IO::clear(){
   SDL_GL_SwapWindow(window);
 }
 
-void IO::put_pixel(int x, int y, char r, char g, char b){
-  /*
-  glColor3ub(r,g,b);
-  glBegin(GL_POINTS);
-  glVertex2i(x,y);
-  glEnd();
-  */
-  
-  try {
-  canvas.at(y * 256 + x) = 
-    (uint32_t(r)<<24) |
-    (uint32_t(g)<<16) |
-    (uint32_t(b)<<8);
-  } catch(...){
-    std::cout << "AHH at " << (y * 256 + x) << " with y = " << y << " and x = " << x << "\n";
-    throw 1;
-  }
-
-}
 
 IO::IO():
-  canvas (256 * 240),
   window(
     SDL_CreateWindow(
-      "",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,
-      512,480,SDL_WINDOW_OPENGL
+      "",
+      SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,
+      512,480,
+      SDL_WINDOW_OPENGL
     )
   ),
   glcon(
@@ -149,16 +120,14 @@ IO::IO():
   )
 {
 
-  for(int i = 0; i < 256 * 240; ++i){
-    canvas[i] = i;
-  }
-  
   glMatrixMode(GL_PROJECTION|GL_MODELVIEW);
   glLoadIdentity();
   glOrtho(0,256,240,0,0,1);
   glClearColor(0,0,0,1);
   glClear(GL_COLOR_BUFFER_BIT);
   glEnable(GL_TEXTURE_2D);
+  
+  std::vector<uint32_t> canvas (256 * 240, 0x006600ff);
   
   glGenTextures(1, &texture);
   glBindTexture(GL_TEXTURE_2D, texture);

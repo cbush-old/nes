@@ -31,22 +31,15 @@ using std::runtime_error;
 
 int main(int argc, char* argv[]){
 
-  vector<string> args (argv, argv + argc);
+  //vector<string> args (argv, argv + argc);
 
   try {
   
-    bus::play(args[1]);
-
-  #ifndef PPU_TEST
+    bus::play(argv[1]);
+    auto& cpu = bus::cpu();
+    cpu.run();
     
-    bus::cpu().run();
     
-  #else
-    
-    bus::ppu().test();
-    
-  #endif
-  
   } catch(exception const& e){
     
     cout << e.what() << '\n';

@@ -31,29 +31,25 @@ class IO {
   friend class PPU;
   
   private:
-    std::vector<uint32_t> canvas;
     SDL_Window *window;
     SDL_GLContext glcon;
     GLuint texture;
     
   private:
-    uint8_t handle_input();
-
     int button_index { 0 };
     uint8_t button_state[8];
     
     uint8_t input_state(uint8_t i);
+    uint8_t handle_input();
     void strobe();
     void swap();
     void clear();
     
   public:
     IO();
-    IO(IO const&) = delete;
     ~IO();
 
   public:
-    void put_pixel(int x, int y, char r, char g, char b);
     void swap_with(std::vector<uint32_t> const&);
     
 };

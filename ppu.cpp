@@ -12,7 +12,7 @@ using std::runtime_error;
 
 
 template<int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256>
-const void render2(PPU& ppu){
+static const void render2(PPU& ppu){
   #define loopy_w ppu.loopy_w
   #define pat_addr ppu.pat_addr
   #define bg_shift_pat ppu.bg_shift_pat
@@ -34,7 +34,18 @@ const void render2(PPU& ppu){
   #define mmap ppu.mmap
   #define scanline_end ppu.scanline_end
   #define render_pixel ppu.render_pixel
-  
+
+  #ifdef DEBUG_PPU_RENDER_TEMPLATES
+  std::cout 
+    << "render2<" 
+    << (int)X
+    << ", " << (int)X_MOD_8
+    << ", " << (int)TDM
+    << ", " << (int)X_ODD_64_TO_256
+    << ", " << (int)X_LT_256
+    << ">\n";
+  #endif
+    
   if(X_MOD_8 == 2 && TDM){
     ioaddr = 0x23c0 + 0x400 * vram.base_nta + 8 * (vram.ycoarse / 4) + (vram.xcoarse / 4); 
   } 
@@ -80,16 +91,23 @@ const void render2(PPU& ppu){
     if(TDM){
       tileattr = 
         (mmap(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse&2))) & 3;
-        
-      if(!++vram.xcoarse) 
+      
+      vram.xcoarse++;
+      if(vram.xcoarse == 0){
         vram.base_nta_x = 1 - vram.base_nta_x;
+      }
         
       if(X==251){
-        if(!++vram.yfine && ++vram.ycoarse == 30){
-          vram.ycoarse = 0;
-          vram.base_nta_y = 1 - vram.base_nta_y;
+        vram.yfine++;
+        if(vram.yfine == 0){
+          vram.ycoarse++;
+          if(vram.ycoarse == 30){
+            vram.ycoarse = 0;
+            vram.base_nta_y = 1 - vram.base_nta_y;
+          }
         }
       }
+      
     } else {
       if(sprrenpos < sproutpos){
         auto& o = OAM3[sprrenpos];
@@ -200,15 +218,16 @@ const void render2(PPU& ppu){
   #undef OAM
 }
 
-//<int X, int X_MOD_8, int TDM, bool X_ODD_64_TO_256, bool X_LT_256>
-#define X(a) render2<(\
-  ((a)==0)||((a)==251)||((a)==256)||((a)==304)||((a)==337)?(a):1),\
+
+//<int X, int X_MOD_8, int Tile_Decode_Mode, bool X_ODD_64_TO_256, bool X_LT_256>
+#define X(a) render2<\
+  (((a)==0)||((a)==251)||((a)==256)||((a)==304)||((a)==337)?(a):1),\
   ((a)%8),\
   bool(0x10ffff & (1u << ((a)/16))),\
   bool(((a) & 1) && ((a) >= 64) && ((a) < 256)),\
   bool((a) < 256)>
 #define Y(a) X(a),X(a+1),X(a+2),X(a+3),X(a+4),X(a+5),X(a+6),X(a+7),X(a+8),X(a+9)
-const void(*render2funcs[342])(PPU&){
+static const void(*render2funcs[342])(PPU&){
   Y(  0),Y( 10),Y( 20),Y( 30),Y( 40),Y( 50),Y( 60),Y( 70),Y( 80),Y( 90),
   Y(100),Y(110),Y(120),Y(130),Y(140),Y(150),Y(160),Y(170),Y(180),Y(190),
   Y(200),Y(210),Y(220),Y(230),Y(240),Y(250),Y(260),Y(270),Y(280),Y(290),
@@ -361,7 +380,9 @@ void PPU::tick3(){
 
       cycle = 0;
       scanline_end = 341;
-
+      
+      static unsigned skipframe = 0;
+      
       switch(++scanline){
 
         case 261:
@@ -374,12 +395,11 @@ void PPU::tick3(){
           // events
           if(bus::io().handle_input()) 
             throw 1;
-
-          //glEnd();
-          //bus::io().swap();
-          bus::io().swap_with(framebuffer);
-          //glBegin(GL_POINTS);
           
+          //if((skipframe++%5)==0)
+            bus::io().swap_with(framebuffer);
+          
+          //SDL_Delay(10);
           clock_frame();
         
           vblank_state = 2;
