@@ -68,6 +68,23 @@ void IO::strobe(){
 }
 
 void IO::swap(){
+  glTexSubImage2D(
+    GL_TEXTURE_2D,
+    0, 
+    0,
+    0,
+    256,
+    240,
+    GL_RGBA, 
+    GL_UNSIGNED_SHORT_4_4_4_4, 
+    (const GLvoid*)canvas.data()
+  );
+  glBegin(GL_TRIANGLE_STRIP);
+  glTexCoord2f(0.0, 0.0f);  glVertex2i(0,0);
+  glTexCoord2f(1.0, 0.0f);  glVertex2i(256,0);
+  glTexCoord2f(0.0, 1.0f);  glVertex2i(0,240);
+  glTexCoord2f(1.0, 1.0f);  glVertex2i(256,240);
+  glEnd();
   SDL_GL_SwapWindow(window);
   glClear(GL_COLOR_BUFFER_BIT);
 }
@@ -78,33 +95,71 @@ void IO::clear(){
 }
 
 void IO::put_pixel(int x, int y, char r, char g, char b){
-  glColor3b(r,g,b);
+  /*
+  glColor3ub(r,g,b);
   glBegin(GL_POINTS);
   glVertex2i(x,y);
   glEnd();
+  */
+  
+  try {
+  canvas.at(y * 256 + x) = 
+    ((uint16_t)(r/8)<<12) |
+    ((uint16_t)(g/8)<<8) |
+    ((uint16_t)(b/8)<<4) |
+    0x000f;
+  } catch(...){
+    std::cout << "AHH at " << (y * 256 + x) << " with y = " << y << " and x = " << x << "\n";
+    throw 1;
+  }
+
 }
 
 IO::IO():
+  canvas (256 * 240),
   window(
     SDL_CreateWindow(
       "",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,
       512,480,SDL_WINDOW_OPENGL
-      //256,240,SDL_WINDOW_OPENGL
     )
   ),
   glcon(
     SDL_GL_CreateContext(window)
   )
-  {
+{
+
+  for(int i = 0; i < 256 * 240; ++i){
+    canvas[i] = i;
+  }
+  
   glMatrixMode(GL_PROJECTION|GL_MODELVIEW);
   glLoadIdentity();
   glOrtho(0,256,240,0,0,1);
   glClearColor(0,0,0,1);
   glClear(GL_COLOR_BUFFER_BIT);
+  glEnable(GL_TEXTURE_2D);
+  
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexImage2D(
+    GL_TEXTURE_2D, 
+    0, 
+    GL_RGBA, 
+    256,
+    240,
+    0,
+    GL_RGBA,
+    GL_UNSIGNED_SHORT_4_4_4_4, 
+    (const GLvoid*)canvas.data()
+  );
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
   swap();
 }
 
 IO::~IO(){
+  glDeleteTextures(1, &texture);
   SDL_GL_DeleteContext(glcon);
   SDL_DestroyWindow(window);
 }

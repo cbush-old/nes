@@ -1,6 +1,6 @@
 // load/store/transfer:
-template<regw R, mode M> inline void load(){ (this->*R)(read<M>()); }
-template<regr R, mode M> inline void store(){ write((this->*R)(),(this->*M)()); }
+template<regw R, mode M> inline void load(){ tick(); (this->*R)(read<M>()); }
+template<regr R, mode M> inline void store(){ tick(); write((this->*R)(),(this->*M)()); }
 template<regr from, regw to> inline void transfer(){ (this->*to)((this->*from)()); }
 
 // stack
@@ -8,8 +8,8 @@ template<regr from> inline void stack_push(){ push((this->*from)()); }
 template<regw to> inline void stack_pull(){ (this->*to)(pull()); }
 
 // status:
-template<CPU::Flag F> inline void set(){ P|=F; }
-template<CPU::Flag F> inline void clear(){ P&=~F; }
+template<CPU::Flag F> inline void set(){ tick(); tick(); P|=F; }
+template<CPU::Flag F> inline void clear(){ tick(); tick(); P&=~F; }
 
 // conditions:
 template<CPU::Flag F> inline uint8_t if_clear(){ return !(P&F); }
@@ -34,16 +34,16 @@ template<regr R, mode M> inline void compare(){
 // arithmetic:
 template<mode M> inline void ADC(){
   uint8_t m = read<M>();
-  int r = A + m + (P&C_FLAG);
-  set_if<V_FLAG>((((A^m)&0x80)^0x80)&((A^r)&0x80));
+  int r = A + m + !!(P&C_FLAG);
+  set_if<V_FLAG>(~(A^m) & (A^r) & 0x80);
   set_if<C_FLAG>(r >> 8);
   setZN(A = r);
 }
 template<mode M> inline void SBC(){
   uint8_t m = read<M>();
-  int r=A - m - ((P&C_FLAG)^1);
-  set_if<V_FLAG>((A^r)&(A^m)&0x80);
-  set_if<C_FLAG>(((r>>8)&C_FLAG)^C_FLAG);
+  int r = A - m - ((P&C_FLAG)^1);
+  set_if<V_FLAG>((A^m) & (A^r) & 0x80);
+  set_if<C_FLAG>(!((r>>8)&C_FLAG));
   setZN(A = r);
 }
 
@@ -78,8 +78,10 @@ template<mode M> inline void ROR(){
 // jump/branch:
 template<mode M> inline void jump(){ PC = (this->*M)(); }
 template<condition C> inline void branch(){
+  tick(); 
   if((this->*C)()){
     PC = sum_check_pgx<char>(PC, next());
+    tick(); 
     addcyc();
   } else PC++;
 }

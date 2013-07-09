@@ -180,6 +180,16 @@ void CPU::run(){
         
     for(int i = 0; i < result_cycle; ++i)
       bus::ppu().tick3();
+
+    result_cycle += cycles[last_op];
+    /*
+    if(result_cycle != test_cyc){
+      cout << "On 0x" << hex << (int)last_op << " (" << opasm[last_op] << "): "
+        << test_cyc << " should be " << result_cycle << "\n";
+      //break;
+    }
+    */
+    test_cyc = 0;
       
     result_cycle = 0;
       

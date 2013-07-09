@@ -12,3 +12,6 @@ ppu:
 
 cpu:
 	g++ -std=c++11 -c cpu.cpp -I. -Iinclude; make o
+
+io:
+	g++ -std=c++11 -c io.cpp -I. -Iinclude; make o

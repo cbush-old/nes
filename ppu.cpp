@@ -42,8 +42,8 @@ void bisqwit_putpixel(unsigned px,unsigned py, unsigned pixel, int offset)
                 q += b * int(std::sin(M_PI * p / 6) * 5909);
             }
             // Convert the YIQ color into RGB
-            static auto gammafix = [=](float f) { return f <= 0.f ? 0.f : std::pow(f, 2.2f / 1.8f); };
-            static auto clamp    = [](int v) { return v>255 ? 255 : v; };
+            auto gammafix = [=](float f) { return f <= 0.f ? 0.f : std::pow(f, 2.2f / 1.8f); };
+            auto clamp    = [](int v) { return v>255 ? 255 : v; };
             // Store color at subpixel precision
             if(u==2) palette[o][p1][p0] += 0x10000*clamp(255 * gammafix(y/1980.f + i* 0.947f/9e6f + q* 0.624f/9e6f));
             if(u==1) palette[o][p1][p0] += 0x00100*clamp(255 * gammafix(y/1980.f + i*-0.275f/9e6f + q*-0.636f/9e6f));
@@ -54,6 +54,15 @@ void bisqwit_putpixel(unsigned px,unsigned py, unsigned pixel, int offset)
     
     auto x = palette[offset][prev%64][pixel];
     
+    if(py < 240){
+      bus::io().put_pixel(
+        px, py,
+        ((x >> 16) & 0xff),
+        ((x >> 8) & 0xff),
+        ((x) & 0xff)
+      );
+    }
+    /*
     glColor3ub(
       ((x >> 16) & 0xff),
       ((x >> 8) & 0xff),
@@ -61,7 +70,7 @@ void bisqwit_putpixel(unsigned px,unsigned py, unsigned pixel, int offset)
     );
   
     glVertex2i(px,py);
-
+    */
     prev = pixel;
     
 }
@@ -91,7 +100,7 @@ const void render2(PPU& ppu){
   #define scanline_end ppu.scanline_end
   #define render_pixel ppu.render_pixel
   
-  if(X_MOD_8 == 2){
+  if(X_MOD_8 == 2 && TDM){
     ioaddr = 0x23c0 + 0x400 * vram.base_nta + 8 * (vram.ycoarse / 4) + (vram.xcoarse / 4); 
   } 
   
@@ -275,19 +284,6 @@ const void(*render2funcs[342])(PPU&){
 
 
 
-void lookup_putpixel(unsigned px,unsigned py, unsigned pixel){
-
-  glColor3b(
-    ((pixel >> 4) & 0xf) * 0xf,
-    ((pixel >> 2) & 0xf) * 0xf,
-    ((pixel) & 0xf) * 0xf
-  );
-  
-  glVertex2i(px,py);
-  
-}
-
-
 #define N_FRAMERATES 256
 double framerate[N_FRAMERATES];
 void print_framerate(){
@@ -317,14 +313,9 @@ uint8_t& PPU::mmap(uint16_t addr){
   addr &= 0x3fff;
   if(addr < 0x2000) return bus::rom()[addr];
   if(addr < 0x3f00){
-    return memory[addr&0x7ff];
     addr &= 0xfff;
-    // horizontal?
-    if(addr < 0x400) return memory[addr];
     if(addr < 0x800) return memory[addr];
-    if(addr < 0xc00) return memory[addr - 0x800];
     return memory[addr - 0x800];
-    return memory[addr&0x7ff];
   }
   //return palette[addr&3 == 0 ? addr & 0xf : addr & 0x1f];
   return palette[addr & (0xf + ((addr&3 != 0)*0x10))];
@@ -332,7 +323,7 @@ uint8_t& PPU::mmap(uint16_t addr){
 
 void PPU::render_pixel(){
   
-  // this is mostly lifted from bisqwit!
+  // this is heavily lifted from bisqwit!
   
   bool edge = uint8_t(cycle + 8) < 16;
   bool 
@@ -385,7 +376,6 @@ void PPU::render_pixel(){
   pixel = palette[(attr * 4 + pixel) & 0x1f] & (0x30 + (!reg.grayscale) * 0x0f);
 
   bisqwit_putpixel(cycle, scanline, pixel | (reg.intensify_rgb << 6), 0);
-  //lookup_putpixel(cycle, scanline, pixel | (reg.intensify_rgb << 6));
 
 }
 
@@ -418,25 +408,29 @@ void PPU::tick3(){
     }
 
     if(++cycle > scanline_end){
-      //bus::io().swap();
+
       cycle = 0;
       scanline_end = 341;
+
       switch(++scanline){
+
         case 261:
           scanline = -1;
           loopy_w ^= 1;
           vblank_state = -5;
           break;
+
         case 241:
           // events
           if(bus::io().handle_input()) 
             throw 1;
-          glEnd();
+
+          //glEnd();
           bus::io().swap();
-          glBegin(GL_POINTS);
+          //glBegin(GL_POINTS);
           
           clock_frame();
-          
+        
           vblank_state = 2;
           break;
       }
@@ -511,16 +505,18 @@ PPU::PPU(): memory(0x800), palette(0x20), OAM(0x100),
     
   {
   reg.PPUSTATUS = 0x80;
-  glBegin(GL_POINTS);
+  //glBegin(GL_POINTS);
 }
 
 PPU::~PPU(){
-  glEnd();
+  //glEnd();
   #ifdef DUMP_NT
   dump_nametables();
   #endif
   print_status();
   print_framerate();
+  dump_nametables();
+  
 }
 
 string PPU::color(int x){

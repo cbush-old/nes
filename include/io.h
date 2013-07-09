@@ -17,7 +17,13 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_audio.h>
-#include <SDL2/SDL_opengl.h>
+
+#ifndef GL_GLEXT_PROTOTYPES
+#define GL_GLEXT_PROTOTYPES
+#endif
+
+#include <GL/gl.h>
+#include <GL/glext.h>
 
 class IO {
   
@@ -25,8 +31,10 @@ class IO {
   friend class PPU;
   
   private:
+    std::vector<uint16_t> canvas;
     SDL_Window *window;
     SDL_GLContext glcon;
+    GLuint texture;
     
   private:
     uint8_t handle_input();
@@ -38,13 +46,15 @@ class IO {
     void strobe();
     void swap();
     void clear();
-    void put_pixel(int x, int y, char r, char g, char b);
     
   public:
     IO();
     IO(IO const&) = delete;
     ~IO();
 
+  public:
+    void put_pixel(int x, int y, char r, char g, char b);
+    
 };
 
 #endif

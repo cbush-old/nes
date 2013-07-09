@@ -34,7 +34,9 @@ int main(int argc, char* argv[]){
   vector<string> args (argv, argv + argc);
 
   try {
+  
     bus::play(args[1]);
+
   #ifndef PPU_TEST
     
     bus::cpu().run();
