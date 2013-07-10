@@ -10,8 +10,11 @@ clean:
 ppu:
 	g++ -std=c++11 -c ppu.cpp -O3 -I. -Iinclude; make o
 
+apu:
+	g++ -std=c++11 -c apu.cpp -O3 -I. -Iinclude; make o
+
 cpu:
-	g++ -std=c++11 -c cpu.cpp -I. -Iinclude; make o
+	g++ -std=c++11 -c cpu.cpp -O3 -I. -Iinclude; make o
 
 io:
-	g++ -std=c++11 -c io.cpp -I. -Iinclude; make o
+	g++ -std=c++11 -c io.cpp -O3 -I. -Iinclude; make o

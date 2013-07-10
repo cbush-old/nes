@@ -13,11 +13,13 @@ using std::runtime_error;
 
 uint8_t spool_i = 0;
 size_t spool_l = 0;
+size_t frame = 0;
 bool unwinding = false;
 std::vector<State> spool (256);
 
 uint8_t IO::handle_input(){
-
+  #define SPOOL
+  #ifdef SPOOL
   if(unwinding){
     if(spool_l > 0){
       bus::restore_state(spool[--spool_i]);
@@ -25,16 +27,15 @@ uint8_t IO::handle_input(){
     } else {
       bus::restore_state(spool[spool_i]);
     }
-  } else {
+  } else {//if(frame++){
     bus::get_state(spool[spool_i++]);
     if(spool_l < 255)
       spool_l++;
     
   }
+  #endif
   
   SDL_Event e;
-
-  
   
   while(SDL_PollEvent(&e)){
     switch(e.type){
@@ -97,12 +98,6 @@ void IO::strobe(){
 }
 
 void IO::swap(){
-  glBegin(GL_TRIANGLE_STRIP);
-  glTexCoord2f(0.0, 0.0f);  glVertex2i(0,0);
-  glTexCoord2f(1.0, 0.0f);  glVertex2i(256,0);
-  glTexCoord2f(0.0, 1.0f);  glVertex2i(0,240);
-  glTexCoord2f(1.0, 1.0f);  glVertex2i(256,240);
-  glEnd();
   SDL_GL_SwapWindow(window);
   glClear(GL_COLOR_BUFFER_BIT);
 }
@@ -152,11 +147,9 @@ IO::IO():
   glMatrixMode(GL_PROJECTION|GL_MODELVIEW);
   glLoadIdentity();
   glOrtho(0,256,240,0,0,1);
-  glClearColor(0,0,0,1);
+  glClearColor(0,0.6,0,1);
   glClear(GL_COLOR_BUFFER_BIT);
   glEnable(GL_TEXTURE_2D);
-  
-  std::vector<uint32_t> canvas (256 * 240, 0x006600ff);
   
   glGenTextures(1, &texture);
   glBindTexture(GL_TEXTURE_2D, texture);
@@ -169,7 +162,7 @@ IO::IO():
     0,
     GL_RGBA,
     GL_UNSIGNED_INT_8_8_8_8, 
-    (const GLvoid*)canvas.data()
+    nullptr
   );
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

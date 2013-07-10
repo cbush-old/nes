@@ -100,7 +100,7 @@ class PPU {
     struct { 
       uint8_t sprindex, y, index, attr, x; 
       uint16_t pattern; 
-    } OAM2[8], OAM3[8];
+    } OAM2[9], OAM3[9];
     
     template<int, char, bool, bool, bool>
     friend const void render2(PPU&);

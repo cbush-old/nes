@@ -44,7 +44,7 @@ uint8_t CPU::read(uint16_t addr){
   }
   if(addr < 0x4020){
     switch(addr&0x1f){
-      case 0x15:
+      case 0x15: return bus::apu().read();
       case 0x16: return bus::io().input_state(1);
       case 0x17: return bus::io().input_state(2);
       default: return 0;
@@ -76,8 +76,9 @@ uint8_t CPU::write(uint8_t value, uint16_t addr){
         if(value&1) 
           bus::io().strobe();
         break;
-      default: return 0;
-      
+      default:
+        bus::apu().write(value, addr&0x1f);
+        break;
     }
   }
   if(addr < 0x8000){
@@ -174,13 +175,12 @@ void CPU::run(){
 #endif
     
     (this->*ops[last_op])();
-  
-    for(int i = 0; i < cycles[last_op]; ++i)
-      bus::ppu().tick3();
-        
-    for(int i = 0; i < result_cycle; ++i)
-      bus::ppu().tick3();
 
+
+    for(int i = 0; i < cycles[last_op] + result_cycle; ++i){
+      bus::ppu().tick3();
+      bus::apu().tick();
+    }
     
     /*
     result_cycle += cycles[last_op];

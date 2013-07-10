@@ -92,19 +92,14 @@ static const void render2(PPU& ppu){
       tileattr = 
         (mmap(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse&2))) & 3;
       
-      vram.xcoarse++;
-      if(vram.xcoarse == 0){
+      if(++vram.xcoarse == 0){
         vram.base_nta_x = 1 - vram.base_nta_x;
       }
         
       if(X==251){
-        vram.yfine++;
-        if(vram.yfine == 0){
-          vram.ycoarse++;
-          if(vram.ycoarse == 30){
-            vram.ycoarse = 0;
-            vram.base_nta_y = 1 - vram.base_nta_y;
-          }
+        if(++vram.yfine == 0 && ++vram.ycoarse == 30){
+          vram.ycoarse = 0;
+          vram.base_nta_y = 1 - vram.base_nta_y;
         }
       }
       
@@ -155,10 +150,8 @@ static const void render2(PPU& ppu){
           break;
         }
         ++sprinpos;
-        if(sproutpos < 8){
-          OAM2[sproutpos].y = sprtmp;
-          OAM2[sproutpos].sprindex = reg.OAM_index;
-        }
+        OAM2[sproutpos].y = sprtmp;
+        OAM2[sproutpos].sprindex = reg.OAM_index;
         {
           int y1 = sprtmp, y2 = sprtmp + 8 + !!reg.sprite_size * 8;
           if(!(y1 <= scanline && scanline < y2)){
@@ -167,17 +160,14 @@ static const void render2(PPU& ppu){
         }
         break;
       case 1:
-        if(sproutpos < 8)
-          OAM2[sproutpos].index = sprtmp;
+        OAM2[sproutpos].index = sprtmp;
         break;
       case 2:
-        if(sproutpos < 8)
-          OAM2[sproutpos].attr = sprtmp;
+        OAM2[sproutpos].attr = sprtmp;
         break;
       case 3:
         if(sproutpos < 8){
-          OAM2[sproutpos].x = sprtmp;
-          ++sproutpos;
+          OAM2[sproutpos++].x = sprtmp;
         } else {
           reg.spr_overflow = true;
         }
@@ -192,8 +182,7 @@ static const void render2(PPU& ppu){
   }
   
   if(X_LT_256){
-    if(0 <= scanline && scanline < 240)
-      render_pixel();
+    render_pixel();
   }
   #undef ioaddr
   #undef vram
@@ -239,6 +228,8 @@ static const void(*render2funcs[342])(PPU&){
 
 
 #define N_FRAMERATES 256
+int framerate[N_FRAMERATES];
+/*
 double framerate[N_FRAMERATES];
 void print_framerate(){
   
@@ -251,14 +242,40 @@ void print_framerate(){
 
 }
 
-void clock_frame(){
+double clock_frame(){
   static clock_t last_clock { 0 };
   static int i { 0 };
   clock_t tick = clock();
-  framerate[i++%N_FRAMERATES] = difftime(tick, last_clock);
+  double d = difftime(tick, last_clock);
+  framerate[i++%N_FRAMERATES] = d;
   last_clock = tick;
   if(i%N_FRAMERATES==0)
     print_framerate();
+  return d;
+}
+*/
+
+void print_framerate(){
+  
+  double sum = 0;
+  for(int i = 0; i < N_FRAMERATES; ++i){
+    sum += framerate[i];
+  }
+  sum /= N_FRAMERATES;
+  cout << "Average framerate: " << (1000.0/sum) << "/s\n";
+
+}
+
+int clock_frame(){
+  static int last_clock = SDL_GetTicks();
+  static int i = 0;
+  int tick = SDL_GetTicks();
+  int d = tick - last_clock;
+  framerate[i++%N_FRAMERATES] = d;
+  last_clock = tick;
+  if(i%N_FRAMERATES==0)
+    print_framerate();
+  return d;
 }
 #undef N_FRAMES
 
@@ -289,12 +306,12 @@ static const uint32_t RGB[64] {
 
 void PPU::render_pixel(){
   
-  // this is heavily lifted from bisqwit!
+  // this is so bisqwit!
   
   bool edge = uint8_t(cycle + 8) < 16;
   bool 
-    showbg = (!edge || reg.show_bg8) && reg.show_bg,
-    showsp = (!edge || reg.show_sp8) && reg.show_sp;
+    showbg = ((!edge) || reg.show_bg8) && reg.show_bg,
+    showsp = ((!edge) || reg.show_sp8) && reg.show_sp;
 
   unsigned fx = scroll.xfine,
     xpos = 15 - (( (cycle&7) + fx + 8 * bool(cycle&7) ) & 15);
@@ -371,7 +388,7 @@ void PPU::tick3(){
     }
 
     if(reg.rendering_enabled){
-      if(scanline < 240){
+      if(unsigned(scanline) < 240){
         render2funcs[cycle](*this);
       }
     }
@@ -399,9 +416,10 @@ void PPU::tick3(){
           //if((skipframe++&3)==0)
             bus::io().swap_with(framebuffer);
           
-          SDL_Delay(10);
-          clock_frame();
-        
+          int d = 17 - clock_frame();
+          
+          SDL_Delay(d * !(d<0));
+          
           vblank_state = 2;
           break;
       }
@@ -476,11 +494,9 @@ PPU::PPU(): framebuffer(256 * 240), memory(0x800), palette(0x20), OAM(0x100),
     
   {
   reg.PPUSTATUS = 0x80;
-  //glBegin(GL_POINTS);
 }
 
 PPU::~PPU(){
-  //glEnd();
   #ifdef DUMP_NT
   dump_nametables();
   #endif
@@ -501,7 +517,6 @@ void PPU::dump_nametables(){
   cout << '\n';
 
   for(int i = 0x2000; i < 0x2400; ++i){
-    //if((i&63) > 31) continue;
       
     int x = mmap(i);
     cout 

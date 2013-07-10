@@ -22,6 +22,7 @@
 #include "bus.h"
 #include "rom.h"
 #include "ppu.h"
+#include "apu.h"
 #include "io.h"
 
 class CPU {
