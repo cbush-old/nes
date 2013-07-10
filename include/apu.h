@@ -14,7 +14,7 @@ class APU {
     void write(uint8_t, uint8_t);
     uint8_t read();
 
-  private:
+  public:
     static const uint8_t LengthCounters[32];
     static const uint16_t NoisePeriods[16];
     static const uint16_t DMCperiods[16];

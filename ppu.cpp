@@ -10,7 +10,6 @@ using std::ifstream;
 using std::exception;
 using std::runtime_error;
 
-
 template<int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256>
 static const void render2(PPU& ppu){
   #define loopy_w ppu.loopy_w
@@ -182,7 +181,8 @@ static const void render2(PPU& ppu){
   }
   
   if(X_LT_256){
-    render_pixel();
+    if(scanline >= 0)
+      render_pixel();
   }
   #undef ioaddr
   #undef vram
@@ -364,7 +364,6 @@ void PPU::render_pixel(){
   
 }
 
-
 void PPU::tick3(){
   for(int i = 0; i < 3; ++i){
     switch(vblank_state){
@@ -388,7 +387,7 @@ void PPU::tick3(){
     }
 
     if(reg.rendering_enabled){
-      if(unsigned(scanline) < 240){
+      if(scanline < 240){
         render2funcs[cycle](*this);
       }
     }
