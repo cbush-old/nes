@@ -327,12 +327,11 @@ int clock_frame(){
 
 
 uint8_t& PPU::mmap(uint16_t addr){
+  
   addr &= 0x3fff;
-  if(addr < 0x2000) return bus::rom()[addr];
+  if(addr < 0x2000) return bus::rom().vbank_ref(addr);
   if(addr < 0x3f00){
-    addr &= 0xfff;
-    if(addr < 0x800) return memory[addr];
-    return memory[addr - 0x800];
+    return bus::rom().nt[(addr >> 10)&3][addr&0x3ff];
   }
   //return palette[addr&3 == 0 ? addr & 0xf : addr & 0x1f];
   return palette[addr & (0xf | (((addr&3)!=0)<<4))];
@@ -408,7 +407,7 @@ void PPU::render_pixel(){
 
   
   
-  #ifndef USE_BISQWIT_NTSC
+  #ifdef USE_BISQWIT_NTSC
   framebuffer[scanline * 256 + cycle] = bisqwit_ntsc_pixel(pixel | ((reg.intensify_rgb)<<6), cycle%3);
   #else
   framebuffer[scanline * 256 + cycle] = RGB[pixel&0x3f];

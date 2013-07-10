@@ -18,7 +18,6 @@ bool unwinding = false;
 std::vector<State> spool (256);
 
 uint8_t IO::handle_input(){
-  #define SPOOL
   #ifdef SPOOL
   if(unwinding){
     if(spool_l > 0){

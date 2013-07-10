@@ -40,7 +40,9 @@ class CPU {
       X { 0 },
       Y { 0 },
       SP { 0xff };
-    uint16_t PC, cyc { 0 };
+    uint16_t PC { 0xC000 }, cyc { 0 };
+    uint16_t last_PC;
+    uint8_t last_op;
     int result_cycle { 0 };
     
   private:
@@ -72,7 +74,7 @@ class CPU {
     uint8_t next();
     uint16_t next2();
     
-    void addcyc();    
+    void addcyc();  
     
     template<mode M>
     uint8_t& getref(){
@@ -168,6 +170,9 @@ class CPU {
     template<mode M> uint8_t read(){
       return read((this->*M)());
     }
+    
+    
+    void print_status();
 
 };
 

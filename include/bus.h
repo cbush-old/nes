@@ -18,11 +18,12 @@ namespace bus {
   APU& apu();
   IO& io();
   void pull_NMI();
+  void pull_IRQ();
+  void reset_IRQ();
   void play(std::string const&);
   
   void save_state();
   void restore_state();
-  
   
 }
 

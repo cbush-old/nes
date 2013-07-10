@@ -89,7 +89,7 @@ uint8_t CPU::write(uint8_t value, uint16_t addr){
     */
   }
   
-  return bus::rom()[addr] = value;
+  bus::rom().write(value, addr);
   
 }
 
@@ -146,32 +146,11 @@ void CPU::run(){
   
   for(;;){
 
-    auto last_PC = PC;
-    
-    uint8_t last_op = next();
+    last_PC = PC;
+    last_op = next();
     
 #ifdef DEBUG_CPU
-    cout 
-      << hex << std::uppercase << std::setfill('0')
-      << setw(4) << last_PC << "  "
-      << setw(2) << (int)last_op << "   "
-      << std::setfill(' ') << setw(16) 
-      << std::left << opasm[last_op]
-      << std::setfill('0')
-      << " A:" << setw(2) << (int)A
-      << " X:" << setw(2) << (int)X
-      << " Y:" << setw(2) << (int)Y
-      << " P:" << setw(2) << (int)P
-      << " SP:" << setw(2) << (int)SP
-      << std::setfill(' ')
-      << " CYC:" << setw(3) << std::dec << (int)cyc
-      << " SL:" << setw(3) << (int)bus::ppu().scanline
-      << hex << std::setfill('0')
-      << " ST0:" << setw(2) << (int)memory[0x101 + SP]
-      << " ST1:" << setw(2) << (int)memory[0x102 + SP]
-      << " ST2:" << setw(2) << (int)memory[0x103 + SP]
-      << '\n';
-    //if(cyc >= 341) cyc -= 341;
+    print_status();
 #endif
     
     (this->*ops[last_op])();
@@ -228,5 +207,30 @@ void CPU::save_state(State& state) const {
   state.PC = PC;
   state.result_cycle = result_cycle;
   state.cpu_memory = memory;
+}
+
+
+void CPU::print_status(){
+  cout 
+  << hex << std::uppercase << std::setfill('0')
+  << setw(4) << last_PC << "  "
+  << setw(2) << (int)last_op << "   "
+  << std::setfill(' ') << setw(16) 
+  << std::left << opasm[last_op]
+  << std::setfill('0')
+  << " A:" << setw(2) << (int)A
+  << " X:" << setw(2) << (int)X
+  << " Y:" << setw(2) << (int)Y
+  << " P:" << setw(2) << (int)P
+  << " SP:" << setw(2) << (int)SP
+  << std::setfill(' ')
+  << " CYC:" << setw(3) << std::dec << (int)cyc
+  << " SL:" << setw(3) << (int)bus::ppu().scanline
+  << hex << std::setfill('0')
+  << " ST0:" << setw(2) << (int)memory[0x101 + SP]
+  << " ST1:" << setw(2) << (int)memory[0x102 + SP]
+  << " ST2:" << setw(2) << (int)memory[0x103 + SP]
+  << '\n';
+  //if(cyc >= 341) cyc -= 341;
 }
 

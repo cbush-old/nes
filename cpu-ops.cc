@@ -116,5 +116,6 @@ inline void RTI(){
 }
 inline void NOP(){}
 inline void BAD_OP(){
+  print_status();
   throw std::runtime_error("Kil");
 }

@@ -10,7 +10,7 @@ namespace bus {
   PPU _ppu;
   CPU _cpu;
   APU _apu;
-  ROM _rom;
+  ROM *_rom;
 
   
   PPU& ppu(){    
@@ -26,7 +26,7 @@ namespace bus {
   }
   
   ROM& rom(){
-    return _rom;
+    return *_rom;
   }
   
   IO& io(){
@@ -38,7 +38,7 @@ namespace bus {
   }
   
   void play(std::string const& path){
-    _rom = ROM(path);
+    _rom = new ROM(path);
   }
   
   State state1;
@@ -62,6 +62,7 @@ namespace bus {
     _ppu.save_state(s);
     _cpu.save_state(s);
   }
+
   
 }
 

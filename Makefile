@@ -16,5 +16,8 @@ apu:
 cpu:
 	g++ -std=c++11 -c cpu.cpp -O3 -I. -Iinclude; make o
 
+rom:
+	g++ -std=c++11 -c rom.cpp -O3 -I. -Iinclude; make o
+
 io:
 	g++ -std=c++11 -c io.cpp -O3 -I. -Iinclude; make o
