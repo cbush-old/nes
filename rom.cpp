@@ -28,7 +28,7 @@ static void set_pages(
   for(unsigned v = rs + index * size, p = baseaddr / granu; 
     p < (baseaddr + size) / granu && p < npages; 
     ++p, v += granu)
-    b[p] = &r[v % rs];
+    b[p] = &r[v%rs];
 }
 
 static const auto& set_ROM = set_pages<ROM_Pages, ROM_Granularity>;
@@ -45,17 +45,14 @@ static const std::unordered_map<uint8_t, std::function<void(ROM&, uint8_t, uint1
   }},
 };
 
-
 uint8_t& ROM::operator[](uint16_t addr){
   if((addr >> 13) == 3)
     return pram[addr & 0x1FFF];
   return bank[(addr/ROM_Granularity)%ROM_Pages][addr%ROM_Granularity];
 }
 
-
 ROM::ROM(std::string const& src):
   nram (0x800), 
-  rom (0x4000),
   vram (0x2000),
   pram (0x2000),
   nt { nram.data(), nram.data() + 0x400, nram.data(), nram.data() + 0x400 },
@@ -106,7 +103,7 @@ ROM::ROM(std::string const& src):
   set_VROM(vbank, vram, 0x2000, 0, 0);
   
   for(unsigned v = 0; v < 4; ++v)
-    set_ROM(bank, rom, 0x4000, v * 0x4000, (v!=3) - 1);
+    set_ROM(bank, rom, 0x4000, v * 0x4000, v==3 ? -1 : 0);
   
 }
 

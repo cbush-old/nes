@@ -17,6 +17,8 @@ namespace bus {
   PPU& ppu();
   APU& apu();
   IO& io();
+  
+  uint8_t cpu_read(uint16_t);
   void pull_NMI();
   void pull_IRQ();
   void reset_IRQ();

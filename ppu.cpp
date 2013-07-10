@@ -407,6 +407,7 @@ void PPU::render_pixel(){
 
   
   
+  #define USE_BISQWIT_NTSC
   #ifdef USE_BISQWIT_NTSC
   framebuffer[scanline * 256 + cycle] = bisqwit_ntsc_pixel(pixel | ((reg.intensify_rgb)<<6), cycle%3);
   #else

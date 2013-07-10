@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <cstdint>
+#include "bus.h"
 #include "bit.h"
 
 class APU {
@@ -105,7 +106,7 @@ class APU {
             if(!hold) hold = 1;
             hold = (hold >> 1)| (((hold ^ (hold >> (noise_loop ? 6 : 1))) & 1) << 14);
             return S = (hold & 1) ? 0 : volume;
-          /*
+          
           case 4: // Delta modulation channel (DMC)
          
             // hold = 8 bit value, phase = number of bits buffered
@@ -123,22 +124,25 @@ class APU {
                 // TODO: proper clock
                 if(wavelength > 20)
                   for(unsigned t=0; t<3; ++t) 
-                    bus::cpu().read(uint16_t(address) | 0x8000); // timing
-                hold  = bus::cpu().read(uint16_t(address++) | 0x8000); // Fetch byte
+                    bus::cpu_read(uint16_t(address) | 0x8000); // timing
+                hold = bus::cpu_read(uint16_t(address++) | 0x8000); // Fetch byte
                 phase = 8;
                 --length_counter;
               }
-              else // Otherwise, disable channel or issue IRQ
-                ChannelsEnabled[4] = IRQ_enabled && (CPU::intr = DMC_IRQ = true);
+              else {// Otherwise, disable channel or issue IRQ
+                apu.ChannelsEnabled[4] = IRQ_enabled;
+                apu.DMC_IRQ = true;
+                bus::pull_IRQ();
+              }
             }
-            if(ch.phase != 0) // Update the signal if sample buffer nonempty
+            if(phase != 0) // Update the signal if sample buffer nonempty
             {
-              int v = ch.linear_counter;
-              if(ch.hold & (0x80 >> --ch.phase)) v += 2; else v -= 2;
-              if(v >= 0 && v <= 0x7F) ch.linear_counter = v;
+              int v = linear_counter;
+              if(hold & (0x80 >> --phase)) v += 2; else v -= 2;
+              if(v >= 0 && v <= 0x7F) linear_counter = v;
             }
-            return S = ch.linear_counter;
-          */
+            return S = linear_counter;
+          
         }
       }
     } channel[5];

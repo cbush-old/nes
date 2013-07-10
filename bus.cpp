@@ -63,6 +63,18 @@ namespace bus {
     _cpu.save_state(s);
   }
 
+  void pull_IRQ(){
+    _cpu.IRQ = 0;
+  }
+  
+  void reset_IRQ(){
+    _cpu.IRQ = 1;
+  }
+  
+  uint8_t cpu_read(uint16_t addr){
+    return _cpu.read(addr);
+  }
+  
   
 }
 

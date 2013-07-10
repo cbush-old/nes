@@ -81,13 +81,13 @@ uint8_t CPU::write(uint8_t value, uint16_t addr){
         break;
     }
   }
-  if(addr < 0x8000){
+  //if(addr < 0x8000){
     // The alternate output...
     /*
     if(!value) cout << '\n';
     cout << hex << std::setw(2) << std::setfill(' ') << value << ' ';
     */
-  }
+  //}
   
   bus::rom().write(value, addr);
   
@@ -154,7 +154,13 @@ void CPU::run(){
 #endif
     
     (this->*ops[last_op])();
-
+    
+    if(IRQ==0 && P&I_FLAG==0){
+      push2(PC);
+      stack_push<&CPU::ProcStatus>();
+      P |= I_FLAG;
+      PC = read(0xfffe) | (read(0xffff) << 8);
+    }
 
     for(int i = 0; i < cycles[last_op] + result_cycle; ++i){
       bus::ppu().tick3();
@@ -170,9 +176,7 @@ void CPU::run(){
     }
     */
     test_cyc = 0;
-      
     result_cycle = 0;
-      
   }
 
 }

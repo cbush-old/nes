@@ -39,7 +39,6 @@ struct ROM {
       if(0x8000 <= addr)
         writef(*this, value, addr);
     }
-  
 
   public:
     ROM(std::string const&);

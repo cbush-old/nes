@@ -65,7 +65,10 @@ class CPU {
       set_if<N_FLAG>(x&0x80);
     }
     
+  public:
     uint8_t read(uint16_t);
+  
+  private:
     uint8_t write(uint8_t, uint16_t);
     void push(uint8_t);
     void push2(uint16_t);
@@ -170,10 +173,11 @@ class CPU {
     template<mode M> uint8_t read(){
       return read((this->*M)());
     }
-    
-    
-    void print_status();
 
+    void print_status();
+  
+  public:
+    bool IRQ { true };
 };
 
 template<> uint8_t& CPU::getref<&CPU::ACC>();
