@@ -1,6 +1,15 @@
 #include "io.h"
 #include "bus.h"
 
+int a = 0;
+
+void audio_callback(void*, uint8_t *stream, int length){
+  static IO& io = bus::io();
+  if(!io.audio_buffer_up) return;
+  memcpy(stream, (char*)io.audio_buffer, length);
+  io.audio_buffer_up = false;
+}
+
 using std::ifstream;
 using std::cout;
 using std::setw;
@@ -18,6 +27,7 @@ bool unwinding = false;
 std::vector<State> spool (256);
 
 uint8_t IO::handle_input(){
+  #define SPOOL
   #ifdef SPOOL
   if(unwinding){
     if(spool_l > 0){
@@ -167,9 +177,30 @@ IO::IO():
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
   swap();
+  
+  
+  
+  SDL_AudioSpec obtained, desired;
+  
+  desired.freq = 44800;
+  desired.format = AUDIO_S16LSB;
+  desired.channels = 1;
+  desired.samples = AUDIO_BUFFER_SIZE * 2;
+  desired.callback = audio_callback;
+  desired.userdata = nullptr;
+  
+  int audio = SDL_OpenAudio(&desired, &obtained);
+
+  std::cout << audio << '\n';
+  std::cout << obtained.freq << '\n';
+  
+  SDL_PauseAudio(0);
+  
 }
 
 IO::~IO(){
+  SDL_CloseAudio();
+  
   glDeleteTextures(1, &texture);
   SDL_GL_DeleteContext(glcon);
   SDL_DestroyWindow(window);

@@ -205,9 +205,9 @@ const CPU::op CPU::ops[256] {
 /* 0x86 */ store<IndexRegX,ZPG>,
 /* 0x87 */ store<AX,ZPG>,//SAX
 /* 0x88 */ DEC<Y__>,	
-/* 0x89 */ BAD_OP,
+/* 0x89 */ NOP<IMM>,
 /* 0x8A */ transfer<IndexRegX,Accumulator>,
-/* 0x8B */ BAD_OP,
+/* 0x8B */ NOP<IMM>,//XAA
 /* 0x8C */ store<IndexRegY,ABS>,
 /* 0x8D */ store<Accumulator,ABS>,
 /* 0x8E */ store<IndexRegX,ABS>,
@@ -215,7 +215,7 @@ const CPU::op CPU::ops[256] {
 /* 0x90 */ branch<if_clear<C_FLAG>>,
 /* 0x91 */ store<Accumulator,IDY>,
 /* 0x92 */ BAD_OP,
-/* 0x93 */ BAD_OP,//AHX<IDY>
+/* 0x93 */ NOP<IDY>,//AHX<IDY>
 /* 0x94 */ store<IndexRegY,ZPX>,
 /* 0x95 */ store<Accumulator,ZPX>,
 /* 0x96 */ store<IndexRegX,ZPY>,
@@ -223,11 +223,11 @@ const CPU::op CPU::ops[256] {
 /* 0x98 */ transfer<IndexRegY,Accumulator>,
 /* 0x99 */ store<Accumulator,ABY>,
 /* 0x9A */ transfer<IndexRegX,StackPointer>,
-/* 0x9B */ BAD_OP,//TAS<ABY>
-/* 0x9C */ BAD_OP,//SHY<ABX>
+/* 0x9B */ NOP<ABY>,//TAS<ABY>
+/* 0x9C */ NOP<ABX>,//SHY<ABX>
 /* 0x9D */ store<Accumulator,ABX>,
-/* 0x9E */ BAD_OP,//SHX<ABY>
-/* 0x9F */ BAD_OP,//AHX<ABY>
+/* 0x9E */ NOP<ABY>,//SHX<ABY>
+/* 0x9F */ NOP<ABY>,//AHX<ABY>
 /* 0xA0 */ load<IndexRegY,IMM>,
 /* 0xA1 */ load<Accumulator,IDX>,
 /* 0xA2 */ load<IndexRegX,IMM>,
@@ -255,14 +255,14 @@ const CPU::op CPU::ops[256] {
 /* 0xB8 */ clear<V_FLAG>,
 /* 0xB9 */ load<Accumulator,ABY_pgx>,
 /* 0xBA */ transfer<StackPointer,IndexRegX>,
-/* 0xBB */ BAD_OP,
+/* 0xBB */ NOP<ABY>, //LAS a,y
 /* 0xBC */ load<IndexRegY,ABX_pgx>,
 /* 0xBD */ load<Accumulator,ABX_pgx>,
 /* 0xBE */ load<IndexRegX,ABY_pgx>,
 /* 0xBF */ unofficial<load<Accumulator,ABY_pgx>,transfer<Accumulator,IndexRegX>,0>,//LAX
 /* 0xC0 */ compare<IndexRegY,IMM>,
 /* 0xC1 */ compare<Accumulator,IDX>,
-/* 0xC2 */ BAD_OP,
+/* 0xC2 */ NOP<IMM>,
 /* 0xC3 */ unofficial<DEC<IDX>,compare<Accumulator,IDX>>,//DCP
 /* 0xC4 */ compare<IndexRegY,ZPG>,
 /* 0xC5 */ compare<Accumulator,ZPG>,
@@ -294,7 +294,7 @@ const CPU::op CPU::ops[256] {
 /* 0xDF */ unofficial<DEC<ABX>,compare<Accumulator,ABX>,2>,//DCP
 /* 0xE0 */ compare<IndexRegX,IMM>,
 /* 0xE1 */ SBC<IDX>,
-/* 0xE2 */ BAD_OP,
+/* 0xE2 */ NOP<IMM>,
 /* 0xE3 */ unofficial<INC<IDX>,SBC<IDX>>,//ISB(ISC)
 /* 0xE4 */ compare<IndexRegX,ZPG>,
 /* 0xE5 */ SBC<ZPG>,

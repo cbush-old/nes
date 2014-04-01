@@ -25,10 +25,13 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 
+#define AUDIO_BUFFER_SIZE 2240
+
 class IO {
   
   friend class CPU;
   friend class PPU;
+  friend class APU;
   
   private:
     SDL_Window *window;
@@ -50,6 +53,8 @@ class IO {
     ~IO();
 
   public:
+    int16_t audio_buffer[AUDIO_BUFFER_SIZE];
+    bool audio_buffer_up;
     void swap_with(std::vector<uint32_t> const&);
     
 };

@@ -17,12 +17,13 @@ namespace bus {
   PPU& ppu();
   APU& apu();
   IO& io();
+
+  void play(std::string const&);
   
   uint8_t cpu_read(uint16_t);
   void pull_NMI();
   void pull_IRQ();
   void reset_IRQ();
-  void play(std::string const&);
   
   void save_state();
   void restore_state();

@@ -175,8 +175,10 @@ void APU::tick(){
       hz240counter.hi = 0;
 
     // 60 Hz interval: IRQ. IRQ is not invoked in five-cycle mode (48 Hz).
-    //if(!IRQdisable && !FiveCycleDivider && hz240counter.hi==0)
-    //  CPU::intr = PeriodicIRQ = true;
+    if(!IRQdisable && !FiveCycleDivider && hz240counter.hi==0){
+      PeriodicIRQ = true;
+      bus::pull_IRQ();
+    }
 
     // Some events are invoked at 96 Hz or 120 Hz rate. Others, 192 Hz or 240 Hz.
     bool HalfTick = (hz240counter.hi&5)==1, FullTick = hz240counter.hi < 4;
@@ -193,7 +195,7 @@ void APU::tick(){
   #define s(c) channel[c].tick<c==1 ? 0 : c>(*this)
   auto v = [](float m, float n, float d) { return n!=0.f ? m/n : d; };
   //short sample = 30000 * (
-  short sample = 0x8000 * (
+  int16_t sample = 0x8000 * (
     v(
       95.88f,
       (100.f + v(
@@ -219,22 +221,49 @@ void APU::tick(){
   // Hooray for Unix principles! A/V sync will be ensured in post-process.
   //return; // Disable sound because already device is in use
   //static FILE* fp = popen("resample mr1789800 r48000 | aplay -fdat 2>/dev/null", "w");
+  //r1789773
   
+  static int i = 0;
+  static int a = 0;
+  static int16_t buf[40];
+  
+  buf[a++] = sample;
+  
+  if(a >= 39){
+    a = 0;
+    int avg = 0;
+    for(int x = 0; x < 39; ++x){
+      avg += buf[x];
+    }
+    avg /= 39;
+    
+    bus::io().audio_buffer[i++] = avg;
+    if(i >= AUDIO_BUFFER_SIZE){
+      bus::io().audio_buffer_up = true;
+      i = 0;
+    }
+  }
+  
+
+  
+  
+  #ifdef APLAY_SOUND
   static FILE* fp = popen(
     "sox -t raw -c1 -b 16 -e signed-integer -r1789773 - -t raw -c2 - rate 48000 \
 | aplay -fdat",
     "w"
   );
-  
+
   fputc(sample, fp);
   fputc(sample/256, fp);
+  #endif
 }
 
 uint8_t APU::read(){
   uint8_t res = 0;
   for(unsigned c=0; c < 5; ++c) 
-    res |= (!!channel[c].length_counter) << c;
-    //res |= (channel[c].length_counter ? 1 << c : 0);
+    //res |= (!!channel[c].length_counter) << c;
+    res |= (channel[c].length_counter ? 1 << c : 0);
   
   if(PeriodicIRQ) 
     res |= 0x40; 
@@ -245,7 +274,7 @@ uint8_t APU::read(){
     res |= 0x80;
   
   DMC_IRQ = false;
-  //CPU::intr = false;
+  bus::reset_IRQ();
   return res;
   
 }

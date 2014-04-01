@@ -36,7 +36,7 @@ static const auto& set_VROM = set_pages<VROM_Pages, VROM_Granularity>;
 
 static const std::unordered_map<uint8_t, std::function<void(ROM&, uint8_t, uint16_t)>> mapper {
   { 0, [](ROM& this_, uint8_t value, uint16_t addr){}},
-  { 2, [](ROM& this_, uint8_t value, uint16_t addr){    
+  { 2, [](ROM& this_, uint8_t value, uint16_t addr){
     set_ROM(this_.bank, this_.rom, 0x4000, 0x8000, value);
   }},
   { 7, [](ROM& this_, uint8_t value, uint16_t addr){    
