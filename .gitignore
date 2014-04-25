@@ -1,0 +1,9 @@
+*.nes
+*.log
+roms/
+doc/
+util/tests
+*.out
+*.o
+nes
+

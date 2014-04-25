@@ -22,10 +22,10 @@
 #define GL_GLEXT_PROTOTYPES
 #endif
 
-#include <GL/gl.h>
-#include <GL/glext.h>
+#include <gl.h>
+#include <glext.h>
 
-#define AUDIO_BUFFER_SIZE 2240
+#define AUDIO_BUFFER_SIZE 1000
 
 class IO {
   
@@ -53,7 +53,7 @@ class IO {
     ~IO();
 
   public:
-    int16_t audio_buffer[AUDIO_BUFFER_SIZE];
+    std::vector<float> audio_buffer { AUDIO_BUFFER_SIZE };
     bool audio_buffer_up;
     void swap_with(std::vector<uint32_t> const&);
     

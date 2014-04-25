@@ -1,13 +1,43 @@
 #include "io.h"
 #include "bus.h"
 
+#include <samplerate.h>
+
 int a = 0;
 
 void audio_callback(void*, uint8_t *stream, int length){
   static IO& io = bus::io();
-  if(!io.audio_buffer_up) return;
-  memcpy(stream, (char*)io.audio_buffer, length);
-  io.audio_buffer_up = false;
+  auto& buffer = io.audio_buffer;
+  for (int i = 0; i < length; ++i)
+    stream[i] = 0;
+
+  // Receive 39.9502901786x more samples than wanted
+  // In:      1789773
+  // Out:       44800
+  // LCM: 80181830400
+  /*
+  if (length > buffer.size()) {
+    return;
+  }
+
+  float *out = new float[length];
+
+  SRC_DATA data;
+  data.data_in = buffer.data();
+  data.input_frames = length * 40;
+  data.data_out = out;
+  data.output_frames = length;
+  data.src_ratio = 44800.0/1789773.0;
+
+  int error = src_simple(&data, SRC_SINC_BEST_QUALITY, 1);
+  if (error) {
+    std::cout << "SRC error: " << src_strerror(error) << "\n";
+  } else {
+    src_float_to_short_array(out, (short*)stream, length);
+    buffer.erase(buffer.begin(), buffer.begin() + length * 40);
+  }
+  delete[] out;
+  */
 }
 
 using std::ifstream;

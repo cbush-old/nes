@@ -223,34 +223,14 @@ void APU::tick(){
   //static FILE* fp = popen("resample mr1789800 r48000 | aplay -fdat 2>/dev/null", "w");
   //r1789773
   
-  static int i = 0;
-  static int a = 0;
-  static int16_t buf[40];
-  
-  buf[a++] = sample;
-  
-  if(a >= 39){
-    a = 0;
-    int avg = 0;
-    for(int x = 0; x < 39; ++x){
-      avg += buf[x];
-    }
-    avg /= 39;
-    
-    bus::io().audio_buffer[i++] = avg;
-    if(i >= AUDIO_BUFFER_SIZE){
-      bus::io().audio_buffer_up = true;
-      i = 0;
-    }
-  }
-  
 
-  
-  
+  bus::io().audio_buffer.push_back(sample);
+
+
   #ifdef APLAY_SOUND
   static FILE* fp = popen(
-    "sox -t raw -c1 -b 16 -e signed-integer -r1789773 - -t raw -c2 - rate 48000 \
-| aplay -fdat",
+    "sox -t raw -c1 -b 16 -e signed-integer -r1789773 - -t raw -c2 - rate 48000 "
+    " | aplay -fdat",
     "w"
   );
 

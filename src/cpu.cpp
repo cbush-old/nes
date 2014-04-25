@@ -1,4 +1,5 @@
 #include "cpu.h"
+#include <thread>
 
 using std::cout;
 using std::setw;
@@ -149,9 +150,9 @@ void CPU::run(){
     last_PC = PC;
     last_op = next();
     
-#ifdef DEBUG_CPU
+  #ifdef DEBUG_CPU
     print_status();
-#endif
+  #endif
     
     (this->*ops[last_op])();
     
@@ -166,7 +167,7 @@ void CPU::run(){
       bus::ppu().tick3();
       bus::apu().tick();
     }
-    
+
     /*
     result_cycle += cycles[last_op];
     if(result_cycle != test_cyc){
