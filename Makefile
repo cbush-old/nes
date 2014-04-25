@@ -1,23 +1,27 @@
-all:
-	g++ -std=c++11 -c *.cpp -O3 -I. -Iinclude; make o
+CC= g++
+CFLAGS=-c -std=c++11 -O3
+INCLUDE= -I. -Iinclude -I/System/Library/Frameworks/OpenGL.framework/Headers -I/System/Library/Frameworks/ -I/opt/local/include
+LDFLAGS= -L/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries -L/opt/local/lib
+LIBS= -lSDL2 -lGL -lsamplerate
 
-o:
-	g++ *.o -lSDL2 -lGL
+SOURCES= \
+	src/apu.cpp     \
+	src/bus.cpp     \
+	src/cpu.cpp     \
+	src/io.cpp      \
+	src/main.cpp    \
+	src/ppu.cpp     \
+	src/rom.cpp
+
+OBJECTS= $(SOURCES:.cpp=.o)
+
+all: nes
+
+nes: $(OBJECTS)
+	$(CC) $(LDFLAGS) $(LIBS) $(OBJECTS) -o nes
+
+.cpp.o:
+	$(CC) $(CFLAGS) $(INCLUDE) $< -o $@
 
 clean:
-	rm *.o
-
-ppu:
-	g++ -std=c++11 -c ppu.cpp -O3 -I. -Iinclude; make o
-
-apu:
-	g++ -std=c++11 -c apu.cpp -O3 -I. -Iinclude; make o
-
-cpu:
-	g++ -std=c++11 -c cpu.cpp -O3 -I. -Iinclude; make o
-
-rom:
-	g++ -std=c++11 -c rom.cpp -O3 -I. -Iinclude; make o
-
-io:
-	g++ -std=c++11 -c io.cpp -O3 -I. -Iinclude; make o
+	rm src/*.o
