@@ -4,22 +4,34 @@
 #include <string>
 #include <vector>
 
-class ROM;
-class CPU;
-class PPU;
-class APU;
-class IO;
-
 namespace bus {
-  
-  CPU& cpu();
-  ROM& rom();
-  PPU& ppu();
-  APU& apu();
-  IO& io();
+
+  // Memory read
+  uint8_t ppu_reg_read(uint8_t);
+  uint8_t apu_read();
+  uint8_t io_input_state(uint8_t);
+  uint8_t& rom_memref(uint16_t);
+  uint8_t& rom_nt(uint8_t, uint16_t);
+  uint8_t& rom_vbank(uint16_t);
+
+  // Memory write
+  void ppu_reg_write(uint8_t, uint8_t);
+  void apu_write(uint8_t, uint16_t);
+  void rom_write(uint8_t, uint16_t);
+
+  // Debug
+  uint8_t debug_ppu_get_scanline();
+
+  // Tick
+  void ppu_tick3();
+  void apu_tick();
+  void io_swap_with(std::vector<uint32_t> const&);
+  void io_strobe();
+  uint8_t io_handle_input();
 
   void play(std::string const&);
-  
+  void start();
+
   uint8_t cpu_read(uint16_t);
   void pull_NMI();
   void pull_IRQ();

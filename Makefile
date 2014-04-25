@@ -1,5 +1,5 @@
 CC= g++
-CFLAGS=-c -std=c++11 -O3
+CFLAGS=-c -Wall -std=c++11 -O3
 INCLUDE= -I. -Iinclude -I/System/Library/Frameworks/OpenGL.framework/Headers -I/System/Library/Frameworks/ -I/opt/local/include
 LDFLAGS= -L/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries -L/opt/local/lib
 LIBS= -lSDL2 -lGL -lsamplerate

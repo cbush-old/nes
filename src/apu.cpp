@@ -191,10 +191,11 @@ void APU::tick(){
     
   }
 
+  /*
   // Mix the audio: Get the momentary sample from each channel and mix them.
   #define s(c) channel[c].tick<c==1 ? 0 : c>(*this)
   auto v = [](float m, float n, float d) { return n!=0.f ? m/n : d; };
-  //short sample = 30000 * (
+
   int16_t sample = 0x8000 * (
     v(
       95.88f,
@@ -216,16 +217,8 @@ void APU::tick(){
   );
     
   #undef s
-  // I cheat here: I did not bother to learn how to use SDL mixer, let alone use it in <5 lines of code,
-  // so I simply use a combination of external programs for outputting the audio.
-  // Hooray for Unix principles! A/V sync will be ensured in post-process.
-  //return; // Disable sound because already device is in use
-  //static FILE* fp = popen("resample mr1789800 r48000 | aplay -fdat 2>/dev/null", "w");
-  //r1789773
-  
 
-  bus::io().audio_buffer.push_back(sample);
-
+  // FIXME: send audio out now
 
   #ifdef APLAY_SOUND
   static FILE* fp = popen(
@@ -237,25 +230,27 @@ void APU::tick(){
   fputc(sample, fp);
   fputc(sample/256, fp);
   #endif
+  */
 }
 
-uint8_t APU::read(){
+uint8_t APU::read() {
   uint8_t res = 0;
-  for(unsigned c=0; c < 5; ++c) 
-    //res |= (!!channel[c].length_counter) << c;
-    res |= (channel[c].length_counter ? 1 << c : 0);
-  
-  if(PeriodicIRQ) 
-    res |= 0x40; 
-  
-  PeriodicIRQ = false;
+  for(unsigned c = 0; c < 5; ++c) {
+    res |= channel[c].length_counter ? 1 << c : 0;
+  }
 
-  if(DMC_IRQ)
+  if (PeriodicIRQ) {
+    res |= 0x40; 
+    PeriodicIRQ = false;
+  }
+
+  if(DMC_IRQ) {
     res |= 0x80;
-  
-  DMC_IRQ = false;
+    DMC_IRQ = false;
+  }
+
   bus::reset_IRQ();
   return res;
-  
+
 }
 

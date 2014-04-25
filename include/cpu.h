@@ -15,15 +15,7 @@
 #include <stdexcept>
 #include <sstream>
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_audio.h>
-#include <SDL2/SDL_opengl.h>
-
 #include "bus.h"
-#include "rom.h"
-#include "ppu.h"
-#include "apu.h"
-#include "io.h"
 
 class CPU {
   private:
@@ -66,10 +58,10 @@ class CPU {
     }
     
   public:
-    uint8_t read(uint16_t);
+    uint8_t read(uint16_t) const;
   
   private:
-    uint8_t write(uint8_t, uint16_t);
+    void write(uint8_t, uint16_t);
     void push(uint8_t);
     void push2(uint16_t);
     uint8_t pull();
@@ -79,19 +71,19 @@ class CPU {
     
     void addcyc();  
     
-    template<mode M>
-    uint8_t& getref(){
+    template <mode M>
+    uint8_t& getref() {
       uint16_t addr = (this->*M)();
       if(addr < 0x2000) return memory[addr & 0x7ff];
       if(addr < 0x4020){
         // this shouldn't happen
         return memory[0];
       }
-      return bus::rom()[addr];
+      return bus::rom_memref(addr);
     }
 
-    template<typename T> 
-    inline uint16_t sum_check_pgx(uint16_t addr, T x){
+    template <typename T> 
+    inline uint16_t sum_check_pgx(uint16_t addr, T x) {
       uint16_t r = addr + x;
       if((r&0xff00) != (addr&0xff00))
         addcyc();
@@ -105,13 +97,12 @@ class CPU {
     void load_state(State const&);
     void save_state(State&) const;
     int test_cyc { 0 };
-    
+
   private:
     inline void tick(){
       ++test_cyc;
-    
     }
-    
+
     // addressing modes
     inline uint16_t ACC(){ tick(); return 0; } // template only
     inline uint16_t X__(){ tick(); return 0; }
@@ -138,11 +129,11 @@ class CPU {
       // When on page boundary (i.e. $xxFF) IND gets LSB from $xxFF like normal 
       // but takes MSB from $xx00
       uint16_t addr = next2();
-      return addr&0xff == 0xff?
+      return (addr & 0xff) == 0xff?
         read(addr)|(read(addr&0xff00) << 8) :
         read(addr)|(read(addr+1) << 8);
     }
-    
+
     // some modes add cycles if page crossed
     inline uint16_t ABX_pgx(){ tick(); return sum_check_pgx(next2(), X); }
     inline uint16_t ABY_pgx(){ tick(); return sum_check_pgx(next2(), Y); }
@@ -151,7 +142,7 @@ class CPU {
       uint16_t addr { next() };
       return sum_check_pgx((uint16_t)read(addr)|(read((addr + 1)&0xff) << 8), Y);
     }
-    
+
     // register read/write
     inline void Accumulator(uint8_t i){ tick(); setZN(A = i); }
     inline void IndexRegX(uint8_t i){ tick(); setZN(X = i); }
@@ -164,7 +155,7 @@ class CPU {
     inline uint8_t ProcStatus(){ tick(); return P|0x10; }
     inline uint8_t StackPointer(){ tick(); return SP; }
     inline uint8_t AX(){ tick(); return A&X; } // unofficial
-    
+
     #include "cpu-ops.cc"
 
     static const op ops[256];
@@ -175,7 +166,7 @@ class CPU {
     }
 
     void print_status();
-  
+
   public:
     bool IRQ { true };
 };

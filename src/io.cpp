@@ -1,43 +1,44 @@
+#include <iostream>
+#include <thread>
+#include <cmath>
+#include <ctime>
+#include <map>
+#include <iomanip>
+#include <functional>
+#include <cctype>
+#include <fstream>
+
+#include <string>
+#include <stdexcept>
+#include <sstream>
+
 #include "io.h"
 #include "bus.h"
+
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
+
+#ifndef GL_GLEXT_PROTOTYPES
+#define GL_GLEXT_PROTOTYPES
+#endif
+
+#include <gl.h>
+#include <glext.h>
+
+#define AUDIO_BUFFER_SIZE 1000
 
 #include <samplerate.h>
 
 int a = 0;
 
 void audio_callback(void*, uint8_t *stream, int length){
-  static IO& io = bus::io();
-  auto& buffer = io.audio_buffer;
   for (int i = 0; i < length; ++i)
-    stream[i] = 0;
+    stream[i] = 0; // fixme
 
   // Receive 39.9502901786x more samples than wanted
   // In:      1789773
   // Out:       44800
-  // LCM: 80181830400
-  /*
-  if (length > buffer.size()) {
-    return;
-  }
 
-  float *out = new float[length];
-
-  SRC_DATA data;
-  data.data_in = buffer.data();
-  data.input_frames = length * 40;
-  data.data_out = out;
-  data.output_frames = length;
-  data.src_ratio = 44800.0/1789773.0;
-
-  int error = src_simple(&data, SRC_SINC_BEST_QUALITY, 1);
-  if (error) {
-    std::cout << "SRC error: " << src_strerror(error) << "\n";
-  } else {
-    src_float_to_short_array(out, (short*)stream, length);
-    buffer.erase(buffer.begin(), buffer.begin() + length * 40);
-  }
-  delete[] out;
-  */
 }
 
 using std::ifstream;
@@ -123,6 +124,7 @@ uint8_t IO::handle_input(){
         return 1;
     }
   }
+  return 0;
 }
 
 uint8_t IO::input_state(uint8_t i){
@@ -179,7 +181,7 @@ IO::IO():
     )
   ),
   glcon(
-    SDL_GL_CreateContext(window)
+    new SDL_GLContext(SDL_GL_CreateContext(window))
   )
 {
 
@@ -232,6 +234,7 @@ IO::~IO(){
   SDL_CloseAudio();
   
   glDeleteTextures(1, &texture);
-  SDL_GL_DeleteContext(glcon);
+  SDL_GL_DeleteContext(*static_cast<SDL_GLContext*>(glcon));
+  delete static_cast<SDL_GLContext*>(glcon);
   SDL_DestroyWindow(window);
 }

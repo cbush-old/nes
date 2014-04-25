@@ -15,33 +15,35 @@
 #include <stdexcept>
 #include <sstream>
 
-struct Mapperf;
+class Mapperf;
 
-struct ROM {
-  
-  friend class PPU;
-  friend class CPU;
-  
-  static const unsigned VROM_Granularity = 0x400, VROM_Pages = 0x2000 / VROM_Granularity;
-  static const unsigned ROM_Granularity = 0x2000, ROM_Pages = 0x10000 / ROM_Granularity;
-
-  std::vector<uint8_t> nram, rom, vram, pram;
-  std::vector<uint8_t*> nt, bank, vbank;
-  std::function<void(ROM&, uint8_t, uint16_t)> writef;
-
-  protected:
-    uint8_t& operator[](uint16_t);
-    inline uint8_t& vbank_ref(uint16_t addr){
-      return vbank[(addr/VROM_Granularity)%VROM_Pages][addr%VROM_Granularity];
-    }
-
-    inline void write(uint8_t value, uint16_t addr){
-      if(0x8000 <= addr)
-        writef(*this, value, addr);
-    }
-
+class ROM {
   public:
     ROM(std::string const&);
+
+  public:
+    uint8_t& memref(uint16_t);
+    uint8_t& vbank(uint16_t addr);
+    uint8_t& nt(uint8_t, uint16_t);
+    void write(uint8_t value, uint16_t addr);
+
+  protected:
+    static const unsigned VROM_Granularity = 0x400, VROM_Pages = 0x2000 / VROM_Granularity;
+    static const unsigned ROM_Granularity = 0x2000, ROM_Pages = 0x10000 / ROM_Granularity;
+
+  protected:
+    // Real memory
+    std::vector<uint8_t> _nram;
+    std::vector<uint8_t> _rom;
+    std::vector<uint8_t> _vram;
+    std::vector<uint8_t> _pram;
+
+    // Mirrors
+    std::vector<uint8_t*> _nt;
+    std::vector<uint8_t*> _bank;
+    std::vector<uint8_t*> _vbank;
+
+    std::function<void(ROM&, uint8_t, uint16_t)> writef;
 
 };
 

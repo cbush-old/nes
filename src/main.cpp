@@ -36,15 +36,9 @@ int main(int argc, char* argv[]){
   try {
   
     bus::play(argv[1]);
-    auto& cpu = bus::cpu();
-    cpu.run();
-    
-    
-  } catch(exception const& e){
-    
-    cout << e.what() << '\n';
-    
-  } catch(...){
+    bus::start();
+
+  } catch(int){
   
     cout << "died\n";
     

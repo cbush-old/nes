@@ -1,5 +1,7 @@
 #include "ppu.h"
 
+#include <SDL2/SDL.h>
+
 using std::cout;
 using std::setw;
 using std::hex;
@@ -10,54 +12,9 @@ using std::ifstream;
 using std::exception;
 using std::runtime_error;
 
-static uint32_t bisqwit_ntsc_pixel(unsigned pixel, int offset)
-{
-  // The input value is a NES color index (with de-emphasis bits).
-  // We need RGB values. To produce a RGB value, we emulate the NTSC circuitry.
-  // For most part, this process is described at:
-  //    http://wiki.nesdev.com/w/index.php/NTSC_video
-  // Incidentally, this code is shorter than a table of 64*8 RGB values.
-  static uint32_t palette[3][64][512] = {}, prev=~0u;
-  // Caching the generated colors
-  if(prev == ~0u)
-      for(int o=0; o<3; ++o)
-      for(int u=0; u<3; ++u)
-      for(int p0=0; p0<512; ++p0)
-      for(int p1=0; p1<64; ++p1)
-      {
-          // Calculate the luma and chroma by emulating the relevant circuits:
-          auto s = "\372\273\32\305\35\311I\330D\357}\13D!}N";
-          int y=0, i=0, q=0;
-          for(int p=0; p<12; ++p) // 12 samples of NTSC signal constitute a color.
-          {
-              // Sample either the previous or the current pixel.
-              int r = (p+o*4)%12, pixel = r < 8-u*2 ? p0 : p1; // Use pixel=p0 to disable artifacts.
-              // Decode the color index.
-              int c = pixel%16, l = c<0xE ? pixel/4 & 12 : 4, e=p0/64;
-              // NES NTSC modulator (square wave between up to four voltage levels):
-              int b = 40 + s[(c > 12*((c+8+p)%12 < 6)) + 2*!(0451326 >> p/2*3 & e) + l];
-              // Ideal TV NTSC demodulator:
-              y += b;
-              i += b * int(std::cos(M_PI * p / 6) * 5909);
-              q += b * int(std::sin(M_PI * p / 6) * 5909);
-          }
-          // Convert the YIQ color into RGB
-          auto gammafix = [=](float f) { return f <= 0.f ? 0.f : std::pow(f, 2.2f / 1.8f); };
-          auto clamp    = [](int v) { return v>255 ? 255 : v; };
-          // Store color at subpixel precision
-          if(u==2) palette[o][p1][p0] += 0x10000*clamp(255 * gammafix(y/1980.f + i* 0.947f/9e6f + q* 0.624f/9e6f));
-          if(u==1) palette[o][p1][p0] += 0x00100*clamp(255 * gammafix(y/1980.f + i*-0.275f/9e6f + q*-0.636f/9e6f));
-          if(u==0) palette[o][p1][p0] += 0x00001*clamp(255 * gammafix(y/1980.f + i*-1.109f/9e6f + q* 1.709f/9e6f));
-      }
-  
-  prev = pixel;
-  // Return RGB color
-  return (palette[offset][prev%64][pixel] << 8) | 0xff;
-  
-}
 
 template<int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256>
-static const void render2(PPU& ppu){
+void render(PPU& ppu) {
   #define loopy_w ppu.loopy_w
   #define pat_addr ppu.pat_addr
   #define bg_shift_pat ppu.bg_shift_pat
@@ -82,7 +39,7 @@ static const void render2(PPU& ppu){
 
   #ifdef DEBUG_PPU_RENDER_TEMPLATES
   std::cout 
-    << "render2<" 
+    << "render<" 
     << (int)X
     << ", " << (int)X_MOD_8
     << ", " << (int)TDM
@@ -226,8 +183,7 @@ static const void render2(PPU& ppu){
     sprtmp = OAM[reg.OAMADDR];
   }
   
-  if(X_LT_256){
-    if(scanline >= 0)
+  if(X_LT_256 && scanline >= 0) {
       render_pixel();
   }
   #undef ioaddr
@@ -255,14 +211,14 @@ static const void render2(PPU& ppu){
 
 
 //<int X, int X_MOD_8, int Tile_Decode_Mode, bool X_ODD_64_TO_256, bool X_LT_256>
-#define X(a) render2<\
+#define X(a) render<\
   (((a)==0)||((a)==251)||((a)==256)||((a)==304)||((a)==337)?(a):1),\
-  ((a)%8),\
+  ((a) & 7),\
   bool(0x10ffff & (1u << ((a)/16))),\
   bool(((a) & 1) && ((a) >= 64) && ((a) < 256)),\
   bool((a) < 256)>
 #define Y(a) X(a),X(a+1),X(a+2),X(a+3),X(a+4),X(a+5),X(a+6),X(a+7),X(a+8),X(a+9)
-static const void(*render2funcs[342])(PPU&){
+const std::array<std::function<void(PPU&)>, 342> renderfuncs {
   Y(  0),Y( 10),Y( 20),Y( 30),Y( 40),Y( 50),Y( 60),Y( 70),Y( 80),Y( 90),
   Y(100),Y(110),Y(120),Y(130),Y(140),Y(150),Y(160),Y(170),Y(180),Y(190),
   Y(200),Y(210),Y(220),Y(230),Y(240),Y(250),Y(260),Y(270),Y(280),Y(290),
@@ -272,37 +228,11 @@ static const void(*render2funcs[342])(PPU&){
 #undef Y
 
 
-
 #define N_FRAMERATES 256
 int framerate[N_FRAMERATES];
-/*
-double framerate[N_FRAMERATES];
-void print_framerate(){
-  
-  double sum = 0;
-  for(int i = 0; i < N_FRAMERATES; ++i){
-    sum += framerate[i];
-  }
-  sum /= N_FRAMERATES;
-  cout << "Average framerate: " << (1.0/(sum/CLOCKS_PER_SEC)) << "/s\n";
 
-}
-
-double clock_frame(){
-  static clock_t last_clock { 0 };
-  static int i { 0 };
-  clock_t tick = clock();
-  double d = difftime(tick, last_clock);
-  framerate[i++%N_FRAMERATES] = d;
-  last_clock = tick;
-  if(i%N_FRAMERATES==0)
-    print_framerate();
-  return d;
-}
-*/
 
 void print_framerate(){
-  
   double sum = 0;
   for(int i = 0; i < N_FRAMERATES; ++i){
     sum += framerate[i];
@@ -319,22 +249,33 @@ int clock_frame(){
   int d = tick - last_clock;
   framerate[i++%N_FRAMERATES] = d;
   last_clock = tick;
+
+  #ifdef PPU_DEBUG_PRINT_FRAMERATE
   if(i%N_FRAMERATES==0)
     print_framerate();
+  #endif
+
   return d;
 }
 #undef N_FRAMES
 
 
 uint8_t& PPU::mmap(uint16_t addr){
-  
+
   addr &= 0x3fff;
-  if(addr < 0x2000) return bus::rom().vbank_ref(addr);
-  if(addr < 0x3f00){
-    return bus::rom().nt[(addr >> 10)&3][addr&0x3ff];
+
+  if(addr < 0x2000) {
+
+    return bus::rom_vbank(addr);
+
+  } else if(addr < 0x3f00) {
+
+    return bus::rom_nt((addr >> 10) & 3, addr & 0x3ff);
+
   }
-  //return palette[addr&3 == 0 ? addr & 0xf : addr & 0x1f];
+
   return palette[addr & (0xf | (((addr&3)!=0)<<4))];
+
 }
 
 
@@ -349,7 +290,7 @@ static const uint32_t RGB[64] {
   0xF8D878FF, 0xD8F878FF, 0xB8F8B8FF, 0xB8F8D8FF, 0x00FCFCFF, 0xF8D8F8FF, 0x000000FF, 0x000000FF,
 };
 
-void PPU::render_pixel(){
+void PPU::render_pixel() {
   
   // this is so bisqwit!
   
@@ -405,81 +346,77 @@ void PPU::render_pixel(){
 
   pixel = palette[(attr * 4 + pixel) & 0x1f] & (0x30 + (!reg.grayscale) * 0x0f);
 
-  
-  
-  #define USE_BISQWIT_NTSC
-  #ifdef USE_BISQWIT_NTSC
-  framebuffer[scanline * 256 + cycle] = bisqwit_ntsc_pixel(pixel | ((reg.intensify_rgb)<<6), cycle%3);
-  #else
   framebuffer[scanline * 256 + cycle] = RGB[pixel&0x3f];
-  #endif
-  
-  
+
 }
 
-void PPU::tick3(){
-  for(int i = 0; i < 3; ++i){
-    switch(vblank_state){
-      case -5: 
-        reg.PPUSTATUS = 0; 
-        break;
-      case 2: 
-        reg.vblanking = true; 
-        NMI_pulled = false; 
-        break;
-      case 0: 
-        if(!NMI_pulled && reg.vblanking && reg.NMI_enabled){
-          bus::pull_NMI();
-          NMI_pulled = true;
-        }
-        break;
-    }
 
-    if(vblank_state != 0){
-      vblank_state += (vblank_state < 0) * 2 - 1;
-    }
 
-    if(reg.rendering_enabled){
-      if(scanline < 240){
-        render2funcs[cycle](*this);
+
+void PPU::tick() {
+
+  switch (vblank_state) {
+    case 0: 
+      if(!NMI_pulled && reg.vblanking && reg.NMI_enabled){
+        bus::pull_NMI();
+        NMI_pulled = true;
       }
-    }
+      break;
+    case 2: 
+      reg.vblanking = true; 
+      NMI_pulled = false; 
+      break;
+    case -5: 
+      reg.PPUSTATUS = 0; 
+      break;
+  }
 
-    if(++cycle > scanline_end){
+  if (vblank_state != 0) {
+    vblank_state += (vblank_state < 0) * 2 - 1;
+  }
 
-      cycle = 0;
-      scanline_end = 341;
-      
-      static unsigned skipframe = 0;
-      
-      switch(++scanline){
-
-        case 261:
-          scanline = -1;
-          loopy_w ^= 1;
-          vblank_state = -5;
-          break;
-
-        case 241:
-          // events
-          if(bus::io().handle_input()) 
-            throw 1;
-          
-          //if((skipframe++&3)==0)
-            bus::io().swap_with(framebuffer);
-          
-          int d = 17 - clock_frame();
-          
-          SDL_Delay(d * !(d<0));
-          
-          vblank_state = 2;
-          break;
-      }
+  if (reg.rendering_enabled) {
+    if (scanline < 240) {
+      (*tick_renderer)(*this);
+      ++tick_renderer;
     }
   }
+
+  if(++cycle > scanline_end){
+
+    cycle = 0;
+    tick_renderer = renderfuncs.begin();
+    scanline_end = 341;
+
+    switch(++scanline){
+
+      case 261:
+        scanline = -1;
+        loopy_w ^= 1;
+        vblank_state = -5;
+        break;
+
+      case 241:
+        // events
+        if(bus::io_handle_input()) 
+          throw 1;
+
+        bus::io_swap_with(framebuffer);
+
+        int d = 17 - clock_frame();
+
+        SDL_Delay(d * !(d<0));
+        
+        vblank_state = 2;
+        break;
+
+    }
+  }
+
 }
 
 PPU::PPU(): framebuffer(256 * 240), memory(0x800), palette(0x20), OAM(0x100), 
+  tick_renderer(renderfuncs.begin()),
 
   #define BAD_READ [&]{ return 0; }
   regr {
@@ -507,7 +444,7 @@ PPU::PPU(): framebuffer(256 * 240), memory(0x800), palette(0x20), OAM(0x100),
   #undef BAD_READ
 
 
-  #define BAD_WRITE [&](uint8_t){ return; }    
+  #define BAD_WRITE [&](uint8_t){ return; }
   regw {
     /* 0 */ [&](uint8_t x) {
       reg.PPUCTRL = x; 
@@ -624,4 +561,16 @@ void PPU::save_state(State& state) const {
   state.NMI_pulled = NMI_pulled;
   
 }
+
+uint8_t PPU::reg_read(uint8_t i) const {
+  return regr[i]();
+}
+
+void PPU::reg_write(uint8_t value, uint8_t i) {
+  regw[value](i);
+}
+
+uint8_t PPU::debug_get_scanline() const {
+  return scanline;
+};
 
