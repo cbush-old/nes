@@ -61,7 +61,7 @@ void CPU::write(uint8_t value, uint16_t addr) {
         }
       } break;
       case 0x16: 
-        controller[!(value & 1)]->strobe();
+        controller[value & 1]->strobe();
         break;
       default:
         apu->write(value, addr & 0x1f);

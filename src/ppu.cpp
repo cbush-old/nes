@@ -250,7 +250,7 @@ int clock_frame(){
   framerate[i++%N_FRAMERATES] = d;
   last_clock = tick;
 
-  #ifdef PPU_DEBUG_PRINT_FRAMERATE
+  #ifdef DEBUG_PPU_PRINT_FRAMERATE
   if(i%N_FRAMERATES==0)
     print_framerate();
   #endif

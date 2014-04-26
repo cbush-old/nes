@@ -92,7 +92,7 @@ ROM::ROM(std::string const& src):
     prg_ram_size { file.get() },
     flag9 { file.get() },
     flag10 { file.get() };
-    
+
   file.seekg(0x10);
   
   int mapper_id { (flag6 >> 4) | (flag7 & 0xf0) };

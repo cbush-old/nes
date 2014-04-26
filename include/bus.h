@@ -173,7 +173,7 @@ class IInputDevice {
  **/
 class IROM : public IWriteableComponent {
   public:
-    ~IROM() {}
+    virtual ~IROM(){}
 
   public:
     /**

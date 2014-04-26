@@ -109,10 +109,8 @@ class CPU : public ICPU {
     void set_state(State const&);
     State const& get_state() const;
 
-  public:
-    int test_cyc { 0 };
-
   private:
+    int test_cyc { 0 };
     inline void tick(){
       ++test_cyc;
     }
@@ -180,8 +178,6 @@ class CPU : public ICPU {
     }
 
     void print_status();
-
-  public:
     bool IRQ { true };
 
 };

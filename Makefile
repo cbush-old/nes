@@ -1,18 +1,20 @@
 CC= g++
-CFLAGS=-c -Wall -std=c++11 -O3
+CFLAGS=-c -Wall -std=c++11 -O3 -DDEBUG_PPU_PRINT_FRAMERATE
 INCLUDE= -I. -Iinclude -I/System/Library/Frameworks/OpenGL.framework/Headers -I/System/Library/Frameworks/ -I/opt/local/include
 LDFLAGS= -L/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries -L/opt/local/lib
 LIBS= -lSDL2 -lGL -lsamplerate
 
 SOURCES= \
 	src/apu.cpp     \
-	src/bus.cpp     \
 	src/cpu.cpp     \
-	src/io.cpp      \
-	src/main.cpp    \
 	src/ppu.cpp     \
 	src/rom.cpp     \
-	src/nes.cpp
+	src/nes.cpp     \
+	src/controller_std.cpp \
+	src/audio_sdl.cpp \
+	src/video_sdl.cpp \
+	src/input_sdl.cpp \
+	main.cpp
 
 OBJECTS= $(SOURCES:.cpp=.o)
 

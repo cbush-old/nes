@@ -3,14 +3,18 @@
 #include "cpu.h"
 #include "ppu.h"
 #include "apu.h"
-#include "io.h"
+
+#include "controller_std.h"
+#include "audio_sdl.h"
+#include "video_sdl.h"
+#include "input_sdl.h"
 
 NES::NES(std::string const& game)
     : video (new SDLVideoDevice())
     , audio (new SDLAudioDevice())
     , controller {
-        new GamePad(),
-        new GamePad(),
+        new Std_controller(),
+        new Std_controller(),
     }
     , input (new SDLInputDevice(*controller[0]))
     , rom (new ROM(game))
@@ -30,6 +34,7 @@ NES::~NES() {
     delete video;
     delete audio;
     delete input;
+    delete rom;
 }
 
 void NES::pull_NMI() {
