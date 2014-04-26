@@ -55,7 +55,7 @@ SDLVideoDevice::~SDLVideoDevice() {
 }
 
 
-void SDLVideoDevice::set_buffer(Raster const& raster) {
+void SDLVideoDevice::set_buffer(Framebuffer const& buffer) {
   glTexSubImage2D(
     GL_TEXTURE_2D,
     0,
@@ -65,7 +65,7 @@ void SDLVideoDevice::set_buffer(Raster const& raster) {
     240,
     GL_RGBA, 
     GL_UNSIGNED_INT_8_8_8_8, 
-    (const GLvoid*)raster.data()
+    (const GLvoid*)buffer.data()
   );
   glBegin(GL_TRIANGLE_STRIP);
   glTexCoord2f(0.0, 0.0f);  glVertex2i(0,0);

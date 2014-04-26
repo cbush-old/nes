@@ -7,7 +7,7 @@
 #include "bus.h"
 #include "bit.h"
 
-class APU : public IComponent {
+class APU : public IAPU {
   private:
     IBus *bus;
 
@@ -16,8 +16,8 @@ class APU : public IComponent {
     ~APU();
 
   public:
-    uint8_t read(uint16_t = 0) const;
-    void write(uint8_t, uint16_t);
+    uint8_t read() const;
+    void write(uint8_t, uint8_t);
 
     State dummy; // temp
     State const& get_state() const { return dummy; }

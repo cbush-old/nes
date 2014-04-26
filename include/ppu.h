@@ -18,7 +18,11 @@
 #include "bit.h"
 #include "bus.h"
 
-class PPU : public IComponent {
+
+class PPU : public IPPU {
+  public:
+    using ObjectAttributeMemory = std::array<uint8_t, 0x100>;
+    using Palette = std::array<uint8_t, 0x20>;
 
   private:
     IBus *bus;
@@ -28,29 +32,29 @@ class PPU : public IComponent {
 
   public:
     PPU(IBus *bus, IROM *rom, IInputDevice *input, IVideoDevice *video);
-    ~PPU();
 
   public:
+    /**
+     * @brief advance the PPU by one step.
+     **/
     void tick();
 
-  public:
-    State const& get_state() const;
-    void set_state(State const&);
+    /**
+     * @brief read from a specific register
+     * @param index the index, 0-7, of the register to read
+     * @note reading certain registers has consequences to the internal state.
+     **/
+    uint8_t read(uint8_t index) const;
 
-  public:
-    uint8_t read(uint16_t reg) const;
-    void write(uint8_t, uint16_t);
-
-  public:
-    uint8_t debug_get_scanline() const;
-    std::string color(int x);
-    void dump_nametables();
-    void print_status();
+    /**
+     * @brief write a value to a register
+     * @param what the value to write
+     * @param where index (0-7) of the register
+     **/
+    void write(uint8_t what, uint8_t where);
 
   private:
-    std::vector<uint32_t> framebuffer;
-    
-    union {
+    mutable union {
       
       uint32_t raw;
       
@@ -83,7 +87,7 @@ class PPU : public IComponent {
       
     } reg;
     
-    union {
+    mutable union {
       uint32_t data;
 
       bit< 3, 16> raw;
@@ -102,16 +106,20 @@ class PPU : public IComponent {
 
     } scroll, vram;
 
-    bool loopy_w { false }, NMI_pulled { false };
+    mutable bool loopy_w { false };
+    bool NMI_pulled { false };
 
     int
       cycle { 0 },
       scanline { 241 },
       scanline_end { 341 },
-      read_buffer { 0 },
       vblank_state { 0 };
 
-    std::vector<uint8_t> memory, palette, OAM;
+    mutable int read_buffer { 0 };
+
+    ObjectAttributeMemory OAM;
+    Palette palette;
+    Framebuffer framebuffer;
 
     unsigned pat_addr, sprinpos, sproutpos, sprrenpos, sprtmp;
     uint16_t tileattr, tilepat, ioaddr;
@@ -127,11 +135,21 @@ class PPU : public IComponent {
 
     std::array<std::function<void(PPU&)>, 342>::const_iterator tick_renderer;
 
-    uint8_t& mmap(uint16_t addr);
     void render_pixel();
 
-    const std::vector<std::function<uint8_t()>> regr;
-    const std::vector<std::function<void(uint8_t)>> regw;
+    void regw_control(uint8_t value);
+    void regw_mask(uint8_t value);
+    void regw_OAM_address(uint8_t value);
+    void regw_OAM_data(uint8_t value);
+    void regw_scroll(uint8_t value);
+    void regw_address(uint8_t value);
+    void regw_data(uint8_t value);
+    uint8_t regr_status() const;
+    uint8_t regr_OAM_data() const;
+    uint8_t regr_data() const;
+
+    void write_vram(uint8_t value);
+    uint8_t read_vram(uint16_t addr) const;
 
 };
 

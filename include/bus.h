@@ -3,28 +3,12 @@
 
 #include <string>
 #include <vector>
+#include <array>
+
+using Framebuffer = std::array<uint32_t, 256 * 240>;
 
 struct State {
-
-  uint8_t P, A, X, Y, SP;
-  uint16_t PC;
-  int result_cycle;
-
-  std::vector<uint8_t> cpu_memory, ppu_memory, palette;
-
-  uint32_t ppu_reg, scroll, vram;
-  
-  int read_buffer, vblank_state;
-  bool loopy_w, NMI_pulled;
-  
-  State():
-    cpu_memory(0x800, 0xff),
-    ppu_memory(0x800),
-    palette(0x20)
-    {}
-
 };
-
 
 /**
  * @brief Interface of writeable component
@@ -45,37 +29,60 @@ class IWriteableComponent {
 
 
 /**
- * @brief Interface of an onboard component
+ * @brief Interface of a picture processing unit
  **/
-class IComponent : public IWriteableComponent {
+class IPPU {
   public:
-    virtual ~IComponent(){}
+    virtual ~IPPU(){}
 
   public:
     /**
-     * @brief read a memory location
-     * @note may have non-const side-effects depending on the component
-     * @param addr the address to read
+     * @brief read a register
+     * @note may have non-const side-effects depending on the register
+     * @param index the register (0-7) to read
      **/
-    virtual uint8_t read(uint16_t addr = 0) const =0;
+    virtual uint8_t read(uint8_t index) const =0;
 
-  public:
+    /**
+     * @brief write a value to a register
+     * @param value the value to write
+     * @param index the register (0-7) to write to
+     **/
+    virtual void write(uint8_t value, uint8_t index) =0;
+
     /**
      * @brief advance the component's internal clock
      **/
     virtual void tick() =0;
 
+};
+
+
+/**
+ * @brief Interface of an onboard audio processing unit
+ **/
+class IAPU {
+  public:
+    virtual ~IAPU(){}
+
+  public:
     /**
-     * @brief retrieve the current state of the component
-     * @return the current state object of the component
+     * @brief read the current state of the apu
+     * @note has side effects
      **/
-    virtual State const& get_state() const =0;
+    virtual uint8_t read() const =0;
 
     /**
-     * @brief set the current state of the component
-     * @param state the new state
+     * @brief write a value to a register
+     * @param value the value to write
+     * @param index the register to write to
      **/
-    virtual void set_state(State const& state) =0;
+    virtual void write(uint8_t value, uint8_t index) =0;
+
+    /**
+     * @brief advance the component's internal clock
+     **/
+    virtual void tick() =0;
 
 };
 
@@ -123,9 +130,6 @@ class IController {
 };
 
 
-using Raster = std::vector<uint32_t>;
-
-
 /**
  * Interface for a video output device
  **/
@@ -136,9 +140,9 @@ class IVideoDevice {
   public:
     /**
      * @brief set the video buffer to the given raster
-     * @param raster the pixel data to set
+     * @param buffer the pixel data to set
      **/
-    virtual void set_buffer(Raster const& raster) =0;
+    virtual void set_buffer(Framebuffer const& buffer) =0;
 
 };
 
@@ -190,6 +194,8 @@ class IROM : public IWriteableComponent {
      * @return a reference to the value at the nametable memory location
      **/
     virtual uint8_t& getntref(uint8_t table, uint16_t addr) =0;
+    virtual uint8_t const& getntref(uint8_t table, uint16_t addr) const =0;
+    virtual void write_nt(uint8_t value, uint8_t table, uint16_t addr) =0;
 
     /**
      * @brief retrieve a reference to a location in the vbank
@@ -197,6 +203,7 @@ class IROM : public IWriteableComponent {
      * @return a reference to the vbank location
      **/
     virtual uint8_t& getvbankref(uint16_t addr) =0;
+    virtual uint8_t const& getvbankref(uint16_t addr) const =0;
 
 };
 
@@ -220,12 +227,17 @@ class IBus {
 /**
  * @brief Interface for the CPU
  **/
-class ICPU : public IBus, public IComponent {
+class ICPU {
   public:
     virtual ~ICPU(){}
 
   public:
     virtual void run() =0;
+
+  public:
+    virtual void pull_NMI() =0;
+    virtual void pull_IRQ() =0;
+    virtual void reset_IRQ() =0;
 
 };
 
@@ -240,8 +252,8 @@ class NES : public IBus {
     IController *controller[2];
     IInputDevice *input;
     IROM *rom { nullptr };
-    IComponent *ppu;
-    IComponent *apu;
+    IPPU *ppu;
+    IAPU *apu;
     ICPU *cpu;
 
   public:

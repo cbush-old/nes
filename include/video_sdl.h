@@ -9,7 +9,7 @@ class SDLVideoDevice : public IVideoDevice {
     ~SDLVideoDevice();
 
   public:
-    void set_buffer(Raster const& raster);
+    void set_buffer(Framebuffer const& buffer);
 
   private:
     struct SDL_Window *window;

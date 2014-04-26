@@ -17,7 +17,7 @@ const uint16_t APU::DMCperiods[16] {
   428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54 
 };
 
-void APU::write(uint8_t value, uint16_t index){
+void APU::write(uint8_t value, uint8_t index){
   Channel& ch = channel[(index/4)%5];
   switch(index < 0x10 ? index&3 : index)
   {
@@ -236,7 +236,7 @@ void APU::tick(){
   */
 }
 
-uint8_t APU::read(uint16_t /* unused */) const {
+uint8_t APU::read() const {
   uint8_t res = 0;
   for(unsigned c = 0; c < 5; ++c) {
     res |= channel[c].length_counter ? 1 << c : 0;

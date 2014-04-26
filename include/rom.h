@@ -28,6 +28,9 @@ class ROM : public IROM {
     uint8_t& getmemref(uint16_t);
     uint8_t& getvbankref(uint16_t addr);
     uint8_t& getntref(uint8_t, uint16_t);
+    uint8_t const& getvbankref(uint16_t addr) const;
+    uint8_t const& getntref(uint8_t, uint16_t) const;
+    void write_nt(uint8_t value, uint8_t table, uint16_t addr);
     void write(uint8_t value, uint16_t addr);
 
   protected:

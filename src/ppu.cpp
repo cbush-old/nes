@@ -33,7 +33,7 @@ void render(PPU& ppu) {
   #define OAM2 ppu.OAM2
   #define reg ppu.reg
   #define tilepat ppu.tilepat
-  #define mmap ppu.mmap
+  #define mmap ppu.read_vram
   #define scanline_end ppu.scanline_end
   #define render_pixel ppu.render_pixel
 
@@ -260,21 +260,46 @@ int clock_frame(){
 #undef N_FRAMES
 
 
-uint8_t& PPU::mmap(uint16_t addr){
+void PPU::write_vram(uint8_t value) {
 
-  addr &= 0x3fff;
+  uint16_t addr = vram.raw & 0x3fff;
 
-  if(addr < 0x2000) {
+  if (addr < 0x2000) { // Pattern table
 
-    return rom->getvbankref(addr);
+    // TODO: possible if cart has CHR RAM?
 
-  } else if(addr < 0x3f00) {
+  } else if (addr < 0x3f00) { // Name table
 
-    return rom->getntref((addr >> 10) & 3, addr & 0x3ff);
+    rom->write_nt(value, (addr >> 10) & 3, addr & 0x3ff);
+
+  } else { // Palette
+
+    palette[addr & (0xf | (((addr & 3) != 0) << 4))] = value;
 
   }
 
-  return palette[addr & (0xf | (((addr&3)!=0)<<4))];
+}
+
+// http://wiki.nesdev.com/w/index.php/PPU_memory_map
+uint8_t PPU::read_vram(uint16_t addr) const {
+
+  addr &= 0x3fff;
+
+  if (addr < 0x2000) { // Pattern table
+
+    return rom->getvbankref(addr);
+
+  } else if (addr < 0x3f00) { // Name table
+
+    return rom->getntref((addr >> 10) & 3, addr & 0x3ff);
+
+  } else { // Palette http://wiki.nesdev.com/w/index.php/PPU_palettes
+
+    // Retrieve the palette index; address above 0x3f20 are mirrors of 0x3f00 to 0x3f1f.
+    // Additionally, index 10, 14, 18 and 1C are mirrors of 0, 4, 8 and C respectively.
+    return palette[addr & (0xf | (((addr & 3) != 0) << 4))];
+
+  }
 
 }
 
@@ -413,172 +438,98 @@ void PPU::tick() {
 
 }
 
+void PPU::regw_control(uint8_t value) {
+  reg.PPUCTRL = value; 
+  scroll.base_nta = reg.base_nta; 
+}
+
+void PPU::regw_mask(uint8_t value) {
+  reg.PPUMASK = value;
+}
+
+void PPU::regw_OAM_address(uint8_t value) {
+  reg.OAMADDR = value;
+}
+
+void PPU::regw_OAM_data(uint8_t value) {
+  OAM[reg.OAMADDR++] = value;
+}
+
+void PPU::regw_scroll(uint8_t value) {
+  if (loopy_w) {
+    scroll.yfine = value & 7;
+    scroll.ycoarse = value >> 3;
+  } else {
+    scroll.xscroll = value;
+  }
+  loopy_w ^= 1;
+}
+
+void PPU::regw_address(uint8_t value) {
+  if (loopy_w) {
+    scroll.vaddr_lo = value;
+    vram.raw = (unsigned)scroll.raw;
+  } else {
+    scroll.vaddr_hi = value & 0x3f;
+  }
+  loopy_w ^= 1;
+}
+
+
+void PPU::regw_data(uint8_t value) {
+  write_vram(value);
+  vram.raw = vram.raw + (bool(reg.vramincr) * 31 + 1);
+}
+
+uint8_t PPU::regr_status() const {
+  uint8_t result { reg.PPUSTATUS };
+  reg.vblanking = false;
+  loopy_w = false;
+  return result;
+}
+
+uint8_t PPU::regr_OAM_data() const {
+  return OAM[reg.OAMADDR] & (reg.OAM_data == 2 ? 0xE3 : 0xFF);
+}
+
+uint8_t PPU::regr_data() const {
+  uint8_t result = read_buffer;
+  read_buffer = read_vram(vram.raw);
+  vram.raw = vram.raw + (!!reg.vramincr * 31 + 1);
+  return result;
+}
+
 PPU::PPU(IBus *bus, IROM *rom, IInputDevice *input, IVideoDevice *video)
   : bus(bus)
   , rom(rom)
   , input(input)
   , video(video)
-  , framebuffer(256 * 240)
-  , memory(0x800)
-  , palette(0x20)
-  , OAM(0x100)
-  , tick_renderer(renderfuncs.begin()),
-
-  #define BAD_READ [&]{ return 0; }
-  regr {
-    /* 0 */ BAD_READ,
-    /* 1 */ BAD_READ,
-    /* 2 */ [&]{
-      uint8_t result { reg.PPUSTATUS };
-      reg.vblanking = false;
-      loopy_w = false;
-      return result;
-    },
-    /* 3 */ BAD_READ,
-    /* 4 */ [&]{
-      return OAM[reg.OAMADDR] & (reg.OAM_data == 2 ? 0xE3 : 0xFF);
-    },
-    /* 5 */ BAD_READ,
-    /* 6 */ BAD_READ,
-    /* 7 */ [&]{
-      uint8_t result = read_buffer;
-      read_buffer = mmap(vram.raw);
-      vram.raw = vram.raw + (!!reg.vramincr * 31 + 1);
-      return result;
-    }
-  },
-  #undef BAD_READ
+  , tick_renderer(renderfuncs.begin())
+{
+    reg.PPUSTATUS = 0x80;
+}
 
 
-  #define BAD_WRITE [&](uint8_t){ return; }
-  regw {
-    /* 0 */ [&](uint8_t x) {
-      reg.PPUCTRL = x; 
-      scroll.base_nta = reg.base_nta; 
-    },
-    /* 1 */ [&](uint8_t x) { reg.PPUMASK = x; },
-    /* 2 */ BAD_WRITE,
-    /* 3 */ [&](uint8_t x) { reg.OAMADDR = x; },
-    /* 4 */ [&](uint8_t x) { OAM[reg.OAMADDR++] = x; },
-    /* 5 */ [&](uint8_t x) { 
-      if(loopy_w){
-        scroll.yfine = x & 7;
-        scroll.ycoarse = x >> 3;
-      } else {
-        scroll.xscroll = x;
-      }
-      loopy_w ^= 1;
-    },
-    /* 6 */ [&](uint8_t x) {
-      if(loopy_w){
-        scroll.vaddr_lo = x;
-        vram.raw = (unsigned)scroll.raw;
-      } else {
-        scroll.vaddr_hi = x & 0x3f;
-      }
-      loopy_w ^= 1;
-    },
-    /* 7 */ [&](uint8_t x) {
-      mmap(vram.raw) = x;
-      vram.raw = vram.raw + (bool(reg.vramincr) * 31 + 1);
-    }
+uint8_t PPU::read(uint8_t index) const {
+  switch (index) {
+    case 2: return regr_status();
+    case 4: return regr_OAM_data();
+    case 7: return regr_data();
+    default: /* bad read */ break;
   }
-  #undef BAD_WRITE 
-  
-  
-    
-  {
-  reg.PPUSTATUS = 0x80;
+  return 0;
 }
 
-PPU::~PPU(){
-  #ifdef DUMP_NT
-  dump_nametables();
-  #endif
-  print_status();
-  print_framerate();
-  
-}
-
-string PPU::color(int x){
-  std::stringstream ss;
-  ss << "\033[";
-  ss << ((x%7)+31) << ';' << ((x%8)+40) << 'm';
-  return ss.str();
-}
-
-void PPU::dump_nametables(){
-  
-  cout << '\n';
-
-  for(int i = 0x2000; i < 0x2400; ++i){
-      
-    int x = mmap(i);
-    cout 
-      << color(x)
-      << setw(3) 
-      << std::setfill(' ') 
-      << hex 
-      << x 
-      << "\033[0m";
-
-    if((i%32)==31)
-      cout << "\n";
-      
+void PPU::write(uint8_t value, uint8_t index) {
+  switch (index) {
+    case 0: regw_control(value); break;
+    case 1: regw_mask(value); break;
+    case 3: regw_OAM_address(value); break;
+    case 4: regw_OAM_data(value); break;
+    case 5: regw_scroll(value); break;
+    case 6: regw_address(value); break;
+    case 7: regw_data(value); break;
+    default: /* bad write */ break;
   }
-
 }
-
-void PPU::print_status(){
-  cout 
-    << "SL:" << (int)scanline << " "
-    << "CYC:" << (int)cycle << "  "
-    << "VBS:" << (int)vblank_state << "  "
-    << hex
-    << "REG:" << (unsigned)reg.raw << "  "
-    << "LPV:" << (unsigned)vram.raw << "  "
-    << "LPT:" << (unsigned)scroll.raw << "\n";
-
-}
-
-
-void PPU::set_state(State const& state) {
-  memory = state.ppu_memory;
-  palette = state.palette;
-  reg.raw = state.ppu_reg;
-  scroll.data = state.scroll;
-  vram.data = state.vram;
-  read_buffer = state.read_buffer;
-  vblank_state = state.vblank_state;
-  loopy_w = state.loopy_w;
-  NMI_pulled = state.NMI_pulled;
-  
-}
-
-State state;
-
-State const& PPU::get_state() const {
-  state.ppu_memory = memory;
-  state.palette = palette;
-  state.ppu_reg = reg.raw;
-  state.scroll = scroll.data;
-  state.vram = vram.data;
-  state.read_buffer = read_buffer;
-  state.vblank_state = vblank_state;
-  state.loopy_w = loopy_w;
-  state.NMI_pulled = NMI_pulled;
-  return state;
-}
-
-uint8_t PPU::read(uint16_t i) const {
-  return regr[i]();
-}
-
-void PPU::write(uint8_t value, uint16_t reg) {
-  regw[reg](value);
-}
-
-uint8_t PPU::debug_get_scanline() const {
-  return scanline;
-};
 

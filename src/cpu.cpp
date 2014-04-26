@@ -104,7 +104,7 @@ uint16_t CPU::next2() {
   return v | ((uint16_t)read(PC++) << 8);
 }
 
-CPU::CPU(IComponent *apu, IComponent *ppu, IROM *rom, IController* controller0, IController* controller1)
+CPU::CPU(IAPU *apu, IPPU *ppu, IROM *rom, IController* controller0, IController* controller1)
   : apu(apu)
   , ppu(ppu)
   , rom(rom)
@@ -173,27 +173,13 @@ template<> uint8_t CPU::read<&CPU::IMM>(){
 #include "cpu-asm.cc"
 
 void CPU::set_state(State const& state){
-  P = state.P;
-  A = state.A;
-  X = state.X;
-  Y = state.Y;
-  SP = state.SP;
-  PC = state.PC;
-  result_cycle = state.result_cycle;
-  memory = state.cpu_memory;
+  // TODO
 }
 
+static State state;
 State const& CPU::get_state() const {
-  State state;
-  state.P = P;
-  state.A = A;
-  state.X = X;
-  state.Y = Y;
-  state.SP = SP;
-  state.PC = PC;
-  state.result_cycle = result_cycle;
-  state.cpu_memory = memory;
-  return std::move(state);
+  // TODO
+  return state;
 }
 
 
@@ -218,7 +204,6 @@ void CPU::print_status() {
   << " ST1:" << setw(2) << (int)memory[0x102 + SP]
   << " ST2:" << setw(2) << (int)memory[0x103 + SP]
   << '\n';
-  //if(cyc >= 341) cyc -= 341;
 }
 
 void CPU::pull_IRQ() {

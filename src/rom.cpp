@@ -26,7 +26,19 @@ uint8_t& ROM::getntref(uint8_t table, uint16_t addr) {
   return _nt[table][addr];
 }
 
+void ROM::write_nt(uint8_t value, uint8_t table, uint16_t addr) {
+  _nt[table][addr] = value;
+}
+
+uint8_t const& ROM::getntref(uint8_t table, uint16_t addr) const {
+  return _nt[table][addr];
+}
+
 uint8_t& ROM::getvbankref(uint16_t addr) {
+  return _vbank[(addr/VROM_Granularity) % VROM_Pages][addr % VROM_Granularity];
+}
+
+uint8_t const& ROM::getvbankref(uint16_t addr) const {
   return _vbank[(addr/VROM_Granularity) % VROM_Pages][addr % VROM_Granularity];
 }
 
