@@ -17,7 +17,7 @@ const uint16_t APU::DMCperiods[16] {
   428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54 
 };
 
-void APU::write(uint8_t value, uint8_t index){
+void APU::write(uint8_t value, uint16_t index){
   Channel& ch = channel[(index/4)%5];
   switch(index < 0x10 ? index&3 : index)
   {
@@ -78,7 +78,10 @@ void APU::write(uint8_t value, uint8_t index){
 }
 
 
-APU::APU():ChannelsEnabled(5, false){}
+APU::APU(IBus *bus)
+  : bus(bus)
+  , ChannelsEnabled(5, false)
+  {}
 
 APU::~APU(){}
 
@@ -177,7 +180,7 @@ void APU::tick(){
     // 60 Hz interval: IRQ. IRQ is not invoked in five-cycle mode (48 Hz).
     if(!IRQdisable && !FiveCycleDivider && hz240counter.hi==0){
       PeriodicIRQ = true;
-      bus::pull_IRQ();
+      bus->pull_IRQ();
     }
 
     // Some events are invoked at 96 Hz or 120 Hz rate. Others, 192 Hz or 240 Hz.
@@ -233,7 +236,7 @@ void APU::tick(){
   */
 }
 
-uint8_t APU::read() {
+uint8_t APU::read(uint16_t /* unused */) const {
   uint8_t res = 0;
   for(unsigned c = 0; c < 5; ++c) {
     res |= channel[c].length_counter ? 1 << c : 0;
@@ -249,7 +252,7 @@ uint8_t APU::read() {
     DMC_IRQ = false;
   }
 
-  bus::reset_IRQ();
+  bus->reset_IRQ();
   return res;
 
 }

@@ -17,7 +17,16 @@
 
 #include "bus.h"
 
-class CPU {
+class CPU : public ICPU {
+  private:
+    IComponent *apu;
+    IComponent *ppu;
+    IROM *rom;
+    IController *controller[2];
+
+  public:
+    CPU(IComponent *apu, IComponent *ppu, IROM *rom, IController* controller0, IController* controller1);
+
   private:
     enum Flag {
       N_FLAG = 0x80, V_FLAG = 0x40, D_FLAG = 0x08,
@@ -79,7 +88,7 @@ class CPU {
         // this shouldn't happen
         return memory[0];
       }
-      return bus::rom_memref(addr);
+      return rom->getmemref(addr);
     }
 
     template <typename T> 
@@ -91,11 +100,16 @@ class CPU {
     }
 
   public:
-    CPU();
     void pull_NMI();
+    void pull_IRQ();
+    void reset_IRQ();
     void run();
-    void load_state(State const&);
-    void save_state(State&) const;
+
+  public:
+    void set_state(State const&);
+    State const& get_state() const;
+
+  public:
     int test_cyc { 0 };
 
   private:
@@ -169,6 +183,7 @@ class CPU {
 
   public:
     bool IRQ { true };
+
 };
 
 template<> uint8_t& CPU::getref<&CPU::ACC>();

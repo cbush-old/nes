@@ -22,11 +22,11 @@ void ROM::write(uint8_t value, uint16_t addr) {
   }
 }
 
-uint8_t& ROM::nt(uint8_t table, uint16_t addr) {
+uint8_t& ROM::getntref(uint8_t table, uint16_t addr) {
   return _nt[table][addr];
 }
 
-uint8_t& ROM::vbank(uint16_t addr) {
+uint8_t& ROM::getvbankref(uint16_t addr) {
   return _vbank[(addr/VROM_Granularity) % VROM_Pages][addr % VROM_Granularity];
 }
 
@@ -52,7 +52,7 @@ static const std::unordered_map<uint8_t, std::function<void(ROM&, uint8_t, uint1
   { 0, [](ROM& this_, uint8_t value, uint16_t addr){}},
 };
 
-uint8_t& ROM::memref(uint16_t addr) {
+uint8_t& ROM::getmemref(uint16_t addr) {
   if((addr >> 13) == 3)
     return _pram[addr & 0x1FFF];
   return _bank[(addr / ROM_Granularity) % ROM_Pages][addr % ROM_Granularity];

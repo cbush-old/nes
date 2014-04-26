@@ -15,16 +15,19 @@
 #include <stdexcept>
 #include <sstream>
 
+#include "bus.h"
+
 class Mapperf;
 
-class ROM {
+class ROM : public IROM {
   public:
     ROM(std::string const&);
 
   public:
-    uint8_t& memref(uint16_t);
-    uint8_t& vbank(uint16_t addr);
-    uint8_t& nt(uint8_t, uint16_t);
+    uint8_t read(uint16_t) const;
+    uint8_t& getmemref(uint16_t);
+    uint8_t& getvbankref(uint16_t addr);
+    uint8_t& getntref(uint8_t, uint16_t);
     void write(uint8_t value, uint16_t addr);
 
   protected:

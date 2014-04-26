@@ -266,11 +266,11 @@ uint8_t& PPU::mmap(uint16_t addr){
 
   if(addr < 0x2000) {
 
-    return bus::rom_vbank(addr);
+    return rom->getvbankref(addr);
 
   } else if(addr < 0x3f00) {
 
-    return bus::rom_nt((addr >> 10) & 3, addr & 0x3ff);
+    return rom->getntref((addr >> 10) & 3, addr & 0x3ff);
 
   }
 
@@ -358,7 +358,7 @@ void PPU::tick() {
   switch (vblank_state) {
     case 0: 
       if(!NMI_pulled && reg.vblanking && reg.NMI_enabled){
-        bus::pull_NMI();
+        bus->pull_NMI();
         NMI_pulled = true;
       }
       break;
@@ -398,10 +398,8 @@ void PPU::tick() {
 
       case 241:
         // events
-        if(bus::io_handle_input()) 
-          throw 1;
-
-        bus::io_swap_with(framebuffer);
+        input->tick();
+        video->set_buffer(framebuffer);
 
         int d = 17 - clock_frame();
 
@@ -415,8 +413,16 @@ void PPU::tick() {
 
 }
 
-PPU::PPU(): framebuffer(256 * 240), memory(0x800), palette(0x20), OAM(0x100), 
-  tick_renderer(renderfuncs.begin()),
+PPU::PPU(IBus *bus, IROM *rom, IInputDevice *input, IVideoDevice *video)
+  : bus(bus)
+  , rom(rom)
+  , input(input)
+  , video(video)
+  , framebuffer(256 * 240)
+  , memory(0x800)
+  , palette(0x20)
+  , OAM(0x100)
+  , tick_renderer(renderfuncs.begin()),
 
   #define BAD_READ [&]{ return 0; }
   regr {
@@ -536,7 +542,7 @@ void PPU::print_status(){
 }
 
 
-void PPU::load_state(State const& state) {
+void PPU::set_state(State const& state) {
   memory = state.ppu_memory;
   palette = state.palette;
   reg.raw = state.ppu_reg;
@@ -549,7 +555,9 @@ void PPU::load_state(State const& state) {
   
 }
 
-void PPU::save_state(State& state) const {
+State state;
+
+State const& PPU::get_state() const {
   state.ppu_memory = memory;
   state.palette = palette;
   state.ppu_reg = reg.raw;
@@ -559,15 +567,15 @@ void PPU::save_state(State& state) const {
   state.vblank_state = vblank_state;
   state.loopy_w = loopy_w;
   state.NMI_pulled = NMI_pulled;
-  
+  return state;
 }
 
-uint8_t PPU::reg_read(uint8_t i) const {
+uint8_t PPU::read(uint16_t i) const {
   return regr[i]();
 }
 
-void PPU::reg_write(uint8_t value, uint8_t i) {
-  regw[value](i);
+void PPU::write(uint8_t value, uint16_t reg) {
+  regw[reg](value);
 }
 
 uint8_t PPU::debug_get_scanline() const {

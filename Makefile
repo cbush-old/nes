@@ -11,7 +11,8 @@ SOURCES= \
 	src/io.cpp      \
 	src/main.cpp    \
 	src/ppu.cpp     \
-	src/rom.cpp
+	src/rom.cpp     \
+	src/nes.cpp
 
 OBJECTS= $(SOURCES:.cpp=.o)
 

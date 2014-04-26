@@ -36,41 +36,39 @@ static const uint8_t cycles[256] {
 
 uint8_t CPU::read(uint16_t addr) const {
   if(addr < 0x2000) return memory[addr & 0x7ff];
-  if(addr < 0x4000) return bus::ppu_reg_read(addr & 7);
+  if(addr < 0x4000) return ppu->read(addr & 7);
   if(addr < 0x4020) {
     switch(addr & 0x1f) {
-      case 0x15: return bus::apu_read();
-      case 0x16: return bus::io_input_state(1);
-      case 0x17: return bus::io_input_state(2);
+      case 0x15: return apu->read();
+      case 0x16: return controller[0]->read();
+      case 0x17: return controller[1]->read();
       default: return 0;
     }
   }
 
-  return bus::rom_memref(addr);
-
+  return rom->getmemref(addr);
 }
 
 void CPU::write(uint8_t value, uint16_t addr) {
   if(addr < 0x2000) memory[addr&0x7ff] = value;
-  else if(addr < 0x4000) bus::ppu_reg_write(value, addr & 7);
+  else if(addr < 0x4000) ppu->write(value, addr & 7);
   else if(addr < 0x4020) {
     switch(addr&0x1f) {
       case 0x14: {
         // DMA transfer
         for(int i = 0; i < 256; ++i){
-          bus::ppu_reg_write(read((value & 7) * 0x100 + i), 4);
+          ppu->write(read((value & 7) * 0x100 + i), 4);
         }
       } break;
       case 0x16: 
-        if(value & 1)
-          bus::io_strobe();
+        controller[!(value & 1)]->strobe();
         break;
       default:
-        bus::apu_write(value, addr & 0x1f);
+        apu->write(value, addr & 0x1f);
         break;
     }
   } else {
-    bus::rom_write(value, addr);
+    rom->write(value, addr);
   }
 
 }
@@ -106,7 +104,16 @@ uint16_t CPU::next2() {
   return v | ((uint16_t)read(PC++) << 8);
 }
 
-CPU::CPU():memory(0x800, 0xff) {
+CPU::CPU(IComponent *apu, IComponent *ppu, IROM *rom, IController* controller0, IController* controller1)
+  : apu(apu)
+  , ppu(ppu)
+  , rom(rom)
+  , controller {
+    controller0,
+    controller1,
+  }
+  , memory(0x800, 0xff)
+{
   memory[0x008] = 0xf7;
   memory[0x009] = 0xef;
   memory[0x00a] = 0xdf;
@@ -125,7 +132,6 @@ void CPU::run() {
   PC = read(0xfffc) | (read(0xfffd) << 8);
 
   for(;;){
-
     last_PC = PC;
     last_op = next();
     
@@ -135,7 +141,7 @@ void CPU::run() {
     
     (this->*ops[last_op])();
     
-    if(IRQ==0 && (P & I_FLAG) == 0) {
+    if(IRQ == 0 && (P & I_FLAG) == 0) {
       push2(PC);
       stack_push<&CPU::ProcStatus>();
       P |= I_FLAG;
@@ -143,8 +149,10 @@ void CPU::run() {
     }
 
     for(int i = 0; i < cycles[last_op] + result_cycle; ++i){
-      bus::ppu_tick3();
-      bus::apu_tick();
+      ppu->tick();
+      ppu->tick();
+      ppu->tick();
+      apu->tick();
     }
 
     test_cyc = 0;
@@ -164,7 +172,7 @@ template<> uint8_t CPU::read<&CPU::IMM>(){
 #include "cpu-map.cc"
 #include "cpu-asm.cc"
 
-void CPU::load_state(State const& state){
+void CPU::set_state(State const& state){
   P = state.P;
   A = state.A;
   X = state.X;
@@ -175,7 +183,8 @@ void CPU::load_state(State const& state){
   memory = state.cpu_memory;
 }
 
-void CPU::save_state(State& state) const {
+State const& CPU::get_state() const {
+  State state;
   state.P = P;
   state.A = A;
   state.X = X;
@@ -184,6 +193,7 @@ void CPU::save_state(State& state) const {
   state.PC = PC;
   state.result_cycle = result_cycle;
   state.cpu_memory = memory;
+  return std::move(state);
 }
 
 
@@ -202,7 +212,7 @@ void CPU::print_status() {
   << " SP:" << setw(2) << (int)SP
   << std::setfill(' ')
   << " CYC:" << setw(3) << std::dec << (int)cyc
-  << " SL:" << setw(3) << (int)bus::debug_ppu_get_scanline()
+  //<< " SL:" << setw(3) << (int)bus::debug_ppu_get_scanline()
   << hex << std::setfill('0')
   << " ST0:" << setw(2) << (int)memory[0x101 + SP]
   << " ST1:" << setw(2) << (int)memory[0x102 + SP]
@@ -210,4 +220,14 @@ void CPU::print_status() {
   << '\n';
   //if(cyc >= 341) cyc -= 341;
 }
+
+void CPU::pull_IRQ() {
+  IRQ = true;
+}
+
+void CPU::reset_IRQ() {
+  IRQ = false;
+}
+
+
 

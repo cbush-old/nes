@@ -6,12 +6,22 @@
 #include <cstdint>
 #include "bus.h"
 #include "bit.h"
-#include "io.h"
 
-class APU {
+class APU : public IComponent {
+  private:
+    IBus *bus;
+
   public:
-    uint8_t read() /* non-const */;
-    void write(uint8_t, uint8_t);
+    APU(IBus *bus);
+    ~APU();
+
+  public:
+    uint8_t read(uint16_t = 0) const;
+    void write(uint8_t, uint16_t);
+
+    State dummy; // temp
+    State const& get_state() const { return dummy; }
+    void set_state(State const&) {}
 
   public:
     static const uint8_t LengthCounters[32];
@@ -20,7 +30,8 @@ class APU {
 
     bool FiveCycleDivider = false, IRQdisable = true;
     std::vector<bool> ChannelsEnabled;
-    bool PeriodicIRQ = false, DMC_IRQ = false;
+    mutable bool PeriodicIRQ { false };
+    mutable bool DMC_IRQ { false };
 
     struct Channel {
       inline bool count(int& v, int reset){ 
@@ -120,17 +131,17 @@ class APU {
                 // Note: Re-entrant! But not recursive, because even
                 // the shortest wave length is greater than the read time.
                 // TODO: proper clock
-                if(wavelength > 20)
-                  for(unsigned t=0; t<3; ++t) 
-                    bus::cpu_read(uint16_t(address) | 0x8000); // timing
-                hold = bus::cpu_read(uint16_t(address++) | 0x8000); // Fetch byte
+                //if(wavelength > 20)
+                //  for(unsigned t=0; t<3; ++t) 
+                //    cpu->read(uint16_t(address) | 0x8000); // timing
+                //hold = cpu->read(uint16_t(address++) | 0x8000); // Fetch byte
                 phase = 8;
                 --length_counter;
               }
               else {// Otherwise, disable channel or issue IRQ
                 apu.ChannelsEnabled[4] = IRQ_enabled;
                 apu.DMC_IRQ = true;
-                bus::pull_IRQ();
+                bus->pull_IRQ();
               }
             }
             if(phase != 0) // Update the signal if sample buffer nonempty
@@ -146,11 +157,7 @@ class APU {
     } channel[5];
     
     struct { short lo, hi; } hz240counter { 0, 0 };
-    
-  public:
-    APU();
-    ~APU();
-    
+
   public:
     void tick();
     

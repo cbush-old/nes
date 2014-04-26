@@ -18,22 +18,28 @@
 #include "bit.h"
 #include "bus.h"
 
-class PPU {
+class PPU : public IComponent {
+
+  private:
+    IBus *bus;
+    IROM *rom;
+    IInputDevice *input;
+    IVideoDevice *video;
 
   public:
-    PPU();
+    PPU(IBus *bus, IROM *rom, IInputDevice *input, IVideoDevice *video);
     ~PPU();
 
   public:
     void tick();
 
   public:
-    void load_state(State const&);
-    void save_state(State&) const;
+    State const& get_state() const;
+    void set_state(State const&);
 
   public:
-    uint8_t reg_read(uint8_t) const;
-    void reg_write(uint8_t, uint8_t);
+    uint8_t read(uint16_t reg) const;
+    void write(uint8_t, uint16_t);
 
   public:
     uint8_t debug_get_scanline() const;
