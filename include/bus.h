@@ -271,16 +271,6 @@ class IROM {
     virtual uint8_t& getmemref(uint16_t addr) =0;
 
     /**
-     * @brief retrieve a reference to the value at a nametable memory location
-     * @param table the index of the nametable
-     * @param addr the address within the nametable
-     * @return a reference to the value at the nametable memory location
-     **/
-    virtual uint8_t& getntref(uint8_t table, uint16_t addr) =0;
-    virtual uint8_t const& getntref(uint8_t table, uint16_t addr) const =0;
-
-
-    /**
      * @brief write to the nametable space (PPU space $2000 - $2fff)
      * @param value the value to write
      * @param addr the address to write to
@@ -339,14 +329,6 @@ class IROM {
      * This function expects addr to be in the range of $0000 to $1fff.
      **/
     virtual uint8_t read_chr(uint16_t addr) const =0;
-
-    /**
-     * @brief retrieve a reference to a location in the vbank
-     * @param addr the address to look up
-     * @return a reference to the vbank location
-     **/
-    virtual uint8_t& getvbankref(uint16_t addr) =0;
-    virtual uint8_t const& getvbankref(uint16_t addr) const =0;
 
 };
 

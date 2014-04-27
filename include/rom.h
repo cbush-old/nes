@@ -39,20 +39,15 @@ class ROM : public IROM {
     uint8_t read_nt(uint16_t addr) const;
 
   protected:
-    static const unsigned VROM_Granularity = 0x400, VROM_Pages = 0x2000 / VROM_Granularity;
-    static const unsigned ROM_Granularity = 0x2000, ROM_Pages = 0x10000 / ROM_Granularity;
-
-  protected:
     // Real memory
-    std::vector<uint8_t> _nram;
-    std::vector<uint8_t> _rom;
-    std::vector<uint8_t> _vram;
-    std::vector<uint8_t> _pram;
+    std::vector<uint8_t> nt;
+    std::vector<uint8_t> prg;
+    std::vector<uint8_t> chr;
 
     // Mirrors
-    std::vector<uint8_t*> _nt;
-    std::vector<uint8_t*> _bank;
-    std::vector<uint8_t*> _vbank;
+    std::vector<uint8_t*> nametable;
+    std::vector<uint8_t*> prg_bank;
+    std::vector<uint8_t*> chr_bank;
 
     std::function<void(ROM&, uint8_t, uint16_t)> writef;
 

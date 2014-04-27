@@ -227,7 +227,7 @@ uint8_t PPU::read(uint16_t addr) const {
 
   if (addr < 0x2000) { // Pattern table
 
-    return rom->getvbankref(addr);
+    return rom->read_chr(addr);
 
   } else if (addr < 0x3f00) { // Name table
 

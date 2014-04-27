@@ -25,53 +25,51 @@ void ROM::write_chr(uint8_t value, uint16_t addr) {
 }
 
 uint8_t ROM::read_prg(uint16_t addr) const {
-  // TODO
-  return 0;
+  return prg_bank[(addr / ROM_Granularity) % ROM_Pages][addr % ROM_Granularity];
 }
 
 uint8_t ROM::read_chr(uint16_t addr) const {
-  // TODO
-  return 0;
+  return chr_bank[addr / 0x400][addr % 0x400];
 }
 
 void ROM::write_nt(uint8_t value, uint16_t addr) {
   uint16_t table = (addr >> 10) & 3;
-  _nt[table][addr & 0x3ff] = value;
+  nametable[table][addr & 0x3ff] = value;
 }
 
 uint8_t ROM::read_nt(uint16_t addr) const {
   uint16_t table = (addr >> 10) & 3;
-  return _nt[table][addr & 0x3ff];
-}
-
-uint8_t& ROM::getntref(uint8_t table, uint16_t addr) {
-  return _nt[table][addr];
-}
-
-
-uint8_t const& ROM::getntref(uint8_t table, uint16_t addr) const {
-  return _nt[table][addr];
+  return nametable[table][addr & 0x3ff];
 }
 
 uint8_t& ROM::getvbankref(uint16_t addr) {
-  return _vbank[(addr/VROM_Granularity) % VROM_Pages][addr % VROM_Granularity];
+  return chr_bank[addr / 0x400][addr % 0x400];
 }
 
 uint8_t const& ROM::getvbankref(uint16_t addr) const {
-  return _vbank[(addr/VROM_Granularity) % VROM_Pages][addr % VROM_Granularity];
+  return chr_bank[addr / 0x400][addr % 0x400];
+}
+
+static const std::unordered_map<uint8_t, std::function<void(ROM&, uint8_t, uint16_t)>> mapper {
+  { 0, [](ROM& this_, uint8_t value, uint16_t addr){}},
+};
+
+
+uint8_t& ROM::getmemref(uint16_t addr) {
+  return prg_bank[(addr / ROM_Granularity) % ROM_Pages][addr % ROM_Granularity];
 }
 
 template<unsigned npages, unsigned granu>
 static void set_pages(
   std::vector<uint8_t*>& b,
   std::vector<uint8_t>& r,
-  unsigned size, 
-  unsigned baseaddr, 
+  unsigned size,
+  unsigned baseaddr,
   unsigned index
 ){
   auto rs = r.size();
-  for(unsigned v = rs + index * size, p = baseaddr / granu; 
-    p < (baseaddr + size) / granu && p < npages; 
+  for(unsigned v = rs + index * size, p = baseaddr / granu;
+    p < (baseaddr + size) / granu && p < npages;
     ++p, v += granu)
     b[p] = &r[v%rs];
 }
@@ -79,28 +77,21 @@ static void set_pages(
 static const auto& set_ROM = set_pages<ROM_Pages, ROM_Granularity>;
 static const auto& set_VROM = set_pages<VROM_Pages, VROM_Granularity>;
 
-static const std::unordered_map<uint8_t, std::function<void(ROM&, uint8_t, uint16_t)>> mapper {
-  { 0, [](ROM& this_, uint8_t value, uint16_t addr){}},
-};
 
-uint8_t& ROM::getmemref(uint16_t addr) {
-  if((addr >> 13) == 3)
-    return _pram[addr & 0x1FFF];
-  return _bank[(addr / ROM_Granularity) % ROM_Pages][addr % ROM_Granularity];
-}
+
 
 ROM::ROM(std::string const& src):
-  _nram (0x800), 
-  _vram (0x2000),
-  _pram (0x2000),
-  _nt {
-    _nram.data(),
-    _nram.data() + 0x400,
-    _nram.data(),
-    _nram.data() + 0x400,
+  nt (0x800), 
+  prg (0x2000),
+  chr (0x2000),
+  nametable {
+    nt.data(),
+    nt.data() + 0x400,
+    nt.data(),
+    nt.data() + 0x400,
   },
-  _bank (ROM_Pages),
-  _vbank (VROM_Pages)
+  prg_bank(8),
+  chr_bank(8)
 {
 
   ifstream file(src);
@@ -137,15 +128,20 @@ ROM::ROM(std::string const& src):
   
   writef = i->second;
 
-  if(prg_rom_size) _rom.resize(prg_rom_size * 0x4000);
-  if(chr_rom_size) _vram.resize(chr_rom_size * 0x2000);
+  if(prg_rom_size) {
+    prg.resize(prg_rom_size * 0x4000);
+  }
 
-  file.read((char*)_rom.data(), prg_rom_size * 0x4000);
-  file.read((char*)_vram.data(), chr_rom_size * 0x2000);
+  if(chr_rom_size) {
+    chr.resize(chr_rom_size * 0x2000);
+  }
 
-  set_VROM(_vbank, _vram, 0x2000, 0, 0);
+  file.read((char*)prg.data(), prg_rom_size * 0x4000);
+  file.read((char*)chr.data(), chr_rom_size * 0x2000);
+
+  set_VROM(chr_bank, chr, 0x2000, 0, 0);
   
   for(unsigned v = 0; v < 4; ++v)
-    set_ROM(_bank, _rom, 0x4000, v * 0x4000, v==3 ? -1 : 0);
-  
+    set_ROM(prg_bank, prg, 0x4000, v * 0x4000, v==3 ? -1 : 0);
+
 }

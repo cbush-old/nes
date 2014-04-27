@@ -55,10 +55,11 @@ uint8_t CPU::read(uint16_t addr) const {
       case 0x17: return controller[1]->read();
       default: return 0;
     }
+  } else {
+
+    return rom->read_prg(addr);
+
   }
-
-  return rom->getmemref(addr);
-
 }
 
 void CPU::write(uint8_t value, uint16_t addr) {
