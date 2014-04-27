@@ -25,10 +25,6 @@ class ROM : public IROM {
 
   public:
     uint8_t& getmemref(uint16_t);
-    uint8_t& getvbankref(uint16_t addr);
-    uint8_t& getntref(uint8_t, uint16_t);
-    uint8_t const& getvbankref(uint16_t addr) const;
-    uint8_t const& getntref(uint8_t, uint16_t) const;
 
   public:
     void write_nt(uint8_t value, uint16_t addr);
@@ -50,6 +46,16 @@ class ROM : public IROM {
     std::vector<uint8_t*> chr_bank;
 
     std::function<void(ROM&, uint8_t, uint16_t)> writef;
+
+  private:
+    int
+        prg_rom_size,
+        chr_rom_size,
+        flag6,
+        flag7,
+        prg_ram_size,
+        flag9,
+flag10;
 
 };
 

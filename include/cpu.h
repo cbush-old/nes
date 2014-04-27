@@ -89,7 +89,7 @@ class CPU : public ICPU {
         // this shouldn't happen
         throw std::runtime_error("program referencing register memory!");
       } else {
-        throw std::runtime_error("program referencing cartridge space!");
+        return rom->getmemref(addr);
       }
     }
 
