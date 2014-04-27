@@ -14,28 +14,8 @@ using std::runtime_error;
 
 
 template<int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256>
-void render(PPU& ppu) {
-  #define loopy_w ppu.loopy_w
-  #define pat_addr ppu.pat_addr
-  #define bg_shift_pat ppu.bg_shift_pat
-  #define bg_shift_attr ppu.bg_shift_attr
-  #define tileattr ppu.tileattr
-  #define OAM ppu.OAM
-  #define ioaddr ppu.ioaddr
-  #define vram ppu.vram
-  #define sprinpos ppu.sprinpos
-  #define sprrenpos ppu.sprrenpos
-  #define sproutpos ppu.sproutpos
-  #define sprtmp ppu.sprtmp
-  #define scroll ppu.scroll
-  #define scanline ppu.scanline
-  #define OAM3 ppu.OAM3
-  #define OAM2 ppu.OAM2
-  #define reg ppu.reg
-  #define tilepat ppu.tilepat
-  #define mmap ppu.read_vram
-  #define scanline_end ppu.scanline_end
-  #define render_pixel ppu.render_pixel
+void PPU::render() {
+  #define mmap read
 
   #ifdef DEBUG_PPU_RENDER_TEMPLATES
   std::cout 
@@ -47,8 +27,8 @@ void render(PPU& ppu) {
     << ", " << (int)X_LT_256
     << ">\n";
   #endif
-    
-  if(X_MOD_8 == 2 && TDM){
+
+  if(X_MOD_8 == 2 && TDM) {
     ioaddr = 0x23c0 + 0x400 * vram.base_nta + 8 * (vram.ycoarse / 4) + (vram.xcoarse / 4); 
   } 
   
@@ -186,39 +166,20 @@ void render(PPU& ppu) {
   if(X_LT_256 && scanline >= 0) {
       render_pixel();
   }
-  #undef ioaddr
-  #undef vram
-  #undef sprinpos
-  #undef sprrenpos
-  #undef sproutpos
-  #undef sprtmp
-  #undef scroll
-  #undef scanline
-  #undef OAM3
-  #undef OAM2
-  #undef reg
-  #undef tilepat 
-  #undef mmap 
-  #undef scanline_end
-  #undef render_pixel
-  #undef loopy_w
-  #undef pat_addr
-  #undef bg_shift_pat
-  #undef bg_shift_attr
-  #undef tileattr
-  #undef OAM
+
 }
 
 
 //<int X, int X_MOD_8, int Tile_Decode_Mode, bool X_ODD_64_TO_256, bool X_LT_256>
-#define X(a) render<\
+#define X(a) &PPU::render<\
   (((a)==0)||((a)==251)||((a)==256)||((a)==304)||((a)==337)?(a):1),\
   ((a) & 7),\
   bool(0x10ffff & (1u << ((a)/16))),\
   bool(((a) & 1) && ((a) >= 64) && ((a) < 256)),\
   bool((a) < 256)>
+
 #define Y(a) X(a),X(a+1),X(a+2),X(a+3),X(a+4),X(a+5),X(a+6),X(a+7),X(a+8),X(a+9)
-const std::array<std::function<void(PPU&)>, 342> renderfuncs {
+const PPU::Renderf_array PPU::renderfuncs {
   Y(  0),Y( 10),Y( 20),Y( 30),Y( 40),Y( 50),Y( 60),Y( 70),Y( 80),Y( 90),
   Y(100),Y(110),Y(120),Y(130),Y(140),Y(150),Y(160),Y(170),Y(180),Y(190),
   Y(200),Y(210),Y(220),Y(230),Y(240),Y(250),Y(260),Y(270),Y(280),Y(290),
@@ -232,7 +193,7 @@ const std::array<std::function<void(PPU&)>, 342> renderfuncs {
 int framerate[N_FRAMERATES];
 
 
-void print_framerate(){
+void print_framerate() {
   double sum = 0;
   for(int i = 0; i < N_FRAMERATES; ++i){
     sum += framerate[i];
@@ -242,7 +203,7 @@ void print_framerate(){
 
 }
 
-int clock_frame(){
+int clock_frame() {
   static int last_clock = SDL_GetTicks();
   static int i = 0;
   int tick = SDL_GetTicks();
@@ -260,7 +221,7 @@ int clock_frame(){
 #undef N_FRAMES
 
 
-void PPU::write_vram(uint8_t value) {
+void PPU::write(uint8_t value) {
 
   uint16_t addr = vram.raw & 0x3fff;
 
@@ -281,7 +242,7 @@ void PPU::write_vram(uint8_t value) {
 }
 
 // http://wiki.nesdev.com/w/index.php/PPU_memory_map
-uint8_t PPU::read_vram(uint16_t addr) const {
+uint8_t PPU::read(uint16_t addr) const {
 
   addr &= 0x3fff;
 
@@ -477,24 +438,24 @@ void PPU::regw_address(uint8_t value) {
 
 
 void PPU::regw_data(uint8_t value) {
-  write_vram(value);
+  write(value);
   vram.raw = vram.raw + (bool(reg.vramincr) * 31 + 1);
 }
 
-uint8_t PPU::regr_status() const {
+uint8_t PPU::regr_status() {
   uint8_t result { reg.PPUSTATUS };
   reg.vblanking = false;
   loopy_w = false;
   return result;
 }
 
-uint8_t PPU::regr_OAM_data() const {
+uint8_t PPU::regr_OAM_data() {
   return OAM[reg.OAMADDR] & (reg.OAM_data == 2 ? 0xE3 : 0xFF);
 }
 
-uint8_t PPU::regr_data() const {
+uint8_t PPU::regr_data() {
   uint8_t result = read_buffer;
-  read_buffer = read_vram(vram.raw);
+  read_buffer = read(vram.raw);
   vram.raw = vram.raw + (!!reg.vramincr * 31 + 1);
   return result;
 }
@@ -509,27 +470,4 @@ PPU::PPU(IBus *bus, IROM *rom, IInputDevice *input, IVideoDevice *video)
     reg.PPUSTATUS = 0x80;
 }
 
-
-uint8_t PPU::read(uint8_t index) const {
-  switch (index) {
-    case 2: return regr_status();
-    case 4: return regr_OAM_data();
-    case 7: return regr_data();
-    default: /* bad read */ break;
-  }
-  return 0;
-}
-
-void PPU::write(uint8_t value, uint8_t index) {
-  switch (index) {
-    case 0: regw_control(value); break;
-    case 1: regw_mask(value); break;
-    case 3: regw_OAM_address(value); break;
-    case 4: regw_OAM_data(value); break;
-    case 5: regw_scroll(value); break;
-    case 6: regw_address(value); break;
-    case 7: regw_data(value); break;
-    default: /* bad write */ break;
-  }
-}
 

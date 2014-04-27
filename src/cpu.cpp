@@ -35,8 +35,19 @@ static const uint8_t cycles[256] {
 
 
 uint8_t CPU::read(uint16_t addr) const {
-  if(addr < 0x2000) return memory[addr & 0x7ff];
-  if(addr < 0x4000) return ppu->read(addr & 7);
+
+  if(addr < 0x2000) {
+
+    return memory[addr & 0x7ff];
+
+  } if(addr < 0x4000) {
+    switch (addr & 7) {
+      case 2: return ppu->regr_status();
+      case 4: return ppu->regr_OAM_data();
+      case 7: return ppu->regr_data();
+      default: /* bad read */ return 0;
+    }
+  }
   if(addr < 0x4020) {
     switch(addr & 0x1f) {
       case 0x15: return apu->read();
@@ -47,17 +58,35 @@ uint8_t CPU::read(uint16_t addr) const {
   }
 
   return rom->getmemref(addr);
+
 }
 
 void CPU::write(uint8_t value, uint16_t addr) {
-  if(addr < 0x2000) memory[addr&0x7ff] = value;
-  else if(addr < 0x4000) ppu->write(value, addr & 7);
-  else if(addr < 0x4020) {
-    switch(addr&0x1f) {
-      case 0x14: {
-        // DMA transfer
-        for(int i = 0; i < 256; ++i){
-          ppu->write(read((value & 7) * 0x100 + i), 4);
+
+  if(addr < 0x2000) { // Internal RAM
+
+    // $0800 to $1fff: mirrors of $0000 - $0800
+    memory[addr & 0x7ff] = value;
+
+  } else if(addr < 0x4000) { // PPU registers
+
+    switch (addr & 7) {
+      case 0: ppu->regw_control(value); break;
+      case 1: ppu->regw_mask(value); break;
+      case 3: ppu->regw_OAM_address(value); break;
+      case 4: ppu->regw_OAM_data(value); break;
+      case 5: ppu->regw_scroll(value); break;
+      case 6: ppu->regw_address(value); break;
+      case 7: ppu->regw_data(value); break;
+      default: /* bad write */ break;
+    }
+
+  } else if(addr < 0x4020) { // APU and I/O registers
+
+    switch (addr & 0x1f) {
+      case 0x14: { // DMA transfer
+        for(int i = 0; i < 256; ++i) {
+          ppu->regw_OAM_data(read((value & 7) * 0x100 + i));
         }
       } break;
       case 0x16: 
@@ -67,8 +96,11 @@ void CPU::write(uint8_t value, uint16_t addr) {
         apu->write(value, addr & 0x1f);
         break;
     }
+
   } else {
+
     rom->write(value, addr);
+
   }
 
 }

@@ -37,23 +37,118 @@ class IPPU {
 
   public:
     /**
-     * @brief read a register
-     * @note may have non-const side-effects depending on the register
-     * @param index the register (0-7) to read
-     **/
-    virtual uint8_t read(uint8_t index) const =0;
-
-    /**
-     * @brief write a value to a register
-     * @param value the value to write
-     * @param index the register (0-7) to write to
-     **/
-    virtual void write(uint8_t value, uint8_t index) =0;
-
-    /**
      * @brief advance the component's internal clock
      **/
     virtual void tick() =0;
+
+  public: // Register write
+    /**
+     * @brief write to the ppu control register
+     * @param value the value to write
+     *
+     * This register controls various aspects of the PPU operation:
+     * - base nametable address (can be $2000, $2400, $2800 or $2C00)
+     * - vram address increment per CPU read/write of PPUDATA (1 or 32)
+     * - sprite pattern table address for 8x8 sprites ($0000 or $1000)
+     * - background pattern table address ($0000 or $1000)
+     * - sprite size (8x8 or 8x16)
+     * - PPU master/slave select
+     * - whether to generate an NMI at the start of the vertical blanking interval
+     * 
+     * See http://wiki.nesdev.com/w/index.php/PPU_registers#Controller_.28.242000.29_.3E_write for details.
+     **/
+    virtual void regw_control(uint8_t value) =0;
+
+    /**
+     * @brief write to the ppu mask register
+     * @param value the value to write
+     *
+     * This register can enable or disable certain rendering options:
+     * - grayscale
+     * - show background in leftmost 8 pixels of screen
+     * - show sprites in leftmost 8 pixels of screen
+     * - show background
+     * - show sprites
+     * - intensify reds
+     * - intensify greens
+     * - intensify blues
+     **/
+    virtual void regw_mask(uint8_t value) =0;
+
+    /**
+     * @brief set the object attribute memory address
+     * @param value new OAM address
+     **/
+    virtual void regw_OAM_address(uint8_t value) =0;
+
+    /**
+     * @brief write OAM data, incrementing the OAM address
+     * @value the value to write
+     *
+     * OAM address is incremented after the write.
+     **/
+    virtual void regw_OAM_data(uint8_t value) =0;
+
+    /**
+     * @brief set the scroll position, i.e. where in the nametable to start rendering
+     * @param value the address within the nametable that should be drawn at the top left corner: x and y on alternate writes.
+     **/
+    virtual void regw_scroll(uint8_t value) =0;
+
+    /**
+     * @brief set the vram address
+     * @param value 1/2 of the 2-byte VRAM address. Upper byte on first write, lower byte on second.
+     *
+     * An internal latch that determines whether to write to the upper or lower byte is toggled upon write.
+     * The latch is reset by a read to $2002 (status register).
+     **/
+    virtual void regw_address(uint8_t value) =0;
+
+    /**
+     * @brief write to the memory at the current vram address
+     * @param the value to write
+     * 
+     * After read/write, the vram address is incremented by either 1 or 32 (as set in the ppu control register).
+     **/
+    virtual void regw_data(uint8_t value) =0;
+
+  public: // Register read
+    /**
+     * @brief read the status register
+     * @return the state of the ppu
+     *
+     * This register holds various state information:
+     * - sprite overflow
+     * - sprite 0 hit
+     * - whether vertical blank has started
+     *
+     * Reading has certain side effects:
+     * - clears the vblank started flag
+     * - resets the address latch of the scroll and address registers
+     *
+     * @note reading this register at exact start of vblank returns 0, but still clears the latch.
+     **/
+    virtual uint8_t regr_status() =0;
+
+    /**
+     * @brief read the object attribute memory data
+     * @return the current value pointed to by the oam address
+     * @note reads during vblank do not increment the address.
+     **/
+    virtual uint8_t regr_OAM_data() =0;
+
+    /**
+     * @brief read the value pointed to by the vram address
+     * @return the value pointed to by the vram address
+     * @note reading this register increments the vram address and may update an internal buffer
+     * 
+     * Reading non-palette memory area (i.e. below $3f00) returns the contents of an internal buffer,
+     * which is then filled with the data at the vram address prior to increment.
+     * 
+     * When reading palette data, the buffer is filled with the name table data 
+     * that would be accessible if the name table mirrors extended up to $3fff.
+     **/
+    virtual uint8_t regr_data() =0;
 
 };
 
