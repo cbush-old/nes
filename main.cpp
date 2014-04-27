@@ -1,24 +1,15 @@
 #include <iostream>
 #include <thread>
-#include <cmath>
-#include <ctime>
-#include <map>
-#include <iomanip>
-#include <functional>
-#include <cctype>
-#include <fstream>
-#include <vector>
-#include <string>
-#include <stdexcept>
-#include <sstream>
 
 #include "bus.h"
+#include "rom.h"
 
 int main(int argc, char* argv[]){
 
   try {
 
-    NES nes (argv[1]);
+    ROM rom (argv[1]);
+    NES nes (rom);
 
   } catch(int){
 

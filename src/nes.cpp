@@ -9,7 +9,7 @@
 #include "video_sdl.h"
 #include "input_sdl.h"
 
-NES::NES(std::string const& game)
+NES::NES(IROM& rom)
     : video (new SDLVideoDevice())
     , audio (new SDLAudioDevice())
     , controller {
@@ -17,10 +17,10 @@ NES::NES(std::string const& game)
         new Std_controller(),
     }
     , input (new SDLInputDevice(*controller[0]))
-    , rom (new ROM(game))
-    , ppu (new PPU(this, rom, input, video))
+    , rom (rom)
+    , ppu (new PPU(this, &rom, input, video))
     , apu (new APU(this))
-    , cpu (new CPU(apu, ppu, rom, controller[0], controller[1]))
+    , cpu (new CPU(apu, ppu, &rom, controller[0], controller[1]))
     {
         cpu->run();
     }
@@ -34,7 +34,6 @@ NES::~NES() {
     delete video;
     delete audio;
     delete input;
-    delete rom;
 }
 
 void NES::pull_NMI() {

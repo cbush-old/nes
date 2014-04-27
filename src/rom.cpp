@@ -62,19 +62,19 @@ uint8_t ROM::read_nt(uint16_t addr) const {
 
 
 
-ROM::ROM(std::string const& src)
+ROM::ROM(const char *path)
 {
 
-  std::ifstream file(src);
+  std::ifstream file(path);
 
   if(!(
     file.get() == 'N' &&
     file.get() == 'E' &&
     file.get() == 'S' &&
     file.get() == 0x1A)){
-    
+
     throw std::runtime_error ("Not iNES format");
-    
+
   }
 
   uint8_t prg_rom_size = file.get();
@@ -90,10 +90,11 @@ ROM::ROM(std::string const& src)
   
   bool four_screen = flag6 & 4;
   bool horizontal_mirroring = !(flag6 & 1);
+
   int mapper_id { (flag6 >> 4) | (flag7 & 0xf0) };
-  
+
   std::cout << "Mapper " << mapper_id << '\n';
-  
+
   if (mapper_id != 0)
     throw std::runtime_error ("Unsupported mapper");
 

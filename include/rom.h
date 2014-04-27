@@ -6,7 +6,7 @@
 
 class ROM : public IROM {
   public:
-    ROM(std::string const&);
+    ROM(const char *);
 
   public:
     uint8_t& getmemref(uint16_t);

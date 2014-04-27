@@ -7,9 +7,9 @@
 
 using Framebuffer = std::array<uint32_t, 256 * 240>;
 
-struct State {
-};
 
+class State {
+};
 
 /**
  * @brief Interface of a picture processing unit
@@ -379,13 +379,13 @@ class NES : public IBus {
     IAudioDevice *audio;
     IController *controller[2];
     IInputDevice *input;
-    IROM *rom { nullptr };
+    IROM& rom;
     IPPU *ppu;
     IAPU *apu;
     ICPU *cpu;
 
   public:
-    NES(std::string const&);
+    NES(IROM& rom);
     virtual ~NES();
 
   public:
