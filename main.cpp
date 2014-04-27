@@ -1,5 +1,4 @@
 #include <iostream>
-#include <thread>
 
 #include "bus.h"
 #include "rom.h"

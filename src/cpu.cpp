@@ -188,7 +188,6 @@ void CPU::run() {
       apu->tick();
     }
 
-    test_cyc = 0;
     result_cycle = 0;
 
   }
@@ -204,17 +203,6 @@ template<> uint8_t CPU::read<&CPU::IMM>(){
 
 #include "cpu-map.cc"
 #include "cpu-asm.cc"
-
-void CPU::set_state(State const& state){
-  // TODO
-}
-
-static State state;
-State const& CPU::get_state() const {
-  // TODO
-  return state;
-}
-
 
 void CPU::print_status() {
   cout 

@@ -7,6 +7,7 @@
 class ROM : public IROM {
   public:
     ROM(const char *);
+    ~ROM();
 
   public:
     uint8_t& getmemref(uint16_t);
@@ -21,12 +22,12 @@ class ROM : public IROM {
 
   protected:
     // Real memory
-    std::array<uint8_t, 0x800> nt;
+    std::vector<uint8_t> nt;
     std::vector<uint8_t> prg;
     std::vector<uint8_t> chr;
 
     // Mirrors
-    std::array<uint8_t*, 4> nametable;
+    std::vector<uint8_t*> nametable;
     std::vector<uint8_t*> prg_bank;
     std::vector<uint8_t*> chr_bank;
 

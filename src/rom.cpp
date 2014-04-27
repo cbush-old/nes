@@ -61,8 +61,9 @@ uint8_t ROM::read_nt(uint16_t addr) const {
 }
 
 
-
-ROM::ROM(const char *path)
+ROM::ROM(const char *path):
+  nt (0x800),
+  nametable (4)
 {
 
   std::ifstream file(path);
@@ -94,12 +95,14 @@ ROM::ROM(const char *path)
   int mapper_id { (flag6 >> 4) | (flag7 & 0xf0) };
 
   std::cout << "Mapper " << mapper_id << '\n';
+  std::cout << "prg banks: " << (int)prg_rom_size << '\n';
+  std::cout << "chr banks: " << (int)chr_rom_size << '\n';
 
   if (mapper_id != 0)
     throw std::runtime_error ("Unsupported mapper");
 
-  prg.resize(prg_rom_size * 0x4000);
-  chr.resize(chr_rom_size * 0x2000);
+  prg.resize(0x4000 + prg_rom_size * 0x4000);
+  chr.resize(0x2000 + chr_rom_size * 0x2000);
 
   file.read((char*)prg.data(), prg_rom_size * 0x4000);
   file.read((char*)chr.data(), chr_rom_size * 0x2000);
@@ -132,3 +135,6 @@ ROM::ROM(const char *path)
   chr_bank.push_back(chr.data() + 0x1000);
 
 }
+
+
+ROM::~ROM() {}

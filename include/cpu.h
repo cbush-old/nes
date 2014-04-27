@@ -107,39 +107,30 @@ class CPU : public ICPU {
     void reset_IRQ();
     void run();
 
-  public:
-    void set_state(State const&);
-    State const& get_state() const;
-
   private:
-    int test_cyc { 0 };
-    inline void tick(){
-      ++test_cyc;
-    }
-
     // addressing modes
-    inline uint16_t ACC(){ tick(); return 0; } // template only
-    inline uint16_t X__(){ tick(); return 0; }
-    inline uint16_t Y__(){ tick(); return 0; }
+    inline uint16_t ACC(){ return 0; } // template only
+    inline uint16_t X__(){ return 0; }
+    inline uint16_t Y__(){ return 0; }
     inline uint16_t IMM(){ return next(); }
-    inline uint16_t ZPG(){ tick(); return next(); }
-    inline uint16_t ZPX(){ tick(); return (next() + X)&0xff; }
-    inline uint16_t ZPY(){ tick(); return (next() + Y)&0xff; }
-    inline uint16_t ABS(){ tick(); tick(); return next2(); }
-    inline uint16_t ABX(){ tick(); return next2() + X; }
-    inline uint16_t ABY(){ tick(); return next2() + Y; }
+    inline uint16_t ZPG(){ return next(); }
+    inline uint16_t ZPX(){ return (next() + X)&0xff; }
+    inline uint16_t ZPY(){ return (next() + Y)&0xff; }
+    inline uint16_t ABS(){ return next2(); }
+    inline uint16_t ABX(){ return next2() + X; }
+    inline uint16_t ABY(){ return next2() + Y; }
     inline uint16_t IDX(){
-      tick(); 
+      
       uint16_t addr = next() + X;
       return read(addr&0xff)|((uint16_t)read((addr+1)&0xff) << 8);
     }
     inline uint16_t IDY(){
-      tick(); 
+      
       uint16_t addr = next();
       return ((uint16_t)read(addr)|(read((addr+1)&0xff)<<8))+Y;
     }
     inline uint16_t IND(){
-      tick(); 
+      
       // When on page boundary (i.e. $xxFF) IND gets LSB from $xxFF like normal 
       // but takes MSB from $xx00
       uint16_t addr = next2();
@@ -149,26 +140,26 @@ class CPU : public ICPU {
     }
 
     // some modes add cycles if page crossed
-    inline uint16_t ABX_pgx(){ tick(); return sum_check_pgx(next2(), X); }
-    inline uint16_t ABY_pgx(){ tick(); return sum_check_pgx(next2(), Y); }
+    inline uint16_t ABX_pgx(){ return sum_check_pgx(next2(), X); }
+    inline uint16_t ABY_pgx(){ return sum_check_pgx(next2(), Y); }
     inline uint16_t IDY_pgx(){
-      tick(); 
+      
       uint16_t addr { next() };
       return sum_check_pgx((uint16_t)read(addr)|(read((addr + 1)&0xff) << 8), Y);
     }
 
     // register read/write
-    inline void Accumulator(uint8_t i){ tick(); setZN(A = i); }
-    inline void IndexRegX(uint8_t i){ tick(); setZN(X = i); }
-    inline void IndexRegY(uint8_t i){ tick(); setZN(Y = i); }
-    inline void ProcStatus(uint8_t i){ tick(); P = (i|0x20)&~0x10; }
-    inline void StackPointer(uint8_t i){ tick(); SP = i; }
-    inline uint8_t Accumulator(){ tick(); return A; }
-    inline uint8_t IndexRegX(){ tick(); return X; }
-    inline uint8_t IndexRegY(){ tick(); return Y; }
-    inline uint8_t ProcStatus(){ tick(); return P|0x10; }
-    inline uint8_t StackPointer(){ tick(); return SP; }
-    inline uint8_t AX(){ tick(); return A&X; } // unofficial
+    inline void Accumulator(uint8_t i){ setZN(A = i); }
+    inline void IndexRegX(uint8_t i){ setZN(X = i); }
+    inline void IndexRegY(uint8_t i){ setZN(Y = i); }
+    inline void ProcStatus(uint8_t i){ P = (i|0x20)&~0x10; }
+    inline void StackPointer(uint8_t i){ SP = i; }
+    inline uint8_t Accumulator(){ return A; }
+    inline uint8_t IndexRegX(){ return X; }
+    inline uint8_t IndexRegY(){ return Y; }
+    inline uint8_t ProcStatus(){ return P|0x10; }
+    inline uint8_t StackPointer(){ return SP; }
+    inline uint8_t AX(){ return A&X; } // unofficial
 
     #include "cpu-ops.cc"
 
