@@ -210,7 +210,7 @@ void PPU::write(uint8_t value, uint16_t addr) {
 
   } else if (addr < 0x3f00) { // Name table
 
-    rom->write_nt(value, (addr >> 10) & 3, addr & 0x3ff);
+    rom->write_nt(value, addr - 0x2000);
 
   } else { // Palette
 
@@ -231,7 +231,7 @@ uint8_t PPU::read(uint16_t addr) const {
 
   } else if (addr < 0x3f00) { // Name table
 
-    return rom->getntref((addr >> 10) & 3, addr & 0x3ff);
+    return rom->read_nt(addr - 0x2000);
 
   } else { // Palette http://wiki.nesdev.com/w/index.php/PPU_palettes
 
@@ -264,21 +264,20 @@ void PPU::render_pixel() {
     showbg = ((!edge) || reg.show_bg8) && reg.show_bg,
     showsp = ((!edge) || reg.show_sp8) && reg.show_sp;
 
-
   unsigned 
     fx = scroll.xfine,
     xpos = 15 - (( (cycle&7) + fx + 8 * bool(cycle&7) ) & 15);
     
   unsigned pixel { 0 }, attr { 0 };
   
-  if(showbg){
+  if (showbg) {
     pixel = (bg_shift_pat >> (xpos * 2)) & 3;
     attr = (bg_shift_attr >> (xpos * 2)) & (pixel ? 3 : 0);
-  } else if((vram.raw & 0x3f00) == 0x3f00 && !reg.rendering_enabled){
+  } else if ((vram.raw & 0x3f00) == 0x3f00 && !reg.rendering_enabled) {
     pixel = vram.raw;
   }
-  
-  if(showsp){
+
+  if (showsp) {
     for(unsigned sno = 0; sno < sprrenpos; ++sno){
       auto& s = OAM3[sno];
       

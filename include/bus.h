@@ -279,6 +279,32 @@ class IROM {
     virtual uint8_t& getntref(uint8_t table, uint16_t addr) =0;
     virtual uint8_t const& getntref(uint8_t table, uint16_t addr) const =0;
 
+
+    /**
+     * @brief write to the nametable space (PPU space $2000 - $2fff)
+     * @param value the value to write
+     * @param addr the address to write to
+     *
+     * This function expects addr to be in the range of $0000 to $1fff
+     *
+     * @note the name table memory is physically located on the NES; additional memory 
+     *       may be provided on the cartridge. Since the use (e.g. mirroring) and size
+     *       of the space is managed by the cart, it is nicer, if slightly less realistic,
+     *       to model the memory as part of the cart and not part of the NES.
+     **/
+    virtual void write_nt(uint8_t value, uint16_t addr) =0;
+
+    /**
+     * @brief read the nametable space (PPU space $2000 - $2fff)
+     * @param addr the address to read
+     * @return the value at the address
+     *
+     * This function expects addr to be in the range of $0000 to $1fff
+     *
+     * @note see @ref write_nt for the reasoning why the nt is a part of the ROM class.
+     **/
+    virtual uint8_t read_nt(uint16_t addr) const =0;
+
     /**
      * @brief write to the cartridge prg space ($4020 - $ffff in CPU memory space)
      * @param value the value to write
@@ -307,13 +333,12 @@ class IROM {
     virtual uint8_t read_prg(uint16_t addr) const =0;
 
     /**
-     * @brief write to the cartridge chr space ($0000 - $1fff in PPU memory space)
-     * @param value the value to write
-     * @param addr the address to write
+     * @brief read the cartridge chr space ($0000 - $1fff in PPU memory space)
+     * @param addr the address to read
      *
      * This function expects addr to be in the range of $0000 to $1fff.
      **/
-    virtual uint8_t read_chr(uint8_t value, uint16_t addr) const =0;
+    virtual uint8_t read_chr(uint16_t addr) const =0;
 
     /**
      * @brief retrieve a reference to a location in the vbank
@@ -322,7 +347,7 @@ class IROM {
      **/
     virtual uint8_t& getvbankref(uint16_t addr) =0;
     virtual uint8_t const& getvbankref(uint16_t addr) const =0;
-    virtual void write_nt(uint8_t value, uint8_t table, uint16_t addr) =0;
+
 };
 
 

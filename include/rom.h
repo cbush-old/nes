@@ -24,20 +24,19 @@ class ROM : public IROM {
     ROM(std::string const&);
 
   public:
-    uint8_t read(uint16_t) const;
     uint8_t& getmemref(uint16_t);
     uint8_t& getvbankref(uint16_t addr);
     uint8_t& getntref(uint8_t, uint16_t);
     uint8_t const& getvbankref(uint16_t addr) const;
     uint8_t const& getntref(uint8_t, uint16_t) const;
-    void write_nt(uint8_t value, uint8_t table, uint16_t addr);
-    void write(uint8_t value, uint16_t addr);
 
   public:
+    void write_nt(uint8_t value, uint16_t addr);
     void write_prg(uint8_t value, uint16_t addr);
     void write_chr(uint8_t value, uint16_t addr);
     uint8_t read_prg(uint16_t addr) const;
     uint8_t read_chr(uint16_t addr) const;
+    uint8_t read_nt(uint16_t addr) const;
 
   protected:
     static const unsigned VROM_Granularity = 0x400, VROM_Pages = 0x2000 / VROM_Granularity;

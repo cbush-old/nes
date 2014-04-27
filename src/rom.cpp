@@ -34,14 +34,20 @@ uint8_t ROM::read_chr(uint16_t addr) const {
   return 0;
 }
 
+void ROM::write_nt(uint8_t value, uint16_t addr) {
+  uint16_t table = (addr >> 10) & 3;
+  _nt[table][addr & 0x3ff] = value;
+}
+
+uint8_t ROM::read_nt(uint16_t addr) const {
+  uint16_t table = (addr >> 10) & 3;
+  return _nt[table][addr & 0x3ff];
+}
 
 uint8_t& ROM::getntref(uint8_t table, uint16_t addr) {
   return _nt[table][addr];
 }
 
-void ROM::write_nt(uint8_t value, uint8_t table, uint16_t addr) {
-  _nt[table][addr] = value;
-}
 
 uint8_t const& ROM::getntref(uint8_t table, uint16_t addr) const {
   return _nt[table][addr];
@@ -143,4 +149,3 @@ ROM::ROM(std::string const& src):
     set_ROM(_bank, _rom, 0x4000, v * 0x4000, v==3 ? -1 : 0);
   
 }
-
