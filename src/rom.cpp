@@ -1,7 +1,8 @@
 #include "rom.h"
+#include "bit.h"
 
+#include <iostream>
 #include <fstream>
-#include <unordered_map>
 
 
 // CPU-space access
@@ -61,16 +62,7 @@ uint8_t ROM::read_nt(uint16_t addr) const {
 
 
 
-ROM::ROM(std::string const& src):
-  nt (0x800), 
-  prg (0x2000),
-  chr (0x2000),
-  nametable {
-    nt.data(),
-    nt.data() + 0x400,
-    nt.data(),
-    nt.data() + 0x400,
-  }
+ROM::ROM(std::string const& src)
 {
 
   std::ifstream file(src);
@@ -85,16 +77,19 @@ ROM::ROM(std::string const& src):
     
   }
 
-  prg_rom_size = file.get();
-  chr_rom_size = file.get();
-  flag6 = file.get();
-  flag7 = file.get();
-  prg_ram_size = file.get();
-  flag9 = file.get();
-  flag10 = file.get();
+  uint8_t prg_rom_size = file.get();
+  uint8_t chr_rom_size = file.get();
+  uint8_t flag6 = file.get();
+  uint8_t flag7 = file.get();
+
+  // prg_ram_size = file.get();
+  // flag9 = file.get();
+  // flag10 = file.get();
 
   file.seekg(0x10);
   
+  bool four_screen = flag6 & 4;
+  bool horizontal_mirroring = !(flag6 & 1);
   int mapper_id { (flag6 >> 4) | (flag7 & 0xf0) };
   
   std::cout << "Mapper " << mapper_id << '\n';
@@ -102,19 +97,35 @@ ROM::ROM(std::string const& src):
   if (mapper_id != 0)
     throw std::runtime_error ("Unsupported mapper");
 
-  if(prg_rom_size) {
-    prg.resize(prg_rom_size * 0x4000);
-  }
-
-  if(chr_rom_size) {
-    chr.resize(chr_rom_size * 0x2000);
-  }
+  prg.resize(prg_rom_size * 0x4000);
+  chr.resize(chr_rom_size * 0x2000);
 
   file.read((char*)prg.data(), prg_rom_size * 0x4000);
   file.read((char*)chr.data(), chr_rom_size * 0x2000);
 
+  if (four_screen) {
+    // TODO
+    std::cout << "Four screen\n";
+    nametable[0] = nt.data();
+    nametable[1] = nt.data();
+    nametable[2] = nt.data();
+    nametable[3] = nt.data();
+  } else if (horizontal_mirroring) {
+    std::cout << "Horizontal mirroring\n";
+    nametable[0] = nt.data();
+    nametable[1] = nt.data();
+    nametable[2] = nt.data() + 0x400;
+    nametable[3] = nt.data() + 0x400;
+  } else {
+    std::cout << "Vertical mirroring\n";
+    nametable[0] = nt.data();
+    nametable[1] = nt.data() + 0x400;
+    nametable[2] = nt.data();
+    nametable[3] = nt.data() + 0x400;
+  }
+
   prg_bank.push_back(prg.data() + 0x0);
-  prg_bank.push_back(prg.data() + 0x4000);
+  prg_bank.push_back(prg.data() + (prg_rom_size > 1 ? 0x4000 : 0));
 
   chr_bank.push_back(chr.data());
   chr_bank.push_back(chr.data() + 0x1000);
