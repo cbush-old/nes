@@ -16,11 +16,24 @@ using std::runtime_error;
 static const unsigned VROM_Granularity = 0x400, VROM_Pages = 0x2000 / VROM_Granularity;
 static const unsigned ROM_Granularity = 0x2000, ROM_Pages = 0x10000 / ROM_Granularity;
 
-void ROM::write(uint8_t value, uint16_t addr) {
-  if(0x8000 <= addr) {
-    writef(*this, value, addr);
-  }
+void ROM::write_prg(uint8_t value, uint16_t addr) {
+  writef(*this, value, addr);
 }
+
+void ROM::write_chr(uint8_t value, uint16_t addr) {
+
+}
+
+uint8_t ROM::read_prg(uint16_t addr) const {
+  // TODO
+  return 0;
+}
+
+uint8_t ROM::read_chr(uint16_t addr) const {
+  // TODO
+  return 0;
+}
+
 
 uint8_t& ROM::getntref(uint8_t table, uint16_t addr) {
   return _nt[table][addr];

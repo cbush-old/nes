@@ -10,23 +10,6 @@ using Framebuffer = std::array<uint32_t, 256 * 240>;
 struct State {
 };
 
-/**
- * @brief Interface of writeable component
- **/
-class IWriteableComponent {
-  public:
-    ~IWriteableComponent() {}
-
-  public:
-    /**
-     * @brief write a value to a memory location
-     * @param what the 8-bit value to write
-     * @param where the address where to write the value
-     **/
-    virtual void write(uint8_t what, uint16_t where) =0;
-
-};
-
 
 /**
  * @brief Interface of a picture processing unit
@@ -40,6 +23,7 @@ class IPPU {
      * @brief advance the component's internal clock
      **/
     virtual void tick() =0;
+
 
   public: // Register write
     /**
@@ -91,7 +75,10 @@ class IPPU {
 
     /**
      * @brief set the scroll position, i.e. where in the nametable to start rendering
-     * @param value the address within the nametable that should be drawn at the top left corner: x and y on alternate writes.
+     * @param value 1/2 of the 2-byte address within the nametable that should be drawn at the top left corner
+     *
+     * The internal latch that determines whether to write to the upper or lower byte is toggled upon write.
+     * The latch is reset by a read to $2002 (status register).
      **/
     virtual void regw_scroll(uint8_t value) =0;
 
@@ -99,7 +86,7 @@ class IPPU {
      * @brief set the vram address
      * @param value 1/2 of the 2-byte VRAM address. Upper byte on first write, lower byte on second.
      *
-     * An internal latch that determines whether to write to the upper or lower byte is toggled upon write.
+     * The internal latch that determines whether to write to the upper or lower byte is toggled upon write.
      * The latch is reset by a read to $2002 (status register).
      **/
     virtual void regw_address(uint8_t value) =0;
@@ -111,6 +98,7 @@ class IPPU {
      * After read/write, the vram address is incremented by either 1 or 32 (as set in the ppu control register).
      **/
     virtual void regw_data(uint8_t value) =0;
+
 
   public: // Register read
     /**
@@ -270,7 +258,7 @@ class IInputDevice {
 /**
  * @brief interface of the gamepak/cartridge/ROM
  **/
-class IROM : public IWriteableComponent {
+class IROM {
   public:
     virtual ~IROM(){}
 
@@ -290,7 +278,42 @@ class IROM : public IWriteableComponent {
      **/
     virtual uint8_t& getntref(uint8_t table, uint16_t addr) =0;
     virtual uint8_t const& getntref(uint8_t table, uint16_t addr) const =0;
-    virtual void write_nt(uint8_t value, uint8_t table, uint16_t addr) =0;
+
+    /**
+     * @brief write to the cartridge prg space ($4020 - $ffff in CPU memory space)
+     * @param value the value to write
+     * @param addr the address to write
+     *
+     * This function expects addr to be in the range of $0000 to $bfdf (corresponding to CPU space $4020 - $ffff)
+     **/
+    virtual void write_prg(uint8_t value, uint16_t addr) =0;
+
+    /**
+     * @brief write to the cartridge chr space ($0000 - $1fff in PPU memory space)
+     * @param value the value to write
+     * @param addr the address to write
+     *
+     * This function expects addr to be in the range of $0000 to $1fff.
+     **/
+    virtual void write_chr(uint8_t value, uint16_t addr) =0;
+
+    /**
+     * @brief read cartridge prg space ($4020 - $ffff in CPU memory space)
+     * @param addr the address to read
+     * @return the value at address
+     *
+     * This function expects addr to be in the range of $0000 to $bfdf (corresponding to CPU space $4020 - $ffff)
+     **/
+    virtual uint8_t read_prg(uint16_t addr) const =0;
+
+    /**
+     * @brief write to the cartridge chr space ($0000 - $1fff in PPU memory space)
+     * @param value the value to write
+     * @param addr the address to write
+     *
+     * This function expects addr to be in the range of $0000 to $1fff.
+     **/
+    virtual uint8_t read_chr(uint8_t value, uint16_t addr) const =0;
 
     /**
      * @brief retrieve a reference to a location in the vbank
@@ -299,7 +322,7 @@ class IROM : public IWriteableComponent {
      **/
     virtual uint8_t& getvbankref(uint16_t addr) =0;
     virtual uint8_t const& getvbankref(uint16_t addr) const =0;
-
+    virtual void write_nt(uint8_t value, uint8_t table, uint16_t addr) =0;
 };
 
 

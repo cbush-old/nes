@@ -130,7 +130,7 @@ class PPU : public IPPU {
     uint8_t regr_OAM_data();
     uint8_t regr_data();
 
-  private:
+  private: // Render functions
     using Renderf = std::function<void(PPU&)>;
     using Renderf_array = std::array<Renderf, 342>;
 
@@ -142,10 +142,11 @@ class PPU : public IPPU {
 
   protected:
     /**
-     * @brief (internal) write to vram at the current vram address
+     * @brief (internal) write to vram
      * @param value the value to write
+     * @param addr target location of the write
      **/
-    void write(uint8_t value);
+    void write(uint8_t value, uint16_t addr);
 
     /**
      * @brief (internal) read from vram

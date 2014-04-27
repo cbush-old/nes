@@ -33,6 +33,12 @@ class ROM : public IROM {
     void write_nt(uint8_t value, uint8_t table, uint16_t addr);
     void write(uint8_t value, uint16_t addr);
 
+  public:
+    void write_prg(uint8_t value, uint16_t addr);
+    void write_chr(uint8_t value, uint16_t addr);
+    uint8_t read_prg(uint16_t addr) const;
+    uint8_t read_chr(uint16_t addr) const;
+
   protected:
     static const unsigned VROM_Granularity = 0x400, VROM_Pages = 0x2000 / VROM_Granularity;
     static const unsigned ROM_Granularity = 0x2000, ROM_Pages = 0x10000 / ROM_Granularity;

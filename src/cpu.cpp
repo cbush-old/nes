@@ -99,7 +99,7 @@ void CPU::write(uint8_t value, uint16_t addr) {
 
   } else {
 
-    rom->write(value, addr);
+    rom->write_prg(value, addr - 0x4020);
 
   }
 

@@ -1,32 +1,11 @@
 #include "ppu.h"
+#include <thread>
+#include <chrono>
 
 #include <SDL2/SDL.h>
 
-using std::cout;
-using std::setw;
-using std::hex;
-using std::vector;
-using std::thread;
-using std::string;
-using std::ifstream;
-using std::exception;
-using std::runtime_error;
-
-
 template<int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256>
 void PPU::render() {
-  #define mmap read
-
-  #ifdef DEBUG_PPU_RENDER_TEMPLATES
-  std::cout 
-    << "render<" 
-    << (int)X
-    << ", " << (int)X_MOD_8
-    << ", " << (int)TDM
-    << ", " << (int)X_ODD_64_TO_256
-    << ", " << (int)X_LT_256
-    << ">\n";
-  #endif
 
   if(X_MOD_8 == 2 && TDM) {
     ioaddr = 0x23c0 + 0x400 * vram.base_nta + 8 * (vram.ycoarse / 4) + (vram.xcoarse / 4); 
@@ -35,7 +14,7 @@ void PPU::render() {
   if(X_MOD_8 == 0 || (X_MOD_8 == 2 && !TDM)){
     ioaddr = 0x2000 + (vram.raw & 0xfff);
     
-    if(X == 0){
+    if (X == 0) {
       sprinpos = sproutpos = 0;
       if(reg.show_sp)
         reg.OAMADDR = 0;
@@ -62,7 +41,7 @@ void PPU::render() {
         scanline_end = 340;
       }
     }
-    pat_addr = 0x1000 * reg.bg_addr + 16 * mmap(ioaddr) + vram.yfine;
+    pat_addr = 0x1000 * reg.bg_addr + 16 * read(ioaddr) + vram.yfine;
     if(TDM){
       bg_shift_pat = (bg_shift_pat >> 16) + 0x00010000 * tilepat;
       bg_shift_attr = (bg_shift_attr >> 16) + 0x55550000 * tileattr;
@@ -72,7 +51,7 @@ void PPU::render() {
   if(X_MOD_8 == 3){
     if(TDM){
       tileattr = 
-        (mmap(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse&2))) & 3;
+        (read(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse&2))) & 3;
       
       if(++vram.xcoarse == 0){
         vram.base_nta_x = 1 - vram.base_nta_x;
@@ -109,11 +88,11 @@ void PPU::render() {
   }
   
   if(X_MOD_8 == 5){
-    tilepat = mmap(pat_addr|0);
+    tilepat = read(pat_addr|0);
   } 
   
   if(X_MOD_8 == 7){
-    unsigned p = tilepat | (mmap(pat_addr|8) << 8);
+    unsigned p = tilepat | (read(pat_addr|8) << 8);
     p = (p&0xf00f) | ((p&0x0f00)>>4) | ((p&0x00f0)<<4);
     p = (p&0xc3c3) | ((p&0x3030)>>2) | ((p&0x0c0c)<<2);
     p = (p&0x9999) | ((p&0x4444)>>1) | ((p&0x2222)<<1);
@@ -199,7 +178,7 @@ void print_framerate() {
     sum += framerate[i];
   }
   sum /= N_FRAMERATES;
-  cout << "Average framerate: " << (1000.0/sum) << "/s\n";
+  std::cout << "Average framerate: " << (1000.0/sum) << "/s\n";
 
 }
 
@@ -221,13 +200,13 @@ int clock_frame() {
 #undef N_FRAMES
 
 
-void PPU::write(uint8_t value) {
+void PPU::write(uint8_t value, uint16_t addr) {
 
-  uint16_t addr = vram.raw & 0x3fff;
+  addr &= 0x3fff;
 
-  if (addr < 0x2000) { // Pattern table
+  if (addr < 0x2000) { // Pattern table (CHR RAM/ROM)
 
-    // TODO: possible if cart has CHR RAM?
+    rom->write_chr(value, addr);
 
   } else if (addr < 0x3f00) { // Name table
 
@@ -342,56 +321,58 @@ void PPU::render_pixel() {
 void PPU::tick() {
 
   switch (vblank_state) {
-    case 0: 
+    case -5: 
+      reg.PPUSTATUS = 0; 
+      break;
+    case 0:
       if(!NMI_pulled && reg.vblanking && reg.NMI_enabled){
         bus->pull_NMI();
         NMI_pulled = true;
       }
       break;
-    case 2: 
+    case 2:
       reg.vblanking = true; 
       NMI_pulled = false; 
       break;
-    case -5: 
-      reg.PPUSTATUS = 0; 
-      break;
   }
 
-  if (vblank_state != 0) {
-    vblank_state += (vblank_state < 0) * 2 - 1;
+  if (vblank_state < 0) {
+    ++vblank_state;
+  } else if (vblank_state > 0) {
+    --vblank_state;
   }
 
-  if (reg.rendering_enabled) {
-    if (scanline < 240) {
+  if (reg.rendering_enabled && scanline < 240) {
       (*tick_renderer)(*this);
       ++tick_renderer;
-    }
   }
 
-  if(++cycle > scanline_end){
+  if (++cycle > scanline_end) {
 
     cycle = 0;
     tick_renderer = renderfuncs.begin();
     scanline_end = 341;
 
-    switch(++scanline){
+    switch (++scanline) {
 
-      case 261:
+      case 261: // Pre-render scanline
         scanline = -1;
-        loopy_w ^= 1;
+        //loopy_w ^= 1; // FIXME: Does the latch get reset here?
         vblank_state = -5;
         break;
 
-      case 241:
-        // events
+      case 241: { // Frame release
         input->tick();
         video->set_buffer(framebuffer);
 
-        int d = 17 - clock_frame();
+        clock_frame();
+        // TODO: delay?
 
-        SDL_Delay(d * !(d<0));
-        
         vblank_state = 2;
+        break;
+      }
+
+      default:
         break;
 
     }
@@ -436,9 +417,8 @@ void PPU::regw_address(uint8_t value) {
   loopy_w ^= 1;
 }
 
-
 void PPU::regw_data(uint8_t value) {
-  write(value);
+  write(value, vram.raw);
   vram.raw = vram.raw + (bool(reg.vramincr) * 31 + 1);
 }
 

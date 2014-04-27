@@ -27,4 +27,4 @@ nes: $(OBJECTS)
 	$(CC) $(CFLAGS) $(INCLUDE) $< -o $@
 
 clean:
-	rm src/*.o
+	rm *.o src/*.o
