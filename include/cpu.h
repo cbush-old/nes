@@ -83,12 +83,14 @@ class CPU : public ICPU {
     template <mode M>
     uint8_t& getref() {
       uint16_t addr = (this->*M)();
-      if(addr < 0x2000) return memory[addr & 0x7ff];
-      if(addr < 0x4020){
+      if(addr < 0x2000) {
+        return memory[addr & 0x7ff];
+      } else if(addr < 0x4020) {
         // this shouldn't happen
-        return memory[0];
+        throw std::runtime_error("program referencing register memory!");
+      } else {
+        throw std::runtime_error("program referencing cartridge space!");
       }
-      return rom->getmemref(addr);
     }
 
     template <typename T> 

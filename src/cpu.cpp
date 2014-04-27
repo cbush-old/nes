@@ -57,7 +57,7 @@ uint8_t CPU::read(uint16_t addr) const {
     }
   } else {
 
-    return rom->read_prg(addr);
+    return rom->read_prg(addr - 0x4020);
 
   }
 }

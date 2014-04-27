@@ -17,15 +17,36 @@ static const unsigned VROM_Granularity = 0x400, VROM_Pages = 0x2000 / VROM_Granu
 static const unsigned ROM_Granularity = 0x2000, ROM_Pages = 0x10000 / ROM_Granularity;
 
 void ROM::write_prg(uint8_t value, uint16_t addr) {
-  writef(*this, value, addr);
+  if (addr < 0x3fe0) {
+    // TODO
+  } else {
+    addr -= 0x3fe0;
+    prg_bank[addr / 0x4000][addr & 0x3fff] = value;
+  }
 }
 
 void ROM::write_chr(uint8_t value, uint16_t addr) {
 
 }
 
+uint8_t dummy;
+uint8_t& ROM::getmemref(uint16_t addr) {
+  if (addr < 0x3fe0) {
+    return dummy;
+  } else {
+    addr -= 0x3fe0;
+    return prg_bank[addr / 0x4000][addr & 0x3fff];
+  }
+}
+
 uint8_t ROM::read_prg(uint16_t addr) const {
-  return prg_bank[(addr / ROM_Granularity) % ROM_Pages][addr % ROM_Granularity];
+  if (addr < 0x3fe0) {
+    // TODO
+    return 0;
+  } else {
+    addr -= 0x3fe0;
+    return prg_bank[addr / 0x4000][addr & 0x3fff];
+  }
 }
 
 uint8_t ROM::read_chr(uint16_t addr) const {
@@ -54,24 +75,19 @@ static const std::unordered_map<uint8_t, std::function<void(ROM&, uint8_t, uint1
   { 0, [](ROM& this_, uint8_t value, uint16_t addr){}},
 };
 
-
-uint8_t& ROM::getmemref(uint16_t addr) {
-  return prg_bank[(addr / ROM_Granularity) % ROM_Pages][addr % ROM_Granularity];
-}
-
 template<unsigned npages, unsigned granu>
 static void set_pages(
-  std::vector<uint8_t*>& b,
-  std::vector<uint8_t>& r,
+  std::vector<uint8_t*>& bank,
+  std::vector<uint8_t>& realmem,
   unsigned size,
   unsigned baseaddr,
   unsigned index
 ){
-  auto rs = r.size();
-  for(unsigned v = rs + index * size, p = baseaddr / granu;
+  auto memsize = realmem.size();
+  for(unsigned v = memsize + index * size, p = baseaddr / granu;
     p < (baseaddr + size) / granu && p < npages;
     ++p, v += granu)
-    b[p] = &r[v%rs];
+    bank.push_back(realmem.data() + (v % memsize));
 }
 
 static const auto& set_ROM = set_pages<ROM_Pages, ROM_Granularity>;
@@ -89,9 +105,7 @@ ROM::ROM(std::string const& src):
     nt.data() + 0x400,
     nt.data(),
     nt.data() + 0x400,
-  },
-  prg_bank(8),
-  chr_bank(8)
+  }
 {
 
   ifstream file(src);
@@ -140,8 +154,8 @@ ROM::ROM(std::string const& src):
   file.read((char*)chr.data(), chr_rom_size * 0x2000);
 
   set_VROM(chr_bank, chr, 0x2000, 0, 0);
-  
-  for(unsigned v = 0; v < 4; ++v)
-    set_ROM(prg_bank, prg, 0x4000, v * 0x4000, v==3 ? -1 : 0);
+
+  prg_bank.push_back(prg.data() + 0x0);
+  prg_bank.push_back(prg.data() + 0x4000);
 
 }
