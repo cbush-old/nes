@@ -1,6 +1,8 @@
 #include "input_sdl.h"
 
 #include <map>
+#include <thread>
+#include <chrono>
 
 #include <SDL2/SDL.h>
 
@@ -22,6 +24,13 @@ SDLInputDevice::SDLInputDevice(IController& controller)
   : port(controller)
   {}
 
+bool slooow = false;
+int frameskip { 0 };
+
+int SDLInputDevice::get_frameskip() const {
+  return frameskip;
+}
+
 void SDLInputDevice::tick() {
 
   SDL_Event e;
@@ -31,10 +40,18 @@ void SDLInputDevice::tick() {
       auto const& i = lookup.find(e.key.keysym.sym);
       if (i != lookup.end()) {
         port.set_button_state(i->second, (e.type == SDL_KEYDOWN) * IController::BUTTON_ON);
+      } else if (e.key.keysym.sym == SDLK_q) {
+        slooow = e.type == SDL_KEYDOWN;
+      } else if (e.key.keysym.sym == SDLK_w) {
+        frameskip = (e.type == SDL_KEYDOWN) * 10;
       }
     } else if (e.type == SDL_QUIT) {
       throw 1;
     }
+  }
+
+  if (slooow) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 
 }

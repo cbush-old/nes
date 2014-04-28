@@ -27,11 +27,10 @@ class PPU : public IPPU {
   private:
     IBus *bus;
     IROM *rom;
-    IInputDevice *input;
     IVideoDevice *video;
 
   public:
-    PPU(IBus *bus, IROM *rom, IInputDevice *input, IVideoDevice *video);
+    PPU(IBus *bus, IROM *rom, IVideoDevice *video);
 
   public:
     /**
@@ -39,7 +38,12 @@ class PPU : public IPPU {
      **/
     void tick();
 
+    void set_frameskip(int n);
+
   private:
+    int frameskip { 0 };
+    int frameskip_count { 0 };
+
     mutable union {
       
       uint32_t raw;
@@ -92,14 +96,11 @@ class PPU : public IPPU {
 
     } scroll, vram;
 
-    mutable bool loopy_w { false };
-    bool NMI_pulled { false };
+    bool loopy_w { false };
 
-    int
-      cycle { 0 },
-      scanline { 241 },
-      scanline_end { 341 },
-      vblank_state { 0 };
+    int cycle { 0 };
+    int scanline { 241 };
+    int scanline_end { 341 };
 
     mutable int read_buffer { 0 };
 
@@ -127,6 +128,8 @@ class PPU : public IPPU {
     } OAM2[8], OAM3[8];
 
     void render_pixel();
+
+    void release_frame();
 
   public: // Register read/write
     void regw_control(uint8_t value);
@@ -161,7 +164,7 @@ class PPU : public IPPU {
     /**
      * @brief (internal) read from vram
      * @param addr the vram address to look up
-     * @param no_palette whether to treat the memory space above $3f00 as mirror of nametable below.
+     * @param no_palette whether to treat the memory space above $3f00 as mirror of nametable below (usually no).
      * @return the value at the given address
      **/
     uint8_t read(uint16_t addr, bool no_palette = false) const;

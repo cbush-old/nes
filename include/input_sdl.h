@@ -11,6 +11,8 @@ class SDLInputDevice : public IInputDevice {
   public:
     void tick();
 
+    int get_frameskip() const;
+
   private:
     IController& port;
 };

@@ -53,14 +53,14 @@ void PPU::render() {
 
   // Fetch lower tile byte
   if(X_MOD_8 == 5) {
-    tilepat = read(pat_addr|0);
+    tilepat = read(pat_addr);
   }
   
   // Fetch upper tile byte
   if(X_MOD_8 == 7) {
-    unsigned p = tilepat | (read(pat_addr | 8) << 8);
+    unsigned p = tilepat | (read(pat_addr + 8) << 8);
 
-    // Shuffle the two patterns together
+    // Interlace the two patterns
     p = (p & 0xf00f) | ((p & 0x0f00)>>4) | ((p & 0x00f0)<<4);
     p = (p & 0xc3c3) | ((p & 0x3030)>>2) | ((p & 0x0c0c)<<2);
     p = (p & 0x9999) | ((p & 0x4444)>>1) | ((p & 0x2222)<<1);
@@ -229,6 +229,7 @@ const PPU::Renderf_array PPU::renderfuncs {
 
 
 
+
 static const uint32_t RGB[64] {
   0x7C7C7CFF, 0x0000FCFF, 0x0000BCFF, 0x4428BCFF, 0x940084FF, 0xA80020FF, 0xA81000FF, 0x881400FF,
   0x503000FF, 0x007800FF, 0x006800FF, 0x005800FF, 0x004058FF, 0x000000FF, 0x000000FF, 0x000000FF,
@@ -332,7 +333,7 @@ int clock_frame() {
 
   return d;
 }
-#undef N_FRAMES
+#undef N_FRAMERATES
 
 
 void PPU::write(uint8_t value, uint16_t addr) {
@@ -382,28 +383,6 @@ uint8_t PPU::read(uint16_t addr, bool no_palette /* = false */) const {
 
 void PPU::tick() {
 
-  switch (vblank_state) {
-    case -5: 
-      reg.PPUSTATUS = 0; 
-      break;
-    case 0:
-      if(!NMI_pulled && reg.vblanking && reg.NMI_enabled){
-        bus->pull_NMI();
-        NMI_pulled = true;
-      }
-      break;
-    case 2:
-      reg.vblanking = true; 
-      NMI_pulled = false; 
-      break;
-  }
-
-  if (vblank_state < 0) {
-    ++vblank_state;
-  } else if (vblank_state > 0) {
-    --vblank_state;
-  }
-
   if (reg.rendering_enabled && scanline < 240) {
       (*tick_renderer)(*this);
       ++tick_renderer;
@@ -420,17 +399,24 @@ void PPU::tick() {
       case 261: // Pre-render scanline
         scanline = -1;
         //loopy_w ^= 1; // FIXME: Does the latch get reset here?
-        vblank_state = -5;
+        reg.PPUSTATUS = 0;
         break;
 
       case 241: { // Frame release
-        input->tick();
-        video->set_buffer(framebuffer);
 
-        clock_frame();
-        // TODO: delay?
+        if (++frameskip_count > frameskip) {
+          frameskip_count = 0;
+          video->set_buffer(framebuffer);
+        }
 
-        vblank_state = 2;
+        bus->on_frame();
+
+        reg.vblanking = true; 
+
+        if (reg.NMI_enabled) {
+          bus->pull_NMI(); // FIXME: this is actually pulled on the next cycle
+        }
+
         break;
       }
 
@@ -502,10 +488,14 @@ uint8_t PPU::regr_data() {
   return result;
 }
 
-PPU::PPU(IBus *bus, IROM *rom, IInputDevice *input, IVideoDevice *video)
+void PPU::set_frameskip(int n) {
+  frameskip = n;
+}
+
+
+PPU::PPU(IBus *bus, IROM *rom, IVideoDevice *video)
   : bus(bus)
   , rom(rom)
-  , input(input)
   , video(video)
   , tick_renderer(renderfuncs.begin())
 {

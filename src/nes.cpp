@@ -18,7 +18,7 @@ NES::NES(IROM& rom)
     }
     , input (new SDLInputDevice(*controller[0]))
     , rom (rom)
-    , ppu (new PPU(this, &rom, input, video))
+    , ppu (new PPU(this, &rom, video))
     , apu (new APU(this))
     , cpu (new CPU(apu, ppu, &rom, controller[0], controller[1]))
     {
@@ -46,4 +46,11 @@ void NES::pull_IRQ() {
 
 void NES::reset_IRQ() {
     cpu->reset_IRQ();
+}
+
+void NES::on_frame() {
+    input->tick();
+
+    ppu->set_frameskip(((SDLInputDevice*)input)->get_frameskip());
+
 }

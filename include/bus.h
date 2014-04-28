@@ -25,6 +25,14 @@ class IPPU {
     virtual void tick() =0;
 
 
+  public: // Emulator settings
+    /**
+     * @brief set the frameskip
+     * @param n number of frames to skip
+     **/
+    virtual void set_frameskip(int n) =0;
+
+
   public: // Register write
     /**
      * @brief write to the ppu control register
@@ -349,6 +357,9 @@ class IBus {
     virtual void pull_IRQ() =0;
     virtual void reset_IRQ() =0;
 
+  public:
+    virtual void on_frame() =0;
+
 };
 
 
@@ -392,6 +403,7 @@ class NES : public IBus {
     void pull_NMI();
     void pull_IRQ();
     void reset_IRQ();
+    void on_frame();
 
 };
 
