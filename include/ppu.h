@@ -124,7 +124,7 @@ class PPU : public IPPU {
       uint8_t x;
       uint8_t sprindex;
       uint16_t pattern; 
-    } OAM2[9], OAM3[9];
+    } OAM2[8], OAM3[8];
 
     void render_pixel();
 
@@ -161,9 +161,10 @@ class PPU : public IPPU {
     /**
      * @brief (internal) read from vram
      * @param addr the vram address to look up
+     * @param no_palette whether to treat the memory space above $3f00 as mirror of nametable below.
      * @return the value at the given address
      **/
-    uint8_t read(uint16_t addr) const;
+    uint8_t read(uint16_t addr, bool no_palette = false) const;
 
 };
 

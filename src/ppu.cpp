@@ -4,6 +4,7 @@
 
 #include <SDL2/SDL.h>
 
+// So much of this comes from bisqwit's NES.
 
 const uint16_t ATTRIBUTE_TABLE_BASE_ADDR = 0x23c0;
 const uint16_t NAME_TABLE_BASE_ADDR = 0x2000;
@@ -122,7 +123,7 @@ void PPU::render() {
       unsigned y = scanline - object.y;
 
       if (object.flip_vertically) {
-        y ^= reg.sprite_size ? 15 : 7;
+        y ^= (reg.sprite_size + 1) * 8 - 1;
       }
 
       if (reg.sprite_size) {
@@ -227,81 +228,6 @@ const PPU::Renderf_array PPU::renderfuncs {
 #undef Y
 
 
-#define N_FRAMERATES 256
-int framerate[N_FRAMERATES];
-
-
-void print_framerate() {
-  double sum = 0;
-  for(int i = 0; i < N_FRAMERATES; ++i){
-    sum += framerate[i];
-  }
-  sum /= N_FRAMERATES;
-  std::cout << "Average framerate: " << (1000.0/sum) << "/s\n";
-
-}
-
-int clock_frame() {
-  static int last_clock = SDL_GetTicks();
-  static int i = 0;
-  int tick = SDL_GetTicks();
-  int d = tick - last_clock;
-  framerate[i++%N_FRAMERATES] = d;
-  last_clock = tick;
-
-  #ifdef DEBUG_PPU_PRINT_FRAMERATE
-  if(i%N_FRAMERATES==0)
-    print_framerate();
-  #endif
-
-  return d;
-}
-#undef N_FRAMES
-
-
-void PPU::write(uint8_t value, uint16_t addr) {
-
-  addr &= 0x3fff;
-
-  if (addr < 0x2000) { // Pattern table (CHR RAM/ROM)
-
-    rom->write_chr(value, addr);
-
-  } else if (addr < 0x3f00) { // Name table
-
-    rom->write_nt(value, addr - 0x2000);
-
-  } else { // Palette
-
-    palette[addr & (0xf | (((addr & 3) != 0) << 4))] = value;
-
-  }
-
-}
-
-// http://wiki.nesdev.com/w/index.php/PPU_memory_map
-uint8_t PPU::read(uint16_t addr) const {
-
-  addr &= 0x3fff;
-
-  if (addr < 0x2000) { // Pattern table
-
-    return rom->read_chr(addr);
-
-  } else if (addr < 0x3f00) { // Name table
-
-    return rom->read_nt(addr - 0x2000);
-
-  } else { // Palette http://wiki.nesdev.com/w/index.php/PPU_palettes
-
-    // Retrieve the palette index; address above 0x3f20 are mirrors of 0x3f00 to 0x3f1f.
-    // Additionally, index 10, 14, 18 and 1C are mirrors of 0, 4, 8 and C respectively.
-    return palette[addr & (0xf | (((addr & 3) != 0) << 4))];
-
-  }
-
-}
-
 
 static const uint32_t RGB[64] {
   0x7C7C7CFF, 0x0000FCFF, 0x0000BCFF, 0x4428BCFF, 0x940084FF, 0xA80020FF, 0xA81000FF, 0x881400FF,
@@ -313,6 +239,9 @@ static const uint32_t RGB[64] {
   0xFCFCFCFF, 0xA4E4FCFF, 0xB8B8F8FF, 0xD8B8F8FF, 0xF8B8F8FF, 0xF8A4C0FF, 0xF0D0B0FF, 0xFCE0A8FF,
   0xF8D878FF, 0xD8F878FF, 0xB8F8B8FF, 0xB8F8D8FF, 0x00FCFCFF, 0xF8D8F8FF, 0x000000FF, 0x000000FF,
 };
+
+
+
 
 void PPU::render_pixel() {
 
@@ -369,6 +298,85 @@ void PPU::render_pixel() {
 
 }
 
+
+
+
+
+
+#define N_FRAMERATES 256
+int framerate[N_FRAMERATES];
+
+
+void print_framerate() {
+  double sum = 0;
+  for(int i = 0; i < N_FRAMERATES; ++i){
+    sum += framerate[i];
+  }
+  sum /= N_FRAMERATES;
+  std::cout << "Average framerate: " << (1000.0/sum) << "/s\n";
+
+}
+
+int clock_frame() {
+  static int last_clock = SDL_GetTicks();
+  static int i = 0;
+  int tick = SDL_GetTicks();
+  int d = tick - last_clock;
+  framerate[i++%N_FRAMERATES] = d;
+  last_clock = tick;
+
+  #ifdef DEBUG_PPU_PRINT_FRAMERATE
+  if(i%N_FRAMERATES==0)
+    print_framerate();
+  #endif
+
+  return d;
+}
+#undef N_FRAMES
+
+
+void PPU::write(uint8_t value, uint16_t addr) {
+
+  addr &= 0x3fff;
+
+  if (addr < 0x2000) { // Pattern table (CHR RAM/ROM)
+
+    rom->write_chr(value, addr);
+
+  } else if (addr < 0x3f00) { // Name table
+
+    rom->write_nt(value, addr - 0x2000);
+
+  } else { // Palette
+
+    palette[addr & (0xf | (((addr & 3) != 0) << 4))] = value;
+
+  }
+
+}
+
+// http://wiki.nesdev.com/w/index.php/PPU_memory_map
+uint8_t PPU::read(uint16_t addr, bool no_palette /* = false */) const {
+
+  addr &= 0x3fff;
+
+  if (addr < 0x2000) { // Pattern table
+
+    return rom->read_chr(addr);
+
+  } else if (addr < 0x3f00 + no_palette * 0xff) { // Name table
+
+    return rom->read_nt(addr - 0x2000);
+
+  } else { // Palette http://wiki.nesdev.com/w/index.php/PPU_palettes
+
+    // Retrieve the palette index; address above 0x3f20 are mirrors of 0x3f00 to 0x3f1f.
+    // Additionally, index 10, 14, 18 and 1C are mirrors of 0, 4, 8 and C respectively.
+    return palette[addr & (0xf | (((addr & 3) != 0) << 4))];
+
+  }
+
+}
 
 
 
@@ -489,7 +497,7 @@ uint8_t PPU::regr_OAM_data() {
 
 uint8_t PPU::regr_data() {
   uint8_t result = read_buffer;
-  read_buffer = read(vram.raw);
+  read_buffer = read(vram.raw, true);
   vram.raw = vram.raw + (!!reg.vramincr * 31 + 1);
   return result;
 }
