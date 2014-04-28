@@ -50,6 +50,7 @@ void PPU::render() {
 
   }
 
+  // Fetch lower tile byte
   if(X_MOD_8 == 5) {
     tilepat = read(pat_addr|0);
   }
@@ -71,8 +72,9 @@ void PPU::render() {
   // First cycle: reset
   if (X == 0) {
     sprinpos = sproutpos = 0;
-    if(reg.show_sp)
+    if(reg.show_sp) {
       reg.OAMADDR = 0;
+    }
   }
 
   // End of scanline: copy temp horizontal data to main vram
@@ -114,22 +116,22 @@ void PPU::render() {
 
     if(sprrenpos < sproutpos) {
 
-      auto& o = OAM3[sprrenpos];
-      memcpy(&o, &OAM2[sprrenpos], sizeof(o));
+      auto& object = OAM3[sprrenpos];
+      memcpy(&object, &OAM2[sprrenpos], sizeof(object));
       
-      unsigned y = scanline - o.y;
+      unsigned y = scanline - object.y;
 
-      if (o.attr & 0x80) {
-        y ^= 7 + reg.sprite_size * 8;
+      if (object.flip_vertically) {
+        y ^= reg.sprite_size ? 15 : 7;
       }
 
       if (reg.sprite_size) {
 
-        pat_addr = PATTERN_TABLE_SIZE * (o.index & 0x01) + 0x10 * (o.index & 0xfe);
+        pat_addr = PATTERN_TABLE_SIZE * (object.index & 1) + 0x10 * (object.index & 0xfe);
 
       } else {
 
-        pat_addr = PATTERN_TABLE_SIZE * reg.sp_addr + 0x10 * (o.index & 0xff);
+        pat_addr = PATTERN_TABLE_SIZE * reg.sp_addr + 0x10 * (object.index & 0xff);
 
       }
 
@@ -139,59 +141,68 @@ void PPU::render() {
 
   }
 
-  // Sprite stuff
-  //
+  // Ready sprite
   //
   if (X_MOD_8 == 7 && !TDM) {
-    if(sprrenpos < sproutpos)
+    if (sprrenpos < sproutpos) {
       OAM3[sprrenpos++].pattern = tilepat;
+    }
   }
 
 
-  // Sprite stuff
-  //
+  // Prepare sprite data
   //
   if (X_ODD_64_TO_256) {
-    switch(reg.OAMADDR++&3){
+    switch (reg.OAMADDR++ & 3) {
       case 0:
-        if(sprinpos >= 64){
+        // Primary OAM can hold 64 sprites per frame
+        if (sprinpos >= 64) {
           reg.OAMADDR = 0;
           break;
         }
+
         ++sprinpos;
+
+        // Secondary OAM holds max 8 sprites per scanline
         OAM2[sproutpos].y = sprtmp;
         OAM2[sproutpos].sprindex = reg.OAM_index;
-        {
-          int y1 = sprtmp, y2 = sprtmp + 8 + !!reg.sprite_size * 8;
-          if(!(y1 <= scanline && scanline < y2)){
-            reg.OAMADDR = sprinpos != 2 ? reg.OAMADDR + 3 : 8;
-          }
+        
+        // If the sprite is not on this scanline, skip ahead in memory
+        if (!(sprtmp <= scanline && scanline < sprtmp + (reg.sprite_size? 16 : 8))) {
+          reg.OAMADDR = sprinpos != 2 ? reg.OAMADDR + 3 : 8;
         }
+
         break;
+
       case 1:
         OAM2[sproutpos].index = sprtmp;
         break;
+
       case 2:
         OAM2[sproutpos].attr = sprtmp;
         break;
+
       case 3:
-        if(sproutpos < 8){
+        if (sproutpos < 8) {
           OAM2[sproutpos++].x = sprtmp;
         } else {
           reg.spr_overflow = true;
         }
         
-        if(sprinpos == 2)
+        if (sprinpos == 2) {
           reg.OAMADDR = 8;
+        }
         
         break;
     }
   } else {
+
     sprtmp = OAM[reg.OAMADDR];
+
   }
 
   if(X_LT_256 && scanline >= 0) {
-      render_pixel();
+    render_pixel();
   }
 
 }
@@ -330,19 +341,20 @@ void PPU::render_pixel() {
       if(xdiff >= 8)
         continue;
         
-      if(!(s.attr & 0x40))
+      if(!s.flip_horizontally) {
         xdiff = 7 - xdiff;
-      
+      }
+
       uint8_t spritepixel = (s.pattern >> (xdiff * 2)) & 3;
-      
+
       if(!spritepixel) 
         continue;
 
       if(pixel && s.sprindex == 0)
         reg.spr0_hit = true;
-      
-      if(!pixel || !(s.attr & 0x20)){
-        attr = (s.attr & 3) + 4;
+
+      if (!pixel || !s.priority) {
+        attr = s.palette + 4;
         pixel = spritepixel;
       }
       

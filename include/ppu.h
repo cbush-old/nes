@@ -112,7 +112,17 @@ class PPU : public IPPU {
     uint32_t bg_shift_pat, bg_shift_attr;
 
     struct { 
-      uint8_t sprindex, y, index, attr, x; 
+      uint8_t y;
+      uint8_t index;
+      union {
+        uint8_t attr;
+        bit<0, 2, uint8_t> palette;
+        bit<5, 1, uint8_t> priority;
+        bit<6, 1, uint8_t> flip_horizontally;
+        bit<7, 1, uint8_t> flip_vertically;
+      };
+      uint8_t x;
+      uint8_t sprindex;
       uint16_t pattern; 
     } OAM2[9], OAM3[9];
 
