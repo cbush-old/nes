@@ -4,106 +4,154 @@
 
 #include <SDL2/SDL.h>
 
+
+const uint16_t ATTRIBUTE_TABLE_BASE_ADDR = 0x23c0;
+const uint16_t NAME_TABLE_BASE_ADDR = 0x2000;
+const uint16_t NAME_TABLE_SIZE = 0x400;
+const uint16_t PATTERN_TABLE_SIZE = 0x1000;
+
 template<int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256>
 void PPU::render() {
 
-  if(X_MOD_8 == 2 && TDM) {
-    ioaddr = 0x23c0 + 0x400 * vram.base_nta + 8 * (vram.ycoarse / 4) + (vram.xcoarse / 4); 
-  } 
-  
-  if(X_MOD_8 == 0 || (X_MOD_8 == 2 && !TDM)){
-    ioaddr = 0x2000 + (vram.raw & 0xfff);
-    
-    if (X == 0) {
-      sprinpos = sproutpos = 0;
-      if(reg.show_sp)
-        reg.OAMADDR = 0;
-    }
-    
-    if(X == 256){
-      if(reg.show_bg){
-        vram.xcoarse = (unsigned)scroll.xcoarse;
-        vram.base_nta_x = (unsigned)scroll.base_nta_x;
-        sprrenpos = 0;
-      }
-    }
-    
-    if(X == 304){
-      if(scanline == -1 && reg.show_bg)
-        vram.raw = (unsigned)scroll.raw;
-    }
-    
+  // Prepare fetch pattern from the NT
+  // Also, 2nd fetch in cycle is another NT byte at the end of the scanline
+  if(X_MOD_8 == 0 || (X_MOD_8 == 2 && !TDM)) {
+
+    ioaddr = NAME_TABLE_BASE_ADDR + (vram.raw & 0xfff);
+
   }
-  
-  if(X_MOD_8 == 1){
-    if(X==337){
-      if(scanline == -1 && loopy_w && reg.show_bg){
-        scanline_end = 340;
-      }
-    }
-    pat_addr = 0x1000 * reg.bg_addr + 16 * read(ioaddr) + vram.yfine;
-    if(TDM){
-      bg_shift_pat = (bg_shift_pat >> 16) + 0x00010000 * tilepat;
+
+  // Fetch pattern byte
+  if (X_MOD_8 == 1) {
+
+    pat_addr = PATTERN_TABLE_SIZE * reg.bg_addr + 16 * read(ioaddr) + vram.yfine;
+
+    if (TDM) {
+      // Simulate the per-cycle shifting and re-fill of the registers.
+      // Here the registers are just shifted and filled at once.
+      bg_shift_pat = (bg_shift_pat >> 16) + (tilepat << 16);
       bg_shift_attr = (bg_shift_attr >> 16) + 0x55550000 * tileattr;
     }
   }
-  
-  if(X_MOD_8 == 3){
-    if(TDM){
-      tileattr = 
-        (read(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse&2))) & 3;
-      
-      if(++vram.xcoarse == 0){
-        vram.base_nta_x = 1 - vram.base_nta_x;
-      }
-        
-      if(X==251){
-        if(++vram.yfine == 0 && ++vram.ycoarse == 30){
-          vram.ycoarse = 0;
-          vram.base_nta_y = 1 - vram.base_nta_y;
-        }
-      }
-      
-    } else {
-      if(sprrenpos < sproutpos){
-        auto& o = OAM3[sprrenpos];
-        memcpy(&o, &OAM2[sprrenpos], sizeof(o));
-        unsigned y = (scanline) - o.y;
-        if(o.attr & 0x80){
-          y ^= 7 + reg.sprite_size * 8;
-        }
-        if(reg.sprite_size){
-          pat_addr = 
-            0x1000 * (o.index & 0x01)
-            + 0x10 * (o.index & 0xfe);
-        } else {
-          pat_addr = 
-            0x1000 * reg.sp_addr
-            + 0x10 * (o.index & 0xff);
-        }
-        pat_addr += (y&7) + (y&8) * 2;
-      }
-    }
-    
-  }
-  
-  if(X_MOD_8 == 5){
-    tilepat = read(pat_addr|0);
+
+  // Prepare fetch attribute byte
+  if (X_MOD_8 == 2 && TDM) {
+    ioaddr = ATTRIBUTE_TABLE_BASE_ADDR + NAME_TABLE_SIZE * vram.base_nta + 8 * (vram.ycoarse / 4) + (vram.xcoarse / 4); 
   } 
-  
-  if(X_MOD_8 == 7){
-    unsigned p = tilepat | (read(pat_addr|8) << 8);
-    p = (p&0xf00f) | ((p&0x0f00)>>4) | ((p&0x00f0)<<4);
-    p = (p&0xc3c3) | ((p&0x3030)>>2) | ((p&0x0c0c)<<2);
-    p = (p&0x9999) | ((p&0x4444)>>1) | ((p&0x2222)<<1);
-    tilepat = p;
-    if(!TDM){
-      if(sprrenpos < sproutpos)
-        OAM3[sprrenpos++].pattern = tilepat;
+
+  // Fetch attribute
+  if (X_MOD_8 == 3 && TDM) {
+
+    tileattr = (read(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse&2))) & 3;
+
+    if (++vram.xcoarse == 0) {
+      vram.base_nta_x = 1 - vram.base_nta_x;
     }
+
+  }
+
+  if(X_MOD_8 == 5) {
+    tilepat = read(pat_addr|0);
   }
   
-  if(X_ODD_64_TO_256){
+  // Fetch upper tile byte
+  if(X_MOD_8 == 7) {
+    unsigned p = tilepat | (read(pat_addr | 8) << 8);
+
+    // Shuffle the two patterns together
+    p = (p & 0xf00f) | ((p & 0x0f00)>>4) | ((p & 0x00f0)<<4);
+    p = (p & 0xc3c3) | ((p & 0x3030)>>2) | ((p & 0x0c0c)<<2);
+    p = (p & 0x9999) | ((p & 0x4444)>>1) | ((p & 0x2222)<<1);
+    tilepat = p;
+
+  }
+
+
+
+  // First cycle: reset
+  if (X == 0) {
+    sprinpos = sproutpos = 0;
+    if(reg.show_sp)
+      reg.OAMADDR = 0;
+  }
+
+  // End of scanline: copy temp horizontal data to main vram
+  if (X == 256) {
+    if (reg.show_bg) {
+      vram.xcoarse = (unsigned)scroll.xcoarse;
+      vram.base_nta_x = (unsigned)scroll.base_nta_x;
+      sprrenpos = 0;
+    }
+  }
+
+  // Increment y
+  if (X == 251) {
+    if (++vram.yfine == 0 && ++vram.ycoarse == 30) {
+      vram.ycoarse = 0;
+      vram.base_nta_y = 1 - vram.base_nta_y;
+    }
+  }
+
+  // Pre-render scanline: copy temp vertical data to main vram
+  if (X == 304) {
+    if(scanline == -1 && reg.show_bg)
+      vram.raw = (unsigned)scroll.raw;
+  }
+
+  // Alternate frames skip one cycle on pre-render scanline if bg is enabled
+  if(X == 337) {
+    if(scanline == -1 && loopy_w && reg.show_bg){
+      scanline_end = 340;
+    }
+  }
+
+
+
+  // Sprite update stuff
+  //
+  //
+  if (X_MOD_8 == 3 && !TDM) {
+
+    if(sprrenpos < sproutpos) {
+
+      auto& o = OAM3[sprrenpos];
+      memcpy(&o, &OAM2[sprrenpos], sizeof(o));
+      
+      unsigned y = scanline - o.y;
+
+      if (o.attr & 0x80) {
+        y ^= 7 + reg.sprite_size * 8;
+      }
+
+      if (reg.sprite_size) {
+
+        pat_addr = PATTERN_TABLE_SIZE * (o.index & 0x01) + 0x10 * (o.index & 0xfe);
+
+      } else {
+
+        pat_addr = PATTERN_TABLE_SIZE * reg.sp_addr + 0x10 * (o.index & 0xff);
+
+      }
+
+      pat_addr += (y & 7) + (y & 8) * 2;
+
+    }
+
+  }
+
+  // Sprite stuff
+  //
+  //
+  if (X_MOD_8 == 7 && !TDM) {
+    if(sprrenpos < sproutpos)
+      OAM3[sprrenpos++].pattern = tilepat;
+  }
+
+
+  // Sprite stuff
+  //
+  //
+  if (X_ODD_64_TO_256) {
     switch(reg.OAMADDR++&3){
       case 0:
         if(sprinpos >= 64){
@@ -141,7 +189,7 @@ void PPU::render() {
   } else {
     sprtmp = OAM[reg.OAMADDR];
   }
-  
+
   if(X_LT_256 && scanline >= 0) {
       render_pixel();
   }
@@ -256,17 +304,13 @@ static const uint32_t RGB[64] {
 };
 
 void PPU::render_pixel() {
-  
-  // this is so bisqwit!
-  
-  bool edge = uint8_t(cycle + 8) < 16; // 0..7, 248..255
-  bool 
-    showbg = ((!edge) || reg.show_bg8) && reg.show_bg,
-    showsp = ((!edge) || reg.show_sp8) && reg.show_sp;
 
-  unsigned 
-    fx = scroll.xfine,
-    xpos = 15 - (( (cycle&7) + fx + 8 * bool(cycle&7) ) & 15);
+  bool edge = !(8 <= cycle && cycle < 248);
+  bool showbg = ((!edge) || reg.show_bg8) && reg.show_bg;
+  bool showsp = ((!edge) || reg.show_sp8) && reg.show_sp;
+
+  unsigned fx = scroll.xfine;
+  uint8_t xpos = 15 - (( (cycle&7) + fx + 8 * bool(cycle&7) ) & 15);
     
   unsigned pixel { 0 }, attr { 0 };
   
@@ -293,8 +337,7 @@ void PPU::render_pixel() {
       
       if(!spritepixel) 
         continue;
-      
-      //if(cycle < 255 && pixel && s.sprindex == 0)
+
       if(pixel && s.sprindex == 0)
         reg.spr0_hit = true;
       
