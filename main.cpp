@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 
 #include "bus.h"
 #include "rom.h"
@@ -7,8 +8,10 @@ int main(int argc, char* argv[]){
 
   try {
 
+    std::ifstream script (argv[2]);
+
     ROM rom (argv[1]);
-    NES nes (rom);
+    NES nes (rom, script);
 
   } catch(int){
 

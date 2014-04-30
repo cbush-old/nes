@@ -389,14 +389,14 @@ class NES : public IBus {
     IVideoDevice *video;
     IAudioDevice *audio;
     IController *controller[2];
-    IInputDevice *input;
+    std::vector<IInputDevice*> input;
     IROM& rom;
     IPPU *ppu;
     IAPU *apu;
     ICPU *cpu;
 
   public:
-    NES(IROM& rom);
+    NES(IROM& rom, std::istream& script);
     virtual ~NES();
 
   public:

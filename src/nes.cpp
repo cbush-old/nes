@@ -8,15 +8,21 @@
 #include "audio_sdl.h"
 #include "video_sdl.h"
 #include "input_sdl.h"
+#include "input_script.h"
 
-NES::NES(IROM& rom)
+#include <iostream>
+
+NES::NES(IROM& rom, std::istream& script)
     : video (new SDLVideoDevice())
     , audio (new SDLAudioDevice())
     , controller {
         new Std_controller(),
         new Std_controller(),
     }
-    , input (new SDLInputDevice(*controller[0]))
+    , input {
+        new SDLInputDevice(*controller[0]),
+        new ScriptInputDevice(*controller[0], script),
+    }
     , rom (rom)
     , ppu (new PPU(this, &rom, video))
     , apu (new APU(this))
@@ -33,7 +39,9 @@ NES::~NES() {
     delete controller[1];
     delete video;
     delete audio;
-    delete input;
+    for (auto& i : input) {
+        delete i;
+    }
 }
 
 void NES::pull_NMI() {
@@ -49,8 +57,10 @@ void NES::reset_IRQ() {
 }
 
 void NES::on_frame() {
-    input->tick();
+    for (auto& i : input) {
+        i->tick();
+    }
 
-    ppu->set_frameskip(((SDLInputDevice*)input)->get_frameskip());
+    ppu->set_frameskip(((SDLInputDevice*)(input[0]))->get_frameskip());
 
 }
