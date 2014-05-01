@@ -2,7 +2,7 @@
 *.log
 roms/
 doc/
-util/tests
+util/test
 *.out
 *.o
 nes
