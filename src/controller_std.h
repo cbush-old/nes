@@ -8,6 +8,7 @@ class Std_controller : public IController {
         ButtonState read();
         void strobe();
         void set_button_state(Button button, ButtonState state);
+        ButtonState get_button_state(Button button);
 
     private:
         int button_index { 0 };

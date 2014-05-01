@@ -14,3 +14,7 @@ void Std_controller::strobe() {
 void Std_controller::set_button_state(IController::Button button, IController::ButtonState state) {
   button_state[button] = state;
 }
+
+IController::ButtonState Std_controller::get_button_state(IController::Button button) {
+  return button_state[button];
+}

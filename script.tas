@@ -1,14 +1,1 @@
-w 80
-+. -.
-w 180
-+>
-+b
-w 120
-+a
-w 10
--a
-w 20
-+a
-w 20
--a
-+a
+w30+.w2-.w3+.w1-.w4+.w1-.w3+.w1-.w1+>w4+bw181+aw3-aw36+aw2-aw18+aw5-aw31+aw4-aw45+aw15-aw18+aw20-aw31+aw48->-aw9+vw21-vw3-bw47+bw10+>w20->w14+aw2+>w26-aw50->w8+<w14-<w9+>w25->w27+>w81->w6+>w195+aw10-aw34+aw2-aw19+aw10-aw18+aw24-aw14+aw23-aw27+aw37-a-bw2->w948+>w22->w115+>w118+bw43+aw20-aw35+aw32-aw21+aw39-aw58+aw7-aw87->w1+<w0+aw10-aw30-<w5+>w30+aw8-aw52+aw2-aw23+aw13-aw29+aw5-aw97+aw26-aw12+aw45-aw23+aw9-aw30+aw24-aw57+aw34-aw13+aw3-aw75->w1-b

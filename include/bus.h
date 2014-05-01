@@ -198,6 +198,7 @@ class IController {
       CONTROL_SELECT = 5,
       CONTROL_B = 6,
       CONTROL_A = 7,
+      N_BUTTONS = 8,
     };
 
   public:
@@ -212,6 +213,12 @@ class IController {
      * @param state the new state (on/off)
      **/
     virtual void set_button_state(Button button, ButtonState state) =0;
+
+    /**
+     * @brief get the state for a button (for observers)
+     * @param button the button to query
+     **/
+    virtual ButtonState get_button_state(Button button) =0;
 
     /**
      * @brief strobe the controller

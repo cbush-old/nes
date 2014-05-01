@@ -30,7 +30,7 @@ void ScriptInputDevice::tick() {
     return;
   }
 
-  if (wait) {
+  if (wait > 0) {
     --wait;
     return;
   }
@@ -44,7 +44,6 @@ void ScriptInputDevice::tick() {
     if (c == 'w') {
 
       source >> wait;
-      std::cout << "Script: wait " << wait << "\n";
       return;
 
     } else if (c == ' ' 
@@ -62,7 +61,6 @@ void ScriptInputDevice::tick() {
 
       auto const& i = lookup.find(c);
       if (i != lookup.end()) {
-        std::cout << "Script: turn " << (mod == '+' ? "on" : "off") << " " << c << "\n";
         port.set_button_state(i->second, (mod == '+') * IController::BUTTON_ON);
         return;
       }

@@ -15,6 +15,7 @@ SOURCES= \
 	src/video_sdl.cpp \
 	src/input_sdl.cpp \
 	src/input_script.cpp \
+	src/input_script_recorder.cpp \
 	main.cpp
 
 OBJECTS= $(SOURCES:.cpp=.o)

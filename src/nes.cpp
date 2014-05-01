@@ -9,6 +9,7 @@
 #include "video_sdl.h"
 #include "input_sdl.h"
 #include "input_script.h"
+#include "input_script_recorder.h"
 
 #include <iostream>
 
@@ -22,6 +23,7 @@ NES::NES(IROM& rom, std::istream& script)
     , input {
         new SDLInputDevice(*controller[0]),
         new ScriptInputDevice(*controller[0], script),
+        new ScriptRecorder(*controller[0]),
     }
     , rom (rom)
     , ppu (new PPU(this, &rom, video))
