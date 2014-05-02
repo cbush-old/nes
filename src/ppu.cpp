@@ -14,7 +14,9 @@ const uint16_t PATTERN_TABLE_SIZE = 0x1000;
 
 
 void PPU::render_load_shift_registers() {
+  bg_shift_pat &= 0xffff0000;
   bg_shift_pat |= tilepat;
+  bg_shift_attr &= 0xffff0000;
   bg_shift_attr |= 0x5555 * tileattr;
 }
 
@@ -45,9 +47,8 @@ void PPU::render_fetch_bg_low_0() {
 }
 
 void PPU::render_fetch_bg_low_1() {
+  // Interlace the two patterns (temp)
   unsigned p = tilepat | (read(pat_addr + 8) << 8);
-
-  // Interlace the two patterns
   p = (p & 0xf00f) | ((p & 0x0f00)>>4) | ((p & 0x00f0)<<4);
   p = (p & 0xc3c3) | ((p & 0x3030)>>2) | ((p & 0x0c0c)<<2);
   p = (p & 0x9999) | ((p & 0x4444)>>1) | ((p & 0x2222)<<1);
@@ -55,11 +56,10 @@ void PPU::render_fetch_bg_low_1() {
 }
 
 void PPU::render_fetch_bg_high_0() {
-  // TODO
+  // TODO: move from interlaced emulation
 }
 
 void PPU::render_fetch_bg_high_1() {
-  // TODO
 }
 
 void PPU::render_incr_horizontal() {
@@ -167,70 +167,83 @@ void PPU::render_OAM_write() {
 template<int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256>
 void PPU::render() {
 
+
   bg_shift_pat <<= 2;
   bg_shift_attr <<= 2;
 
+
   // Prepare fetch pattern from the NT
+  if(X_MOD_8 == 1) {
+    render_nt_lookup_0();
+  }
+
   // Also, 2nd fetch in cycle is another NT byte at the end of the scanline
-  if(X_MOD_8 == 0 || (X_MOD_8 == 2 && !TDM)) {
+  if (X_MOD_8 == 3 && !TDM) {
     render_nt_lookup_0();
   }
 
   // Fetch pattern byte
-  if (X_MOD_8 == 1) {
+  if (X_MOD_8 == 2) {
     render_nt_lookup_1();
   }
 
-  if (X_MOD_8 == 1 && TDM) {
-    render_load_shift_registers();
-  }
-
-  if (X_MOD_8 == 2 && TDM) {
+  if (X_MOD_8 == 3 && TDM) {
     render_attr_lookup_0();
   } 
 
   // Fetch attribute
-  if (X_MOD_8 == 3 && TDM) {
+  if (X_MOD_8 == 4 && TDM) {
     render_attr_lookup_1();
-  }
-
-  if (X_MOD_8 == 3 && TDM) {
-    render_incr_horizontal();
   }
 
   if(X_MOD_8 == 5) {
     render_fetch_bg_low_0();
   }
-  
+
   // Fetch upper tile byte
-  if(X_MOD_8 == 7) {
+  if(X_MOD_8 == 6) {
     render_fetch_bg_low_1();
   }
 
+  if (X != 0 && X_MOD_8 == 7) {
+    render_fetch_bg_high_0();
+  }
+
+  if (X != 0 && X_MOD_8 == 0) {
+    render_fetch_bg_high_1();
+  }
+
+  if (X != 0 && X_MOD_8 == 0 && TDM) {
+    render_incr_horizontal();
+  }
+
+
   // End of scanline: copy temp horizontal data to main vram
-  if (X == 256) {
+  if (X == 257) {
     render_copy_horizontal();
   }
 
   // Increment y
-  if (X == 251) {
+  if (X == 256) {
     render_incr_vertical();
   }
 
   // Pre-render scanline: copy temp vertical data to main vram
+  // From 280 - 304
   if (X == 304 && scanline == -1) {
     render_copy_vertical();
   }
 
-  // Alternate frames skip one cycle on pre-render scanline if bg is enabled
-  if(X == 337 && scanline == -1 && odd_frame) {
-    render_skip_cycle();
+
+
+  if (X_MOD_8 == 0) {
+    render_load_shift_registers();
   }
 
   // Sprite update
   //
   //
-  if (X == 0) {
+  if (X == 1) {
     render_OAM_clear();
   }
 
@@ -303,9 +316,9 @@ void PPU::render() {
 
 //<int X, int X_MOD_8, int Tile_Decode_Mode, bool X_ODD_64_TO_256, bool X_LT_256>
 #define X(a) &PPU::render<\
-  (((a)==0)||((a)==251)||((a)==256)||((a)==304)||((a)==337)?(a):1),\
+  (((a)==0)||((a)==1)||((a)==256)||((a)==257)||((a)==337)?(a):(280 <= a && a < 305)?304:-1),\
   ((a) & 7),\
-  bool(0x10ffff & (1u << ((a)/16))),\
+  ((1 <= (a) && (a) <= 257) || (321 <= (a) && (a) <= 340)),\
   bool(((a) & 1) && ((a) >= 64) && ((a) < 256)),\
   bool((a) < 256)>
 
@@ -475,34 +488,38 @@ uint8_t PPU::read(uint16_t addr, bool no_palette /* = false */) const {
 
 void PPU::tick() {
 
+  if (cycle == 1) {
+    if (scanline == 241) {
+      render_set_vblank();
+    } else if (scanline == 261) {
+      render_clear_vblank();
+    }
+  }
+
   if (reg.rendering_enabled && scanline < 240) {
       (*tick_renderer)(*this);
       ++tick_renderer;
   }
 
-  if (++cycle > scanline_end) {
+  ++cycle;
 
-    cycle = 0;
-    tick_renderer = renderfuncs.begin();
-    scanline_end = 341;
+  if (cycle > scanline_end) {
 
-    switch (++scanline) {
+    if(reg.rendering_enabled && scanline == -1 && odd_frame) {
 
-      case 261: // Pre-render scanline
-        // FIXME: cycle 1
-        render_clear_vblank();
-        break;
+      cycle = 1;
+      tick_renderer = renderfuncs.begin() + 1;
 
-      case 241: { // Frame release
-        // FIXME: cycle 1
-        render_set_vblank();
-        break;
-      }
+    } else {
 
-      default:
-        break;
+      cycle = 0;
+      tick_renderer = renderfuncs.begin();
 
     }
+    
+    scanline_end = 340;
+    ++scanline;
+
   }
 
 }
