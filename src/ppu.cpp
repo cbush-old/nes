@@ -13,11 +13,9 @@ const uint16_t NAME_TABLE_SIZE = 0x400;
 const uint16_t PATTERN_TABLE_SIZE = 0x1000;
 
 
-void PPU::render_shift_registers() {
-  // Simulate the per-cycle shifting and re-fill of the registers.
-  // Here the registers are just shifted and filled at once.
-  bg_shift_pat = (bg_shift_pat >> 16) + (tilepat << 16);
-  bg_shift_attr = (bg_shift_attr >> 16) + 0x55550000 * tileattr;
+void PPU::render_load_shift_registers() {
+  bg_shift_pat |= tilepat;
+  bg_shift_attr |= 0x5555 * tileattr;
 }
 
 void PPU::render_skip_cycle() {
@@ -169,6 +167,9 @@ void PPU::render_OAM_write() {
 template<int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256>
 void PPU::render() {
 
+  bg_shift_pat <<= 2;
+  bg_shift_attr <<= 2;
+
   // Prepare fetch pattern from the NT
   // Also, 2nd fetch in cycle is another NT byte at the end of the scanline
   if(X_MOD_8 == 0 || (X_MOD_8 == 2 && !TDM)) {
@@ -181,8 +182,7 @@ void PPU::render() {
   }
 
   if (X_MOD_8 == 1 && TDM) {
-    // FIXME: TEMP
-    render_shift_registers();
+    render_load_shift_registers();
   }
 
   if (X_MOD_8 == 2 && TDM) {
@@ -343,13 +343,13 @@ void PPU::render_pixel() {
   bool showsp = ((!edge) || reg.show_sp8) && reg.show_sp;
 
   unsigned fx = scroll.xfine;
-  uint8_t xpos = 15 - (( (cycle&7) + fx + 8 * bool(cycle&7) ) & 15);
-    
   unsigned pixel { 0 }, attr { 0 };
   
   if (showbg) {
-    pixel = (bg_shift_pat >> (xpos * 2)) & 3;
-    attr = (bg_shift_attr >> (xpos * 2)) & (pixel ? 3 : 0);
+
+    pixel = (bg_shift_pat >> (30 - fx * 2)) & 3;
+    attr = (bg_shift_attr >> (30 - fx * 2)) & (pixel ? 3 : 0);
+
   } else if ((vram.raw & 0x3f00) == 0x3f00 && !reg.rendering_enabled) {
     pixel = vram.raw;
   }

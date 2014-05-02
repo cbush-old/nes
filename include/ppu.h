@@ -171,7 +171,7 @@ class PPU : public IPPU {
     void render_OAM_read_1();
     void render_OAM_write();
 
-    void render_shift_registers();
+    void render_load_shift_registers();
     void render_skip_cycle();
 
     bool odd_frame { 0 };
