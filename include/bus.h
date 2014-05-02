@@ -362,10 +362,22 @@ class IBus {
   public:
     virtual void pull_NMI() =0;
     virtual void pull_IRQ() =0;
-    virtual void reset_IRQ() =0;
 
-  public:
+  public: // Events
+    /**
+     * @brief function to be called on every cpu cycle
+     **/
+    virtual void on_cpu_tick(){}
+
+    /**
+     * @brief function to be called on every frame
+     **/
     virtual void on_frame() =0;
+
+    /**
+     * @brief function to be called every emulated second
+     **/
+    virtual void on_second_elapsed(){}
 
 };
 
@@ -378,40 +390,23 @@ class ICPU {
     virtual ~ICPU(){}
 
   public:
+    /**
+     * @brief start emulation
+     **/
     virtual void run() =0;
 
   public:
+    /**
+     * @brief trigger a non-maskable interrupt (nmi) in the cpu
+     **/
     virtual void pull_NMI() =0;
+
+    /**
+     * @brief signal an interrupt request (irq) to the cpu
+     **/
     virtual void pull_IRQ() =0;
-    virtual void reset_IRQ() =0;
 
 };
 
-
-/**
- * @brief basic system
- **/
-class NES : public IBus {
-  protected:
-    IVideoDevice *video;
-    IAudioDevice *audio;
-    IController *controller[2];
-    std::vector<IInputDevice*> input;
-    IROM& rom;
-    IPPU *ppu;
-    IAPU *apu;
-    ICPU *cpu;
-
-  public:
-    NES(IROM& rom, std::istream& script);
-    virtual ~NES();
-
-  public:
-    void pull_NMI();
-    void pull_IRQ();
-    void reset_IRQ();
-    void on_frame();
-
-};
 
 #endif

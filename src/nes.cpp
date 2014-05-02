@@ -1,4 +1,5 @@
-#include "bus.h"
+#include "nes.h"
+
 #include "rom.h"
 #include "cpu.h"
 #include "ppu.h"
@@ -23,12 +24,12 @@ NES::NES(IROM& rom, std::istream& script)
     , input {
         new SDLInputDevice(*controller[0]),
         new ScriptInputDevice(*controller[0], script),
-        new ScriptRecorder(*controller[0]),
+        //new ScriptRecorder(*controller[0]),
     }
     , rom (rom)
     , ppu (new PPU(this, &rom, video))
     , apu (new APU(this))
-    , cpu (new CPU(apu, ppu, &rom, controller[0], controller[1]))
+    , cpu (new CPU(this, apu, ppu, &rom, controller[0], controller[1]))
     {
         cpu->run();
     }
@@ -54,10 +55,6 @@ void NES::pull_IRQ() {
     cpu->pull_IRQ();
 }
 
-void NES::reset_IRQ() {
-    cpu->reset_IRQ();
-}
-
 void NES::on_frame() {
     for (auto& i : input) {
         i->tick();
@@ -65,4 +62,11 @@ void NES::on_frame() {
 
     ppu->set_frameskip(((SDLInputDevice*)(input[0]))->get_frameskip());
 
+}
+
+void NES::on_cpu_tick() {
+    ppu->tick();
+    ppu->tick();
+    ppu->tick();
+    apu->tick();
 }

@@ -6,6 +6,7 @@
 
 // So much of this comes from bisqwit's NES.
 
+
 const uint16_t ATTRIBUTE_TABLE_BASE_ADDR = 0x23c0;
 const uint16_t NAME_TABLE_BASE_ADDR = 0x2000;
 const uint16_t NAME_TABLE_SIZE = 0x400;

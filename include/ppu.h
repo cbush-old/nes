@@ -2,18 +2,7 @@
 #define PPU_H
 
 #include <iostream>
-#include <thread>
-#include <cmath>
-#include <ctime>
-#include <map>
-#include <iomanip>
 #include <functional>
-#include <cctype>
-#include <fstream>
-#include <vector>
-#include <string>
-#include <stdexcept>
-#include <sstream>
 
 #include "bit.h"
 #include "bus.h"

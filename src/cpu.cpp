@@ -137,8 +137,9 @@ uint16_t CPU::next2() {
   return v | ((uint16_t)read(PC++) << 8);
 }
 
-CPU::CPU(IAPU *apu, IPPU *ppu, IROM *rom, IController* controller0, IController* controller1)
-  : apu(apu)
+CPU::CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController* controller0, IController* controller1)
+  : bus(bus)
+  , apu(apu)
   , ppu(ppu)
   , rom(rom)
   , controller {
@@ -182,10 +183,7 @@ void CPU::run() {
     }
 
     for(int i = 0; i < cycles[last_op] + result_cycle; ++i){
-      ppu->tick();
-      ppu->tick();
-      ppu->tick();
-      apu->tick();
+      bus->on_cpu_tick();
     }
 
     result_cycle = 0;
@@ -229,10 +227,6 @@ void CPU::print_status() {
 
 void CPU::pull_IRQ() {
   IRQ = true;
-}
-
-void CPU::reset_IRQ() {
-  IRQ = false;
 }
 
 

@@ -19,13 +19,14 @@
 
 class CPU : public ICPU {
   private:
+    IBus *bus;
     IAPU *apu;
     IPPU *ppu;
     IROM *rom;
     IController *controller[2];
 
   public:
-    CPU(IAPU *apu, IPPU *ppu, IROM *rom, IController* controller0, IController* controller1);
+    CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController* controller0, IController* controller1);
 
   private:
     enum Flag {

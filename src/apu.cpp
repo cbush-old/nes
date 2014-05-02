@@ -252,7 +252,6 @@ uint8_t APU::read() const {
     DMC_IRQ = false;
   }
 
-  bus->reset_IRQ();
   return res;
 
 }
