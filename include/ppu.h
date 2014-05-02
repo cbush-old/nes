@@ -3,6 +3,8 @@
 
 #include <iostream>
 #include <functional>
+#include <array>
+#include <vector>
 
 #include "bit.h"
 #include "bus.h"
@@ -132,15 +134,47 @@ class PPU : public IPPU {
     uint8_t regr_OAM_data();
     uint8_t regr_data();
 
-  private: // Render functions
+  protected: // Render functions
     using Renderf = std::function<void(PPU&)>;
     using Renderf_array = std::array<Renderf, 342>;
+
+    static const std::array<std::vector<Renderf>, 32> renderers;
+    static std::array<std::vector<Renderf>*, 88740> rendererps;
 
     template<int, char, bool, bool, bool>
     void render();
 
     static const Renderf_array renderfuncs;
     Renderf_array::const_iterator tick_renderer;
+
+    void render_nt_lookup_0();
+    void render_nt_lookup_1();
+    void render_attr_lookup_0();
+    void render_attr_lookup_1();
+    void render_fetch_bg_low_0();
+    void render_fetch_bg_low_1();
+    void render_fetch_bg_high_0();
+    void render_fetch_bg_high_1();
+    void render_incr_horizontal();
+    void render_copy_horizontal();
+    void render_incr_vertical();
+    void render_copy_vertical();
+    void render_set_vblank();
+    void render_clear_vblank();
+    void render_fetch_sprite_low_0();
+    void render_fetch_sprite_low_1();
+    void render_fetch_sprite_high_0();
+    void render_fetch_sprite_high_1();
+
+    void render_OAM_clear();
+    void render_OAM_read_0();
+    void render_OAM_read_1();
+    void render_OAM_write();
+
+    void render_shift_registers();
+    void render_skip_cycle();
+
+    bool odd_frame { 0 };
 
   protected:
     /**

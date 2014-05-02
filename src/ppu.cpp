@@ -12,143 +12,234 @@ const uint16_t NAME_TABLE_BASE_ADDR = 0x2000;
 const uint16_t NAME_TABLE_SIZE = 0x400;
 const uint16_t PATTERN_TABLE_SIZE = 0x1000;
 
+
+void PPU::render_shift_registers() {
+  // Simulate the per-cycle shifting and re-fill of the registers.
+  // Here the registers are just shifted and filled at once.
+  bg_shift_pat = (bg_shift_pat >> 16) + (tilepat << 16);
+  bg_shift_attr = (bg_shift_attr >> 16) + 0x55550000 * tileattr;
+}
+
+void PPU::render_skip_cycle() {
+  if (reg.show_bg) {
+    scanline_end = 340;
+  }
+}
+
+void PPU::render_nt_lookup_0() {
+  ioaddr = NAME_TABLE_BASE_ADDR + (vram.raw & 0xfff);
+}
+
+void PPU::render_nt_lookup_1() {
+  pat_addr = PATTERN_TABLE_SIZE * reg.bg_addr + 16 * read(ioaddr) + vram.yfine;
+}
+
+void PPU::render_attr_lookup_0() {
+  ioaddr = ATTRIBUTE_TABLE_BASE_ADDR + NAME_TABLE_SIZE * vram.base_nta + 8 * (vram.ycoarse / 4) + (vram.xcoarse / 4);
+}
+
+void PPU::render_attr_lookup_1() {
+  tileattr = (read(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse&2))) & 3;
+}
+
+void PPU::render_fetch_bg_low_0() {
+  tilepat = read(pat_addr);
+}
+
+void PPU::render_fetch_bg_low_1() {
+  unsigned p = tilepat | (read(pat_addr + 8) << 8);
+
+  // Interlace the two patterns
+  p = (p & 0xf00f) | ((p & 0x0f00)>>4) | ((p & 0x00f0)<<4);
+  p = (p & 0xc3c3) | ((p & 0x3030)>>2) | ((p & 0x0c0c)<<2);
+  p = (p & 0x9999) | ((p & 0x4444)>>1) | ((p & 0x2222)<<1);
+  tilepat = p;
+}
+
+void PPU::render_fetch_bg_high_0() {
+  // TODO
+}
+
+void PPU::render_fetch_bg_high_1() {
+  // TODO
+}
+
+void PPU::render_incr_horizontal() {
+    if (++vram.xcoarse == 0) {
+      vram.base_nta_x = 1 - vram.base_nta_x;
+    }
+}
+
+void PPU::render_copy_horizontal() {
+  if (reg.show_bg) {
+    vram.xcoarse = (unsigned)scroll.xcoarse;
+    vram.base_nta_x = (unsigned)scroll.base_nta_x;
+    sprrenpos = 0;
+  }
+}
+
+void PPU::render_incr_vertical() {
+  if (++vram.yfine == 0 && ++vram.ycoarse == 30) {
+    vram.ycoarse = 0;
+    vram.base_nta_y = 1 - vram.base_nta_y;
+  }
+}
+
+// Pre-render scanline only
+void PPU::render_copy_vertical() {
+  if(reg.show_bg) {
+    vram.raw = (unsigned)scroll.raw;
+  }
+}
+
+void PPU::render_set_vblank() {
+
+  if (++frameskip_count > frameskip) {
+    frameskip_count = 0;
+    video->set_buffer(framebuffer);
+  }
+
+  bus->on_frame();
+
+  reg.vblanking = true; 
+
+  if (reg.NMI_enabled) {
+    bus->pull_NMI(); // FIXME: this is actually pulled on the next cycle
+  }
+
+}
+
+void PPU::render_clear_vblank() {
+  scanline = -1;
+  odd_frame ^= 1;
+  reg.PPUSTATUS = 0;
+}
+
+void PPU::render_fetch_sprite_low_0() {}
+void PPU::render_fetch_sprite_low_1() {}
+void PPU::render_fetch_sprite_high_0() {}
+void PPU::render_fetch_sprite_high_1() {}
+
+void PPU::render_OAM_clear() {
+  sprinpos = sproutpos = 0;
+  if(reg.show_sp) {
+    reg.OAMADDR = 0;
+  }
+}
+
+void PPU::render_OAM_read_0() {
+
+  if(sprrenpos < sproutpos) {
+
+    auto& object = OAM3[sprrenpos];
+    memcpy(&object, &OAM2[sprrenpos], sizeof(object));
+    
+    unsigned y = scanline - object.y;
+
+    if (object.flip_vertically) {
+      y ^= (reg.sprite_size + 1) * 8 - 1;
+    }
+
+    if (reg.sprite_size) {
+
+      pat_addr = PATTERN_TABLE_SIZE * (object.index & 1) + 0x10 * (object.index & 0xfe);
+
+    } else {
+
+      pat_addr = PATTERN_TABLE_SIZE * reg.sp_addr + 0x10 * (object.index & 0xff);
+
+    }
+
+    pat_addr += (y & 7) + (y & 8) * 2;
+
+  }
+
+}
+
+void PPU::render_OAM_read_1() {
+  if (sprrenpos < sproutpos) {
+    OAM3[sprrenpos++].pattern = tilepat;
+  }
+}
+
+void PPU::render_OAM_write() {
+  sprtmp = OAM[reg.OAMADDR];
+}
+
 template<int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256>
 void PPU::render() {
 
   // Prepare fetch pattern from the NT
   // Also, 2nd fetch in cycle is another NT byte at the end of the scanline
   if(X_MOD_8 == 0 || (X_MOD_8 == 2 && !TDM)) {
-
-    ioaddr = NAME_TABLE_BASE_ADDR + (vram.raw & 0xfff);
-
+    render_nt_lookup_0();
   }
 
   // Fetch pattern byte
   if (X_MOD_8 == 1) {
-
-    pat_addr = PATTERN_TABLE_SIZE * reg.bg_addr + 16 * read(ioaddr) + vram.yfine;
-
-    if (TDM) {
-      // Simulate the per-cycle shifting and re-fill of the registers.
-      // Here the registers are just shifted and filled at once.
-      bg_shift_pat = (bg_shift_pat >> 16) + (tilepat << 16);
-      bg_shift_attr = (bg_shift_attr >> 16) + 0x55550000 * tileattr;
-    }
+    render_nt_lookup_1();
   }
 
-  // Prepare fetch attribute byte
+  if (X_MOD_8 == 1 && TDM) {
+    // FIXME: TEMP
+    render_shift_registers();
+  }
+
   if (X_MOD_8 == 2 && TDM) {
-    ioaddr = ATTRIBUTE_TABLE_BASE_ADDR + NAME_TABLE_SIZE * vram.base_nta + 8 * (vram.ycoarse / 4) + (vram.xcoarse / 4); 
+    render_attr_lookup_0();
   } 
 
   // Fetch attribute
   if (X_MOD_8 == 3 && TDM) {
-
-    tileattr = (read(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse&2))) & 3;
-
-    if (++vram.xcoarse == 0) {
-      vram.base_nta_x = 1 - vram.base_nta_x;
-    }
-
+    render_attr_lookup_1();
   }
 
-  // Fetch lower tile byte
+  if (X_MOD_8 == 3 && TDM) {
+    render_incr_horizontal();
+  }
+
   if(X_MOD_8 == 5) {
-    tilepat = read(pat_addr);
+    render_fetch_bg_low_0();
   }
   
   // Fetch upper tile byte
   if(X_MOD_8 == 7) {
-    unsigned p = tilepat | (read(pat_addr + 8) << 8);
-
-    // Interlace the two patterns
-    p = (p & 0xf00f) | ((p & 0x0f00)>>4) | ((p & 0x00f0)<<4);
-    p = (p & 0xc3c3) | ((p & 0x3030)>>2) | ((p & 0x0c0c)<<2);
-    p = (p & 0x9999) | ((p & 0x4444)>>1) | ((p & 0x2222)<<1);
-    tilepat = p;
-
-  }
-
-
-
-  // First cycle: reset
-  if (X == 0) {
-    sprinpos = sproutpos = 0;
-    if(reg.show_sp) {
-      reg.OAMADDR = 0;
-    }
+    render_fetch_bg_low_1();
   }
 
   // End of scanline: copy temp horizontal data to main vram
   if (X == 256) {
-    if (reg.show_bg) {
-      vram.xcoarse = (unsigned)scroll.xcoarse;
-      vram.base_nta_x = (unsigned)scroll.base_nta_x;
-      sprrenpos = 0;
-    }
+    render_copy_horizontal();
   }
 
   // Increment y
   if (X == 251) {
-    if (++vram.yfine == 0 && ++vram.ycoarse == 30) {
-      vram.ycoarse = 0;
-      vram.base_nta_y = 1 - vram.base_nta_y;
-    }
+    render_incr_vertical();
   }
 
   // Pre-render scanline: copy temp vertical data to main vram
-  if (X == 304) {
-    if(scanline == -1 && reg.show_bg)
-      vram.raw = (unsigned)scroll.raw;
+  if (X == 304 && scanline == -1) {
+    render_copy_vertical();
   }
 
   // Alternate frames skip one cycle on pre-render scanline if bg is enabled
-  if(X == 337) {
-    if(scanline == -1 && loopy_w && reg.show_bg){
-      scanline_end = 340;
-    }
+  if(X == 337 && scanline == -1 && odd_frame) {
+    render_skip_cycle();
   }
 
-
-
-  // Sprite update stuff
+  // Sprite update
   //
   //
+  if (X == 0) {
+    render_OAM_clear();
+  }
+
   if (X_MOD_8 == 3 && !TDM) {
-
-    if(sprrenpos < sproutpos) {
-
-      auto& object = OAM3[sprrenpos];
-      memcpy(&object, &OAM2[sprrenpos], sizeof(object));
-      
-      unsigned y = scanline - object.y;
-
-      if (object.flip_vertically) {
-        y ^= (reg.sprite_size + 1) * 8 - 1;
-      }
-
-      if (reg.sprite_size) {
-
-        pat_addr = PATTERN_TABLE_SIZE * (object.index & 1) + 0x10 * (object.index & 0xfe);
-
-      } else {
-
-        pat_addr = PATTERN_TABLE_SIZE * reg.sp_addr + 0x10 * (object.index & 0xff);
-
-      }
-
-      pat_addr += (y & 7) + (y & 8) * 2;
-
-    }
-
+    render_OAM_read_0();
   }
 
-  // Ready sprite
-  //
   if (X_MOD_8 == 7 && !TDM) {
-    if (sprrenpos < sproutpos) {
-      OAM3[sprrenpos++].pattern = tilepat;
-    }
+    render_OAM_read_1();
   }
 
 
@@ -199,7 +290,7 @@ void PPU::render() {
     }
   } else {
 
-    sprtmp = OAM[reg.OAMADDR];
+    render_OAM_write();
 
   }
 
@@ -398,26 +489,13 @@ void PPU::tick() {
     switch (++scanline) {
 
       case 261: // Pre-render scanline
-        scanline = -1;
-        //loopy_w ^= 1; // FIXME: Does the latch get reset here?
-        reg.PPUSTATUS = 0;
+        // FIXME: cycle 1
+        render_clear_vblank();
         break;
 
       case 241: { // Frame release
-
-        if (++frameskip_count > frameskip) {
-          frameskip_count = 0;
-          video->set_buffer(framebuffer);
-        }
-
-        bus->on_frame();
-
-        reg.vblanking = true; 
-
-        if (reg.NMI_enabled) {
-          bus->pull_NMI(); // FIXME: this is actually pulled on the next cycle
-        }
-
+        // FIXME: cycle 1
+        render_set_vblank();
         break;
       }
 
@@ -501,6 +579,7 @@ PPU::PPU(IBus *bus, IROM *rom, IVideoDevice *video)
   , tick_renderer(renderfuncs.begin())
 {
     reg.PPUSTATUS = 0x80;
+
 }
 
 
