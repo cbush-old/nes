@@ -1,6 +1,14 @@
 CC= g++
 CFLAGS=-c -Wall -std=c++11 -O3 -DDEBUG_PPU_PRINT_FRAMERATE
-INCLUDE= -I. -Iinclude -I/System/Library/Frameworks/OpenGL.framework/Headers -I/System/Library/Frameworks/ -I/opt/local/include
+INCLUDE= \
+	-I. \
+	-Iinclude \
+	-I/System/Library/Frameworks/OpenGL.framework/Headers \
+	-I/System/Library/Frameworks/ \
+	-I/opt/local/include \
+	-I/usr/include/GL \
+	-I/usr/include/SDL2 
+
 LDFLAGS= -L/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries -L/opt/local/lib
 LIBS= -lSDL2 -lGL -lsamplerate
 
