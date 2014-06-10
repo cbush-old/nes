@@ -2,19 +2,16 @@
 
 int main(int argc, char* argv[]) {
 
-  uint16_t length = 8;
+  uint16_t length = 2048;
 
-  Pulse pulse;
-  pulse.reg0 = 0;
-  pulse.reg1 = 0;
-  pulse.reg2 = 0;
-
-  pulse.duty = 3;
-  pulse.timer = length;
+  Noise noise;
+  noise.reg0 = 0;
+  noise.reg1 = 0;
+  noise.reg2 = 0;
 
   for (int i = 0; i < length; ++i) {
-    int t = pulse.t;
-    std::cout << t << " " << (int)pulse.sample() << "\n";
+    noise.update();
+    std::cout << (int)noise.sample();
   }
   std::cout << "\n";
 

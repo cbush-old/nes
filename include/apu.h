@@ -4,6 +4,8 @@
 #include <iostream>
 #include <vector>
 #include <cstdint>
+#include <array>
+
 #include "bus.h"
 #include "bit.h"
 
@@ -28,10 +30,7 @@ class APU : public IAPU {
     void set_state(State const&) {}
 
   private:
-    struct Pulse *_pulse1, *_pulse2;
-    struct Triangle *_triangle;
-    struct Noise *_noise;
-    struct DMC *_dmc;
+    std::array<struct Generator *, 5> _generator;
 
     union {
       uint8_t data;
@@ -47,9 +46,12 @@ class APU : public IAPU {
 
     union {
       uint8_t data;
-      bit<6, 1, uint8_t> disable_frame_interrupt;
+      bit<6, 1, uint8_t> interrupt_inhibit;
       bit<7, 1, uint8_t> five_frame_sequence;
     } _frame_counter;
+
+    uint16_t _cycle { 0 };
+
 };
 
 #endif

@@ -98,7 +98,7 @@ ROM::ROM(const char *path):
   std::cout << "prg banks: " << (int)prg_rom_size << '\n';
   std::cout << "chr banks: " << (int)chr_rom_size << '\n';
 
-  if (mapper_id != 0)
+  if (mapper_id > 2)
     throw std::runtime_error ("Unsupported mapper");
 
   prg.resize(0x4000 + prg_rom_size * 0x4000);
