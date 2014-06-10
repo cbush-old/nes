@@ -99,7 +99,7 @@ class PPU : public IPPU {
     Palette palette;
     Framebuffer framebuffer;
 
-    unsigned pat_addr, sprinpos, sproutpos, sprrenpos, sprtmp;
+    int16_t pat_addr, sprinpos, sproutpos, sprrenpos, sprtmp;
     uint16_t tileattr, tilepat, ioaddr;
     uint32_t bg_shift_pat, bg_shift_attr;
 

@@ -65,8 +65,8 @@ void NES::on_frame() {
 }
 
 void NES::on_cpu_tick() {
-    ppu->tick();
-    ppu->tick();
-    ppu->tick();
     apu->tick();
+    ppu->tick();
+    ppu->tick();
+    ppu->tick();
 }

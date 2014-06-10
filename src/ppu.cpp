@@ -1,11 +1,10 @@
 #include "ppu.h"
 #include <thread>
 #include <chrono>
+#include <cstring>
 
-#include <SDL2/SDL.h>
 
-// So much of this comes from bisqwit's NES.
-
+// So much of this comes from bisqwit's NES!!!
 
 const uint16_t ATTRIBUTE_TABLE_BASE_ADDR = 0x23c0;
 const uint16_t NAME_TABLE_BASE_ADDR = 0x2000;
@@ -272,7 +271,7 @@ void PPU::render() {
         // Secondary OAM holds max 8 sprites per scanline
         OAM2[sproutpos].y = sprtmp;
         OAM2[sproutpos].sprindex = reg.OAM_index;
-        
+
         // If the sprite is not on this scanline, skip ahead in memory
         if (!(sprtmp <= scanline && scanline < sprtmp + (reg.sprite_size? 16 : 8))) {
           reg.OAMADDR = sprinpos != 2 ? reg.OAMADDR + 3 : 8;
@@ -368,7 +367,7 @@ void PPU::render_pixel() {
   }
 
   if (showsp) {
-    for(unsigned sno = 0; sno < sprrenpos; ++sno){
+    for(int sno = 0; sno < sprrenpos; ++sno){
       auto& s = OAM3[sno];
       
       unsigned xdiff = cycle - s.x;
@@ -403,42 +402,6 @@ void PPU::render_pixel() {
   framebuffer[scanline * 256 + cycle] = RGB[pixel&0x3f];
 
 }
-
-
-
-
-
-
-#define N_FRAMERATES 256
-int framerate[N_FRAMERATES];
-
-
-void print_framerate() {
-  double sum = 0;
-  for(int i = 0; i < N_FRAMERATES; ++i){
-    sum += framerate[i];
-  }
-  sum /= N_FRAMERATES;
-  std::cout << "Average framerate: " << (1000.0/sum) << "/s\n";
-
-}
-
-int clock_frame() {
-  static int last_clock = SDL_GetTicks();
-  static int i = 0;
-  int tick = SDL_GetTicks();
-  int d = tick - last_clock;
-  framerate[i++%N_FRAMERATES] = d;
-  last_clock = tick;
-
-  #ifdef DEBUG_PPU_PRINT_FRAMERATE
-  if(i%N_FRAMERATES==0)
-    print_framerate();
-  #endif
-
-  return d;
-}
-#undef N_FRAMERATES
 
 
 void PPU::write(uint8_t value, uint16_t addr) {
@@ -596,7 +559,6 @@ PPU::PPU(IBus *bus, IROM *rom, IVideoDevice *video)
   , tick_renderer(renderfuncs.begin())
 {
     reg.PPUSTATUS = 0x80;
-
 }
 
 
