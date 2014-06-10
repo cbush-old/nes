@@ -133,9 +133,7 @@ class Generator_with_length_counter : public Generator {
 
   public:
     virtual void on_half_frame() {
-      if (!get_length_counter_halt() && _counter > 0) {
-        --_counter;
-      }
+      clock_length_counter();
     }
 
     virtual void disable() {
@@ -156,6 +154,12 @@ class Generator_with_length_counter : public Generator {
 
     bool length_counter_active() const {
       return _counter > 0;
+    }
+
+    inline void clock_length_counter() {
+      if (!get_length_counter_halt() && _counter > 0) {
+        --_counter;
+      }
     }
 
 };
@@ -231,11 +235,47 @@ struct Pulse : Generator_with_envelope {
   uint16_t t { 0 };
   uint8_t shift { 0 };
 
+  uint16_t _sweep_divider { 0 };
+  bool _sweep_reload { false };
+
   void reg3_write(uint8_t value) {
     reg3 = value;
     reload_length_counter();
     shift = 0; // restart sequencer
     start_envelope();
+  }
+
+  void adjust_period() {
+    timer = timer + (!sweep_negative * 2 - 1) * (timer >> sweep_shift);
+  }
+
+  virtual void on_half_frame() override {
+    clock_length_counter();
+    if (_sweep_reload) {
+
+      if (!_sweep_divider && sweep_enabled) {
+        adjust_period();
+      }
+
+      _sweep_divider = sweep_period;
+      _sweep_reload = false;
+    
+    } else {
+
+      if (_sweep_divider == 0) {
+
+        if (sweep_enabled) {
+          _sweep_divider = sweep_period;
+          adjust_period();
+
+        }
+
+      } else {
+
+        --_sweep_divider;
+
+      }
+    }
   }
 
   void update() {
