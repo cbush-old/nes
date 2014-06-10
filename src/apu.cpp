@@ -4,7 +4,7 @@
 #include <cmath>
 #include <functional>
 #include <set>
-
+#include <thread>
 
 const uint8_t PULSE_WAVES[] {
   0x40, // 0 1 0 0 0 0 0 0 (12.5%)
@@ -269,7 +269,7 @@ struct Triangle : Generator_with_length_counter {
       --_linear_counter;
     }
 
-    if (!triangle_control) {
+    if (triangle_control) {
       _linear_counter_reload = false;
     }
   }
