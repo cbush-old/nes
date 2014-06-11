@@ -53,12 +53,6 @@ SDLAudioDevice::~SDLAudioDevice() {
   _state = src_delete(_state);
   SDL_CloseAudioDevice(_device);
   SDL_QuitSubSystem(SDL_INIT_AUDIO);
-
-  std::cout
-    << "put_sample (inner): " << (_debug_put_sample_inner_time / (double)CLOCKS_PER_SEC) << "\n"
-    << "put_sample (outer): " << (_debug_put_sample_outer_time / (double)CLOCKS_PER_SEC) << "\n"
-    << "buffer fill (inner): " << (_debug_buffer_fill_inner_time / (double)CLOCKS_PER_SEC) << "\n"
-    << "buffer fill (outer): " << (_debug_buffer_fill_outer_time / (double)CLOCKS_PER_SEC) << "\n";
 }
 
 void SDLAudioDevice::put_sample(int16_t sample) {

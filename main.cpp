@@ -14,7 +14,9 @@ int main(int argc, char* argv[]){
     ROM rom (argv[1]);
     NES nes (rom, script);
 
-  } catch(int){
+    nes.run();
+
+  } catch(int) {
 
     std::cout << "died\n";
 

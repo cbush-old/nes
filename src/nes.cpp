@@ -31,9 +31,7 @@ NES::NES(IROM& rom, std::istream& script)
     , ppu (new PPU(this, &rom, video))
     , apu (new APU(this, audio))
     , cpu (new CPU(this, apu, ppu, &rom, controller[0], controller[1]))
-    {
-        cpu->run();
-    }
+    {}
 
 NES::~NES() {
     delete apu;
@@ -70,4 +68,8 @@ void NES::on_cpu_tick() {
     ppu->tick();
     ppu->tick();
     ppu->tick();
+}
+
+void NES::run() {
+    cpu->run();
 }

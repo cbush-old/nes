@@ -23,6 +23,9 @@ class NES : public IBus {
     virtual ~NES();
 
   public:
+    void run();
+
+  public:
     void pull_NMI();
     void pull_IRQ();
     void on_frame();
