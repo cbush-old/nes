@@ -1,6 +1,5 @@
 #include "apu.h"
 
-#include <unistd.h>
 #include <cmath>
 #include <functional>
 #include <set>
@@ -391,10 +390,9 @@ struct DMC : Generator {
   }
 };
 
-FILE *fp;
-
-APU::APU(IBus *bus)
+APU::APU(IBus *bus, IAudioDevice *audio)
   : bus(bus)
+  , audio(audio)
   , _generator {
     new Pulse(),
     new Pulse(),
@@ -402,17 +400,9 @@ APU::APU(IBus *bus)
     new Noise(),
     new DMC()
   }
-{
+  {}
 
-  fp = popen(
-    "sox -t raw -c1 -b 16 -e signed-integer -r1789773 - -t raw -c2 - rate 48000 "
-    " | aplay -fdat",
-    "w"
-  );
-}
-
-APU::~APU(){
-  pclose(fp);
+APU::~APU() {
   for (int i = 0; i < 5; ++i) {
     delete _generator[i];
   }
@@ -440,9 +430,7 @@ void APU::tick() {
     sample += (g->sample() - 0.5) * g->get_channel_volume();
   }
 
-  // Output sound
-  fputc(sample, fp);
-  fputc(sample >> 8, fp);
+  audio->put_sample(sample);
 
   ++_cycle;
 

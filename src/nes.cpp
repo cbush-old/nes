@@ -7,6 +7,7 @@
 
 #include "controller_std.h"
 #include "audio_sdl.h"
+#include "audio_sox_pipe.h"
 #include "video_sdl.h"
 #include "input_sdl.h"
 #include "input_script.h"
@@ -28,7 +29,7 @@ NES::NES(IROM& rom, std::istream& script)
     }
     , rom (rom)
     , ppu (new PPU(this, &rom, video))
-    , apu (new APU(this))
+    , apu (new APU(this, audio))
     , cpu (new CPU(this, apu, ppu, &rom, controller[0], controller[1]))
     {
         cpu->run();

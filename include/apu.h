@@ -12,9 +12,10 @@
 class APU : public IAPU {
   private:
     IBus *bus;
+    IAudioDevice *audio { nullptr };
 
   public:
-    APU(IBus *bus);
+    APU(IBus *bus, IAudioDevice *audio);
     ~APU();
 
   public:

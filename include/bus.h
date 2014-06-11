@@ -251,6 +251,9 @@ class IVideoDevice {
 class IAudioDevice {
   public:
     virtual ~IAudioDevice(){}
+
+  public:
+    virtual void put_sample(int16_t) =0;
 };
 
 
