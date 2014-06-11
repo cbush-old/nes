@@ -39,4 +39,4 @@ nes: $(OBJECTS)
 	$(CC) $(CFLAGS) $(INCLUDE) $< -o $@
 
 clean:
-	rm *.o src/*.o
+	rm *.o src/*.o src/mappers/*.o

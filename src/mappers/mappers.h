@@ -15,8 +15,15 @@ class SxROM : public ROM {
     ~SxROM();
 
   public:
+//    virtual uint8_t& getmemref(uint16_t);
+
+  public:
     virtual void write_prg(uint8_t value, uint16_t addr);
-    virtual void reset();
+//    virtual uint8_t read_prg(uint16_t addr) const;
+
+  public:
+    virtual void set_prg(uint8_t);
+    virtual void set_chr(uint8_t);
 
   protected:
     void regw(uint8_t value, uint16_t addr);

@@ -282,13 +282,6 @@ class IROM {
 
   public: // CPU-space access
     /**
-     * @brief get a reference to the value at a memory location
-     * @param addr the address (expressed in cpu space) where the reference should be found
-     * @return a reference to the value at the memory location
-     **/
-    virtual uint8_t& getmemref(uint16_t addr) =0;
-
-    /**
      * @brief write to the cartridge prg space ($4020 - $ffff in cpu memory space)
      * @param value the value to write
      * @param addr the address to write to (expressed in cpu space)

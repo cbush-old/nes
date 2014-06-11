@@ -9,9 +9,6 @@ class ROM : public IROM {
     virtual ~ROM();
 
   public:
-    virtual uint8_t& getmemref(uint16_t);
-
-  public:
     virtual void write_nt(uint8_t value, uint16_t addr);
     virtual void write_prg(uint8_t value, uint16_t addr);
     virtual void write_chr(uint8_t value, uint16_t addr);
@@ -22,7 +19,6 @@ class ROM : public IROM {
   public:
     virtual void set_prg(uint8_t);
     virtual void set_chr(uint8_t);
-    virtual void reset();
     virtual uint8_t *get_prg_data();
     virtual uint8_t *get_chr_data();
 

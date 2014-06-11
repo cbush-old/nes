@@ -9,16 +9,6 @@
 // CPU-space access
 //
 //
-uint8_t dummy;
-uint8_t& ROM::getmemref(uint16_t addr) {
-  if (addr < 0x8000) {
-    return dummy;
-  } else {
-    addr -= 0x8000;
-    return prg_bank[addr / 0x4000][addr & 0x3fff];
-  }
-}
-
 uint8_t ROM::read_prg(uint16_t addr) const {
   if (addr < 0x8000) {
     // TODO
@@ -59,9 +49,6 @@ void ROM::write_nt(uint8_t value, uint16_t addr) {
 uint8_t ROM::read_nt(uint16_t addr) const {
   uint16_t table = (addr >> 10) & 3;
   return nametable[table][addr & 0x3ff];
-}
-
-void ROM::reset() {
 }
 
 

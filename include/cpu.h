@@ -53,6 +53,7 @@ class CPU : public ICPU {
     typedef uint8_t(CPU::*regr)(); // register read
     typedef void(CPU::*regw)(uint8_t); // register write
     typedef uint8_t(CPU::*condition)(); // branch condition
+    typedef uint8_t(CPU::*rmw_op)(uint8_t); // read-modify-write
       
     template<Flag F> inline void set_if(bool cond){
       if(cond) P|=F; else P&=~F;
@@ -80,19 +81,6 @@ class CPU : public ICPU {
     uint16_t next2();
     
     void addcyc();  
-    
-    template <mode M>
-    uint8_t& getref() {
-      uint16_t addr = (this->*M)();
-      if(addr < 0x2000) {
-        return memory[addr & 0x7ff];
-      } else if(addr < 0x4020) {
-        // this shouldn't happen
-        throw std::runtime_error("program referencing register memory!");
-      } else {
-        return rom->getmemref(addr);
-      }
-    }
 
     template <typename T> 
     inline uint16_t sum_check_pgx(uint16_t addr, T x) {
@@ -162,23 +150,22 @@ class CPU : public ICPU {
     inline uint8_t StackPointer(){ return SP; }
     inline uint8_t AX(){ return A&X; } // unofficial
 
+    template<mode M>
+    uint8_t read() {
+      return read((this->*M)());
+    }
+
     #include "cpu-ops.cc"
 
     static const op ops[256];
     static const char* const opasm[256];
 
-    template<mode M> uint8_t read(){
-      return read((this->*M)());
-    }
 
     void print_status();
     bool IRQ { true };
 
 };
 
-template<> uint8_t& CPU::getref<&CPU::ACC>();
-template<> uint8_t& CPU::getref<&CPU::X__>();
-template<> uint8_t& CPU::getref<&CPU::Y__>();
 template<> uint8_t CPU::read<&CPU::IMM>();
 
 #endif

@@ -28,11 +28,25 @@ void SxROM::write_prg(uint8_t value, uint16_t addr) {
   }
 }
 
-void SxROM::reset() {
+void SxROM::set_prg(uint8_t count) {
+
+  prg.resize(count * 0x4000);
+  prg_bank.push_back(prg.data());
+  prg_bank.push_back(prg.data());
+
+}
+
+void SxROM::set_chr(uint8_t count) {
+
+  chr.resize(count * 0x2000);
+  chr_bank.push_back(chr.data());
+  chr_bank.push_back(chr.data() + 0x1000);
+
   regw(0xc, 0x8000);
   regw(0x0, 0xa000);
   regw(0x0, 0xc000);
   regw(0x0, 0xe000);
+
 }
 
 void SxROM::regw(uint8_t value, uint16_t addr) {
@@ -40,12 +54,12 @@ void SxROM::regw(uint8_t value, uint16_t addr) {
     _reg8 = value;
     switch (_chr_mode) {
       case 0:
-        chr_bank[0] = chr.data() + _regA;
-        chr_bank[1] = chr.data() + _regA + 0x1000;
+        chr_bank[0] = chr.data() + _regA * 0x1000;
+        chr_bank[1] = chr.data() + _regA * 0x1000 + 0x1000;
         break;
       case 1:
-        chr_bank[0] = chr.data() + _regA;
-        chr_bank[1] = chr.data() + _regC;
+        chr_bank[0] = chr.data() + _regA * 0x1000;
+        chr_bank[1] = chr.data() + _regC * 0x1000;
         break;
     }
 

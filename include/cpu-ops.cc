@@ -98,46 +98,65 @@ template<mode M> inline void SBC() {
   setZN(A = r);
 }
 
+template<mode M, rmw_op f>
+inline void rmw() {
+  if (M == &CPU::ACC) {
+
+    setZN(A = (this->*f)(A));
+
+  } else if (M == &CPU::X__) {
+
+    setZN(X = (this->*f)(X));
+
+  } else if (M == &CPU::Y__) {
+
+    setZN(Y = (this->*f)(Y));
+
+  } else {
+
+    uint16_t addr = (this->*M)();
+    uint8_t value = (this->*f)(read(addr));
+    setZN(value);
+    write(value, addr);
+
+  }
+}
 
 // increment / decrement:
 //
 //
-template<mode M> inline void INC() {
-  setZN(++getref<M>());
+uint8_t INC(uint8_t v) { // rmw
+  return v + 1;
 }
 
-template<mode M> inline void DEC() {
-  setZN(--getref<M>());
+uint8_t DEC(uint8_t v) { // rmw
+  return v - 1;
 }
 
 
 // bit shift:
 //
 //
-template<mode M> inline void ASL() {
-  uint8_t& target = getref<M>();
-  set_if<C_FLAG>(target & 0x80);
-  setZN(target <<= 1);
+uint8_t ASL(uint8_t v) { // rmw
+  set_if<C_FLAG>(v & 0x80);
+  return v << 1;
 }
 
-template<mode M> inline void LSR() {
-  uint8_t& target = getref<M>();
-  set_if<C_FLAG>(target&0x01);
-  setZN(target >>= 1);
+uint8_t LSR(uint8_t v) { // rmw
+  set_if<C_FLAG>(v & 1);
+  return v >> 1;
 }
 
-template<mode M> inline void ROL() {
-  uint8_t& target = getref<M>();
+uint8_t ROL(uint8_t v) { // rmw
+  uint8_t tmp = P & C_FLAG;
+  set_if<C_FLAG>(v & 0x80);
+  return (v << 1) | tmp;
+}
+
+uint8_t ROR(uint8_t v) { // rmw
   uint8_t tmp = P&C_FLAG;
-  set_if<C_FLAG>(target&0x80);
-  setZN((target<<=1)|=tmp);
-}
-
-template<mode M> inline void ROR() {
-  uint8_t& target = getref<M>();
-  uint8_t tmp = P&C_FLAG;
-  set_if<C_FLAG>(target&0x01);
-  setZN((target>>=1)|=tmp<<7);
+  set_if<C_FLAG>(v & 1);
+  return (v >> 1) | (tmp << 7);
 }
 
 

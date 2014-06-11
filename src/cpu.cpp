@@ -79,7 +79,6 @@ void CPU::write(uint8_t value, uint16_t addr) {
       case 5: ppu->regw_scroll(value); break;
       case 6: ppu->regw_address(value); break;
       case 7: ppu->regw_data(value); break;
-      default: /* bad write */ break;
     }
 
   } else if(addr < 0x4020) { // APU and I/O registers
@@ -165,7 +164,7 @@ void CPU::run() {
 
   PC = read(0xfffc) | (read(0xfffd) << 8);
 
-  for(;;){
+  for(;;) {
     last_PC = PC;
     last_op = next();
     
@@ -175,14 +174,14 @@ void CPU::run() {
     
     (this->*ops[last_op])();
     
-    if(IRQ == 0 && (P & I_FLAG) == 0) {
+    if (IRQ == 0 && (P & I_FLAG) == 0) {
       push2(PC);
       stack_push<&CPU::ProcStatus>();
       P |= I_FLAG;
       PC = read(0xfffe) | (read(0xffff) << 8);
     }
 
-    for(int i = 0; i < cycles[last_op] + result_cycle; ++i){
+    for (int i = 0; i < cycles[last_op] + result_cycle; ++i) {
       bus->on_cpu_tick();
     }
 
@@ -192,10 +191,8 @@ void CPU::run() {
 
 }
 
-template<> uint8_t& CPU::getref<&CPU::ACC>(){ return A; }
-template<> uint8_t& CPU::getref<&CPU::X__>(){ return X; }
-template<> uint8_t& CPU::getref<&CPU::Y__>(){ return Y; }
-template<> uint8_t CPU::read<&CPU::IMM>(){
+template<>
+uint8_t CPU::read<&CPU::IMM>() {
   return (uint8_t)IMM();
 }
 
@@ -228,6 +225,4 @@ void CPU::print_status() {
 void CPU::pull_IRQ() {
   IRQ = true;
 }
-
-
 
