@@ -1,9 +1,10 @@
 #include "rom.h"
 #include "bit.h"
 
+#include "mappers/mappers.h"
+
 #include <iostream>
 #include <fstream>
-
 
 // CPU-space access
 //
@@ -60,11 +61,66 @@ uint8_t ROM::read_nt(uint16_t addr) const {
   return nametable[table][addr & 0x3ff];
 }
 
+void ROM::reset() {
+}
 
-ROM::ROM(const char *path):
-  nt (0x800),
-  nametable (4)
-{
+
+ROM::ROM()
+  : nt (0x800)
+  , nametable (4)
+  {}
+
+void ROM::set_prg(uint8_t count) {
+  prg.resize(count * 0x4000);
+
+  prg_bank.push_back(prg.data() + 0x0);
+  prg_bank.push_back(prg.data() + (count > 1 ? 0x4000 : 0));
+
+}
+
+void ROM::set_chr(uint8_t count) {
+  chr.resize(count * 0x2000);
+
+  chr_bank.push_back(chr.data());
+  chr_bank.push_back(chr.data() + 0x1000);
+
+}
+
+uint8_t* ROM::get_prg_data() {
+  return prg.data();
+}
+
+uint8_t* ROM::get_chr_data() {
+  return chr.data();
+}
+
+void ROM::set_mirroring(MirrorMode mode) {
+  if (mode == FOUR_SCREEN) {
+    // TODO
+    nametable[0] = nt.data();
+    nametable[1] = nt.data();
+    nametable[2] = nt.data() + 0x400;
+    nametable[3] = nt.data() + 0x400;
+
+  } else if (mode == HORIZONTAL) {
+    std::cout << "Horizontal mirroring\n";
+    nametable[0] = nt.data();
+    nametable[1] = nt.data();
+    nametable[2] = nt.data() + 0x400;
+    nametable[3] = nt.data() + 0x400;
+  } else {
+    std::cout << "Vertical mirroring\n";
+    nametable[0] = nt.data();
+    nametable[1] = nt.data() + 0x400;
+    nametable[2] = nt.data();
+    nametable[3] = nt.data() + 0x400;
+  }
+
+}
+
+ROM::~ROM() {}
+
+ROM *load_ROM(const char *path) {
 
   std::ifstream file(path);
 
@@ -98,43 +154,31 @@ ROM::ROM(const char *path):
   std::cout << "prg banks: " << (int)prg_rom_size << '\n';
   std::cout << "chr banks: " << (int)chr_rom_size << '\n';
 
-  if (mapper_id > 2)
-    throw std::runtime_error ("Unsupported mapper");
-
-  prg.resize(0x4000 + prg_rom_size * 0x4000);
-  chr.resize(0x2000 + chr_rom_size * 0x2000);
-
-  file.read((char*)prg.data(), prg_rom_size * 0x4000);
-  file.read((char*)chr.data(), chr_rom_size * 0x2000);
-
-  if (four_screen) {
-    // TODO
-    std::cout << "Four screen\n";
-    nametable[0] = nt.data();
-    nametable[1] = nt.data();
-    nametable[2] = nt.data();
-    nametable[3] = nt.data();
-  } else if (horizontal_mirroring) {
-    std::cout << "Horizontal mirroring\n";
-    nametable[0] = nt.data();
-    nametable[1] = nt.data();
-    nametable[2] = nt.data() + 0x400;
-    nametable[3] = nt.data() + 0x400;
-  } else {
-    std::cout << "Vertical mirroring\n";
-    nametable[0] = nt.data();
-    nametable[1] = nt.data() + 0x400;
-    nametable[2] = nt.data();
-    nametable[3] = nt.data() + 0x400;
+  ROM *rom;
+  switch (mapper_id) {
+    case 0: rom = new NROM(); break;
+    case 1: rom = new SxROM(); break;
+    default:
+      throw std::runtime_error ("Unsupported mapper");
   }
 
-  prg_bank.push_back(prg.data() + 0x0);
-  prg_bank.push_back(prg.data() + (prg_rom_size > 1 ? 0x4000 : 0));
+  rom->set_prg(prg_rom_size + 1);
+  rom->set_chr(chr_rom_size + 1);
 
-  chr_bank.push_back(chr.data());
-  chr_bank.push_back(chr.data() + 0x1000);
+  file.read((char*)rom->get_prg_data(), prg_rom_size * 0x4000);
+  file.read((char*)rom->get_chr_data(), chr_rom_size * 0x2000);
+
+  rom->set_mirroring(
+    four_screen ? ROM::MirrorMode::FOUR_SCREEN : horizontal_mirroring ? ROM::MirrorMode::HORIZONTAL : ROM::MirrorMode::VERTICAL
+  );
+
+  return rom;
 
 }
 
 
-ROM::~ROM() {}
+void unload_ROM(ROM *rom) {
+  delete rom;
+}
+
+

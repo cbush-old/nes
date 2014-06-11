@@ -3,22 +3,36 @@
 
 #include "bus.h"
 
-
 class ROM : public IROM {
   public:
-    ROM(const char *);
-    ~ROM();
+    ROM();
+    virtual ~ROM();
 
   public:
-    uint8_t& getmemref(uint16_t);
+    virtual uint8_t& getmemref(uint16_t);
 
   public:
-    void write_nt(uint8_t value, uint16_t addr);
-    void write_prg(uint8_t value, uint16_t addr);
-    void write_chr(uint8_t value, uint16_t addr);
-    uint8_t read_prg(uint16_t addr) const;
-    uint8_t read_chr(uint16_t addr) const;
-    uint8_t read_nt(uint16_t addr) const;
+    virtual void write_nt(uint8_t value, uint16_t addr);
+    virtual void write_prg(uint8_t value, uint16_t addr);
+    virtual void write_chr(uint8_t value, uint16_t addr);
+    virtual uint8_t read_prg(uint16_t addr) const;
+    virtual uint8_t read_chr(uint16_t addr) const;
+    virtual uint8_t read_nt(uint16_t addr) const;
+
+  public:
+    virtual void set_prg(uint8_t);
+    virtual void set_chr(uint8_t);
+    virtual void reset();
+    virtual uint8_t *get_prg_data();
+    virtual uint8_t *get_chr_data();
+
+  public:
+    enum MirrorMode {
+        HORIZONTAL,
+        VERTICAL,
+        FOUR_SCREEN,
+    };
+    virtual void set_mirroring(MirrorMode);
 
   protected:
     // Real memory
@@ -32,5 +46,9 @@ class ROM : public IROM {
     std::vector<uint8_t*> chr_bank;
 
 };
+
+ROM *load_ROM(const char *);
+
+void unload_ROM(ROM*);
 
 #endif
