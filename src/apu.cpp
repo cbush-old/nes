@@ -393,13 +393,13 @@ struct DMC : Generator {
 APU::APU(IBus *bus, IAudioDevice *audio)
   : bus(bus)
   , audio(audio)
-  , _generator {
+  , _generator ({
     new Pulse(),
     new Pulse(),
     new Triangle(),
     new Noise(),
     new DMC()
-  }
+  })
   {}
 
 APU::~APU() {
