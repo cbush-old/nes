@@ -4,7 +4,7 @@ INCLUDE= \
 	-I. \
 	-Iinclude \
 	-I/System/Library/Frameworks/OpenGL.framework/Headers \
-	-I/System/Library/Frameworks/ \
+	-I/usr/local/include/SDL2 \
 	-I/opt/local/include \
 	-I/usr/include/GL \
 	-I/usr/include/SDL2 
