@@ -15,33 +15,28 @@ class SxROM : public ROM {
     ~SxROM();
 
   public:
-//    virtual uint8_t& getmemref(uint16_t);
-
-  public:
     virtual void write_prg(uint8_t value, uint16_t addr);
-//    virtual uint8_t read_prg(uint16_t addr) const;
 
   public:
     virtual void set_prg(uint8_t);
     virtual void set_chr(uint8_t);
-
   protected:
     void regw(uint8_t value, uint16_t addr);
 
   private:
-    uint8_t _register;
+    uint8_t _register { 0 };
     uint8_t _write { 0 };
     union {
       bit<0, 8> _reg8;
-      bit<0, 2> _mirror_control;
+      bit<0, 2> _mirror_mode;
       bit<2, 1> _slot_select;
       bit<3, 1> _prg_size;
       bit<4, 1> _chr_mode;
 
-      bit<8, 8> _regA;
-      bit<16, 8> _regC;
+      bit<8, 5> _regA;
+      bit<16, 5> _regC;
 
-      bit<24, 8> _regE;
+      bit<24, 5> _regE;
       bit<24, 4> _prg_reg;
       bit<28, 1> _wram_disabled;
     };

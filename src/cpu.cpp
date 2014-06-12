@@ -47,8 +47,7 @@ uint8_t CPU::read(uint16_t addr) const {
       case 7: return ppu->regr_data();
       default: /* bad read */ return 0;
     }
-  }
-  if(addr < 0x4020) {
+  } else if(addr < 0x4020) {
     switch(addr & 0x1f) {
       case 0x15: return apu->read();
       case 0x16: return controller[0]->read();

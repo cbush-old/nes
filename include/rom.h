@@ -21,12 +21,16 @@ class ROM : public IROM {
     virtual void set_chr(uint8_t);
     virtual uint8_t *get_prg_data();
     virtual uint8_t *get_chr_data();
+    virtual size_t get_prg_size() const;
+    virtual size_t get_chr_size() const;
 
   public:
     enum MirrorMode {
         HORIZONTAL,
         VERTICAL,
         FOUR_SCREEN,
+        SINGLE_SCREEN_A,
+        SINGLE_SCREEN_B,
     };
     virtual void set_mirroring(MirrorMode);
 

@@ -11,7 +11,6 @@
 //
 uint8_t ROM::read_prg(uint16_t addr) const {
   if (addr < 0x8000) {
-    // TODO
     return 0;
   } else {
     addr -= 0x8000;
@@ -81,6 +80,14 @@ uint8_t* ROM::get_chr_data() {
   return chr.data();
 }
 
+size_t ROM::get_prg_size() const {
+  return prg.size();
+}
+
+size_t ROM::get_chr_size() const {
+  return chr.size();
+}
+
 void ROM::set_mirroring(MirrorMode mode) {
   if (mode == FOUR_SCREEN) {
     // TODO
@@ -95,14 +102,23 @@ void ROM::set_mirroring(MirrorMode mode) {
     nametable[1] = nt.data();
     nametable[2] = nt.data() + 0x400;
     nametable[3] = nt.data() + 0x400;
-  } else {
+  } else if (mode == VERTICAL) {
     std::cout << "Vertical mirroring\n";
     nametable[0] = nt.data();
     nametable[1] = nt.data() + 0x400;
     nametable[2] = nt.data();
     nametable[3] = nt.data() + 0x400;
+  } else if (mode == SINGLE_SCREEN_A) {
+    nametable[0] = nt.data();
+    nametable[1] = nt.data();
+    nametable[2] = nt.data();
+    nametable[3] = nt.data();
+  } else if (mode == SINGLE_SCREEN_B) {
+    nametable[0] = nt.data() + 0x400;
+    nametable[1] = nt.data() + 0x400;
+    nametable[2] = nt.data() + 0x400;
+    nametable[3] = nt.data() + 0x400;
   }
-
 }
 
 ROM::~ROM() {}
@@ -149,15 +165,14 @@ ROM *load_ROM(const char *path) {
       throw std::runtime_error ("Unsupported mapper");
   }
 
-  rom->set_prg(prg_rom_size + 1);
-  rom->set_chr(chr_rom_size + 1);
-
-  file.read((char*)rom->get_prg_data(), prg_rom_size * 0x4000);
-  file.read((char*)rom->get_chr_data(), chr_rom_size * 0x2000);
-
   rom->set_mirroring(
     four_screen ? ROM::MirrorMode::FOUR_SCREEN : horizontal_mirroring ? ROM::MirrorMode::HORIZONTAL : ROM::MirrorMode::VERTICAL
   );
+  rom->set_prg(prg_rom_size);
+  rom->set_chr(chr_rom_size);
+
+  file.read((char*)rom->get_prg_data(), rom->get_prg_size());
+  file.read((char*)rom->get_chr_data(), rom->get_chr_size());
 
   return rom;
 
