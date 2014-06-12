@@ -7,6 +7,11 @@ SxROM::SxROM(): ROM() {}
 SxROM::~SxROM() {}
 
 void SxROM::write_prg(uint8_t value, uint16_t addr) {
+  if (addr < 0x8000) {
+    ram[addr % 0x4000] = value;
+    return;
+  }
+
   // Only bits 7 and 0 are significant when writing to a register:
   // [r... ...d]
   //    r = reset flag
@@ -38,22 +43,21 @@ void SxROM::set_prg(uint8_t count) {
 
 void SxROM::set_chr(uint8_t count) {
 
-  chr.resize(0x4000 + count * 0x2000);
+  chr.resize(count ? count * 0x2000 : 0x4000);
   chr_bank.push_back(chr.data());
   chr_bank.push_back(chr.data() + 0x1000);
 
-  regw(0x00, 0xe000);
-  regw(0x00, 0xc000);
-  regw(0x00, 0xa000);
+  regw(0xff, 0xe000);
+  regw(0xff, 0xc000);
+  regw(0xff, 0xa000);
   regw(0x0c, 0x8000);
 
 }
 
 void SxROM::regw(uint8_t value, uint16_t addr) {
-  if (addr < 0x8000) {
-    // ??
-    std::cerr << "Writing to unexpected place on SxROM: " << addr << "\n";
-  } else if (addr < 0xa000) {
+
+  if (addr < 0xa000) {
+
     _reg8 = value;
 
     ROM::MirrorMode mirror;
@@ -96,7 +100,7 @@ void SxROM::regw(uint8_t value, uint16_t addr) {
         prg_bank[1] = prg.data() + _prg_reg * 0x4000;
       } else {
         prg_bank[0] = prg.data() + _prg_reg * 0x4000;
-        prg_bank[1] = prg.data() + 0xf * 0x4000;
+        prg_bank[1] = prg.data() + prg.size() - 0x4000;
       }
       break;
   }

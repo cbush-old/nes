@@ -11,7 +11,7 @@
 //
 uint8_t ROM::read_prg(uint16_t addr) const {
   if (addr < 0x8000) {
-    return 0;
+    return ram[addr % 0x4000];
   } else {
     addr -= 0x8000;
     return prg_bank[addr / 0x4000][addr & 0x3fff];
@@ -20,7 +20,7 @@ uint8_t ROM::read_prg(uint16_t addr) const {
 
 void ROM::write_prg(uint8_t value, uint16_t addr) {
   if (addr < 0x8000) {
-    // TODO
+    ram[addr % 0x4000] = value;
   } else {
     addr -= 0x8000;
     prg_bank[addr / 0x4000][addr & 0x3fff] = value;
@@ -53,6 +53,7 @@ uint8_t ROM::read_nt(uint16_t addr) const {
 
 ROM::ROM()
   : nt (0x800)
+  , ram (0x4000)
   , nametable (4)
   {}
 
@@ -92,7 +93,7 @@ size_t ROM::get_chr_size() const {
 
 void ROM::set_mirroring(MirrorMode mode) {
   if (mode == FOUR_SCREEN) {
-    // TODO
+    std::cout << "4s mirroring\n";
     nametable[0] = nt.data();
     nametable[1] = nt.data();
     nametable[2] = nt.data() + 0x400;
@@ -111,11 +112,13 @@ void ROM::set_mirroring(MirrorMode mode) {
     nametable[2] = nt.data();
     nametable[3] = nt.data() + 0x400;
   } else if (mode == SINGLE_SCREEN_A) {
+    std::cout << "1sa mirroring\n";
     nametable[0] = nt.data();
     nametable[1] = nt.data();
     nametable[2] = nt.data();
     nametable[3] = nt.data();
   } else if (mode == SINGLE_SCREEN_B) {
+    std::cout << "1sb mirroring\n";
     nametable[0] = nt.data() + 0x400;
     nametable[1] = nt.data() + 0x400;
     nametable[2] = nt.data() + 0x400;
@@ -144,7 +147,7 @@ ROM *load_ROM(const char *path) {
   uint8_t flag6 = file.get();
   uint8_t flag7 = file.get();
 
-  // prg_ram_size = file.get();
+  // int prg_ram_size = file.get();
   // flag9 = file.get();
   // flag10 = file.get();
 

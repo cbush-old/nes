@@ -39,6 +39,7 @@ class ROM : public IROM {
     std::vector<uint8_t> nt;
     std::vector<uint8_t> prg;
     std::vector<uint8_t> chr;
+    std::vector<uint8_t> ram;
 
     // Mirrors
     std::vector<uint8_t*> nametable;
