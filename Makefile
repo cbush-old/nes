@@ -26,6 +26,7 @@ SOURCES= \
 	src/input_script.cpp \
 	src/input_script_recorder.cpp \
 	src/mappers/sxrom.cpp \
+	src/mappers/uxrom.cpp \
 	main.cpp
 
 OBJECTS= $(SOURCES:.cpp=.o)

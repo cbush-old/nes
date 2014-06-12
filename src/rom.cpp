@@ -57,6 +57,7 @@ ROM::ROM()
   {}
 
 void ROM::set_prg(uint8_t count) {
+
   prg.resize(count * 0x4000);
 
   prg_bank.push_back(prg.data() + 0x0);
@@ -65,7 +66,8 @@ void ROM::set_prg(uint8_t count) {
 }
 
 void ROM::set_chr(uint8_t count) {
-  chr.resize(count * 0x2000);
+
+  chr.resize(count ? count * 0x2000 : 0x4000);
 
   chr_bank.push_back(chr.data());
   chr_bank.push_back(chr.data() + 0x1000);
@@ -161,6 +163,7 @@ ROM *load_ROM(const char *path) {
   switch (mapper_id) {
     case 0: rom = new NROM(); break;
     case 1: rom = new SxROM(); break;
+    case 2: rom = new UxROM(); break;
     default:
       throw std::runtime_error ("Unsupported mapper");
   }
@@ -170,6 +173,7 @@ ROM *load_ROM(const char *path) {
   );
   rom->set_prg(prg_rom_size);
   rom->set_chr(chr_rom_size);
+  rom->write_prg(0xc, 0x8000); // fixme: move "set_prg" stuff to constructor
 
   file.read((char*)rom->get_prg_data(), rom->get_prg_size());
   file.read((char*)rom->get_chr_data(), rom->get_chr_size());

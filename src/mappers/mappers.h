@@ -20,6 +20,7 @@ class SxROM : public ROM {
   public:
     virtual void set_prg(uint8_t);
     virtual void set_chr(uint8_t);
+
   protected:
     void regw(uint8_t value, uint16_t addr);
 
@@ -40,6 +41,17 @@ class SxROM : public ROM {
       bit<24, 4> _prg_reg;
       bit<28, 1> _wram_disabled;
     };
+};
+
+// Mapper 2
+class UxROM : public ROM {
+  public:
+    UxROM(){}
+    ~UxROM(){}
+
+  public:
+    virtual void write_prg(uint8_t value, uint16_t addr) override;
+
 };
 
 
