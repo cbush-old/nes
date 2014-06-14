@@ -40,4 +40,4 @@ nes: $(OBJECTS)
 	$(CC) $(CFLAGS) $(INCLUDE) $< -o $@
 
 clean:
-	rm *.o src/*.o src/mappers/*.o
+	rm -f $(OBJECTS) nes

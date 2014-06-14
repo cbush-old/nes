@@ -424,14 +424,6 @@ void APU::tick() {
 
   }
 
-  // Mix sample
-  int16_t sample = 0;
-  for (auto& g : _generator) {
-    sample += (g->sample() - 0.5) * g->get_channel_volume();
-  }
-
-  audio->put_sample(sample);
-
   ++_cycle;
 
   if (!_frame_counter.five_frame_sequence) {
@@ -494,6 +486,45 @@ void APU::tick() {
       _cycle = 0;
     }
 
+  }
+
+  // Mix sample
+  int16_t sample = 0;
+  for (auto& g : _generator) {
+    sample += (g->sample() - 0.5) * g->get_channel_volume();
+  }
+
+
+  int samples = 1;
+  double rate = bus->get_rate();
+
+  static int s = 0, t = 0; // FIXME: make member
+
+  if (rate < 1.0) {
+    samples = 1 / rate;
+    double remainder = fmod(1, rate);
+    if (remainder > 0.0001) {
+      if (++s > (int)(1.0 / remainder)) {
+        s = 0;
+        ++samples;
+      }
+    }
+  } else if (rate > 1.0) {
+    // output a sample every 1/1/rate ticks
+    samples = 0;
+    double remainder = fmod(1.0, 1.0 / rate);
+    if (s++ > 1.0 / (1.0 / rate)) {
+      s = 0;
+      samples = 1;
+      if (remainder > 0.0001 && (t++ > (1.0 / remainder))) {
+        t = 0;
+        samples = 0;
+      }
+    }
+  }
+
+  for (int i = 0; i < samples; ++i) {
+    audio->put_sample(sample);
   }
 
 }

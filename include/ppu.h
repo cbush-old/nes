@@ -29,8 +29,6 @@ class PPU : public IPPU {
      **/
     void tick();
 
-    void set_frameskip(int n);
-
   private:
     int frameskip { 0 };
     int frameskip_count { 0 };

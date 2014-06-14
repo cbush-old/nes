@@ -24,15 +24,6 @@ class IPPU {
      **/
     virtual void tick() =0;
 
-
-  public: // Emulator settings
-    /**
-     * @brief set the frameskip
-     * @param n number of frames to skip
-     **/
-    virtual void set_frameskip(int n) =0;
-
-
   public: // Register write
     /**
      * @brief write to the ppu control register
@@ -374,6 +365,19 @@ class IBus {
      * @brief function to be called every emulated second
      **/
     virtual void on_second_elapsed(){}
+
+  public: // Emulation settings
+    /**
+     * @brief get the rate of emulation
+     * @return 1.0 for normal speed emulation; higher values = faster emulation
+     **/
+    virtual double get_rate() const =0;
+
+    /**
+     * @brief set the rate of emulation
+     * @param rate the rate modifier: 1.0 for normal speed; higher = faster
+     **/
+    virtual void set_rate(double rate) =0;
 
 };
 

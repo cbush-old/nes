@@ -26,10 +26,17 @@ class NES : public IBus {
     void run();
 
   public:
-    void pull_NMI();
-    void pull_IRQ();
-    void on_frame();
-    void on_cpu_tick();
+    void pull_NMI() override;
+    void pull_IRQ() override;
+    void on_frame() override;
+    void on_cpu_tick() override;
+
+  public:
+    double get_rate() const override;
+    void set_rate(double) override;
+
+  private:
+    double _rate { 1.0 };
 
 };
 

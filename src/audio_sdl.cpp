@@ -5,9 +5,10 @@
 
 #include <iostream>
 #include <thread>
+#include <cstdio>
 
 const int AUDIO_BUFFER_SIZE = 2500;
-const size_t FLUSH_SIZE = AUDIO_BUFFER_SIZE * 4;
+const size_t FLUSH_SIZE = AUDIO_BUFFER_SIZE * 2;
 const double RATIO = 44800.0 / 1789773.0;
 
 using lock_guard = std::lock_guard<std::recursive_mutex>;
@@ -20,9 +21,13 @@ void audio_callback(void *userdata, uint8_t *stream, int length) {
 
 }
 
-SDLAudioDevice::SDLAudioDevice() {
+SDLAudioDevice::SDLAudioDevice(IBus *bus)
+  : _state(src_new(SRC_LINEAR, 1, &_error))
+  , _bus(bus)
+{
 
-  _state = src_new(SRC_LINEAR, 1, &_error);
+  memset(_in.data(), 0, BUFFER_SIZE * sizeof(float));
+  memset(_out.data(), 0, BUFFER_SIZE * sizeof(float));
 
   SDL_InitSubSystem(SDL_INIT_AUDIO);
 
@@ -41,7 +46,6 @@ SDLAudioDevice::SDLAudioDevice() {
     std::cerr << "Couldn't open audio device: " << SDL_GetError() << "\n";
     throw 0;
   } else {
-    SDL_PauseAudioDevice(_device, 0);
     std::cout << obtained.freq << '\n';
   }
 
@@ -61,11 +65,19 @@ void SDLAudioDevice::put_sample(int16_t sample) {
 
   _in.push_back(sample / 32768.f);
 
-  if (_in.size() > FLUSH_SIZE) {
+  if (_in.size() > FLUSH_SIZE && _out.available_size() && !_dumping) {
+
+    _dumping = true;
 
     std::thread t0 { [this] {
 
       lock_guard lock (_mutex);
+
+      if (!_out.available_size()) {
+        std::cerr << "No more room in output buffer!\n";
+        _dumping = false;
+        return;
+      }
 
       SRC_DATA data;
       data.data_in = _in.data();
@@ -82,6 +94,15 @@ void SDLAudioDevice::put_sample(int16_t sample) {
 
       _in.flush(data.input_frames_used);
       _out.add(data.output_frames_gen);
+
+      bool ready = _out.size() > AUDIO_BUFFER_SIZE * 2;
+      if (ready && !_unpaused) {
+        std::cout << "Unpausing audio...\n";
+        SDL_PauseAudioDevice(_device, 0);
+        _unpaused = true;
+      }
+
+      _dumping = false;
 
     }};
     t0.detach();
@@ -101,6 +122,8 @@ void SDLAudioDevice::on_buffer_request(uint8_t *stream, int length) {
 
   if (available < length) {
     // underrun
+    std::cerr << "Underrun!\n";
+    memset(stream, 0, length);
     length = available;
   }
 
