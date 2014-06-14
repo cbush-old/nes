@@ -34,8 +34,8 @@ class SxROM : public ROM {
       bit<3, 1> _prg_size;
       bit<4, 1> _chr_mode;
 
-      bit<8, 5> _regA;
-      bit<16, 5> _regC;
+      bit<8, 8> _regA;
+      bit<16, 8> _regC;
 
       bit<24, 5> _regE;
       bit<24, 4> _prg_reg;
@@ -55,5 +55,7 @@ class UxROM : public ROM {
 };
 
 
+// Mapper 71
+using Camerica = UxROM;
 
 #endif

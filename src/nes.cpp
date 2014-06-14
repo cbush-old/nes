@@ -15,9 +15,21 @@
 
 #include <iostream>
 
+class NoAudioDevice : public IAudioDevice {
+  public:
+    NoAudioDevice(){}
+    ~NoAudioDevice(){}
+
+  public:
+    void put_sample(int16_t) override {}
+
+};
+
 NES::NES(IROM& rom, std::istream& script)
     : video (new SDLVideoDevice())
-    , audio (new SDLAudioDevice())
+    , audio (
+        new NoAudioDevice()
+    )
     , controller {
         new Std_controller(),
         new Std_controller(),

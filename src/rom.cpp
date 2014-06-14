@@ -164,6 +164,7 @@ ROM *load_ROM(const char *path) {
     case 0: rom = new NROM(); break;
     case 1: rom = new SxROM(); break;
     case 2: rom = new UxROM(); break;
+    case 71: rom = new Camerica(); break;
     default:
       throw std::runtime_error ("Unsupported mapper");
   }
