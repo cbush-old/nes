@@ -35,8 +35,7 @@ class MMC3 : public ROM {
       bit<6, 1> _prg_mode_1;
       bit<7, 1> _chr_mode_1;
 
-      bit<16, 8> _regA000;
-      bit<16, 1> _mirroring;
+      bit<8, 1> _mirroring;
 
       bit<24, 8> _regA001;
       bit<30, 1> _wram_write_protected;
@@ -50,6 +49,7 @@ class MMC3 : public ROM {
     bool _IRQ_enabled { true };
     mutable bool _IRQ_pending { false };
     mutable bool _edge { false };
+    mutable uint8_t _edge_counter { 0 };
 
 };
 

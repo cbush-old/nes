@@ -37,8 +37,10 @@ void SxROM::set_prg(uint8_t count) {
 }
 
 void SxROM::set_chr(uint8_t count) {
-
-  chr.resize(0x4000 + count * 0x2000);
+  if (!count) {
+    count = 2;
+  }
+  chr.resize(count * 0x2000);
   chr_bank.push_back(chr.data());
   chr_bank.push_back(chr.data() + 0x1000);
 
@@ -84,19 +86,20 @@ void SxROM::regw(uint8_t value, uint16_t addr) {
       break;
   }
 
+  uint16_t size = 0x4000;
   switch (_prg_size) {
     case 0:
-      prg_bank[0] = prg.data() + _prg_reg * 0x4000;
-      prg_bank[1] = prg.data() + _prg_reg * 0x4000 + 0x4000;
+      prg_bank[0] = prg.data() + (_prg_reg & ~1) * size;
+      prg_bank[1] = prg.data() + (_prg_reg & ~1) * size + size;
       break;
 
     case 1:
       if (!_slot_select) {
         prg_bank[0] = prg.data();
-        prg_bank[1] = prg.data() + _prg_reg * 0x4000;
+        prg_bank[1] = prg.data() + _prg_reg * size;
       } else {
-        prg_bank[0] = prg.data() + _prg_reg * 0x4000;
-        prg_bank[1] = prg.data() + 0xf * 0x4000;
+        prg_bank[0] = prg.data() + _prg_reg * size;
+        prg_bank[1] = prg.data() + prg.size() - size;
       }
       break;
   }

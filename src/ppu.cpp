@@ -529,6 +529,7 @@ void PPU::regw_address(uint8_t value) {
   } else {
     scroll.vaddr_hi = value & 0x3f;
   }
+  //rom->read_chr((value << 8) & 0x1000);
   loopy_w ^= 1;
 }
 

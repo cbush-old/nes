@@ -38,16 +38,32 @@ uint8_t MMC3::read_prg(uint16_t addr) const {
 uint8_t MMC3::read_chr(uint16_t addr) const {
   if ((addr & 0x1000) && !_edge) {
     _edge = true;
-    if (_IRQ_counter == 0) {
-      _IRQ_counter = _IRQ_reload;
-    } else if (--_IRQ_counter == 0 && _IRQ_enabled && !_IRQ_pending) {
-      _bus->pull_IRQ();
-      _IRQ_pending = true;
+
+    if (_edge_counter >= 0) {
+
+      if (_IRQ_counter == 0) {
+        _IRQ_counter = _IRQ_reload;
+      } else if (--_IRQ_counter == 0 && _IRQ_enabled) {
+        _IRQ_pending = true;
+        _bus->pull_IRQ();
+      }
     }
+    _edge_counter = 0;
+
   } else if (!(addr & 0x1000)) {
     _edge = false;
   }
+
+  if (_edge == false) {
+    ++_edge_counter;
+  }
+
+  if (addr > 0x1fff) {
+    return 0;
+  }
+
   return chr_bank.at(addr / 0x400)[addr % 0x400];
+
 }
 
 void MMC3::set_prg(uint8_t count) {
@@ -113,14 +129,14 @@ void MMC3::write_prg(uint8_t value, uint16_t addr) {
         break;
 
       case 0xa000:
-        _regA000 = value;
+        _mirroring = value & 1;
+        set_mirroring(
+          _mirroring ? HORIZONTAL : VERTICAL
+        );
         break;
 
       case 0xa001:
         _regA001 = value;
-        set_mirroring(
-          _mirroring ? HORIZONTAL : VERTICAL
-        );
         break;
 
       case 0xc000:
@@ -158,11 +174,15 @@ void MMC3::setup() {
     prg_bank[3] = prg.data() + prg.size() - PRG_PAGE_SIZE;
   }
 
+  auto R0_a = R[0] & 0xfe;
+  auto R0_b = R[0] | 1;
+  auto R1_a = R[1] & 0xfe;
+  auto R1_b = R[1] | 1;
   if (!_chr_mode_1) {
-    chr_bank[0] = chr.data() + R[0] * CHR_PAGE_SIZE;
-    chr_bank[1] = chr.data() + (R[0] | 1) * CHR_PAGE_SIZE;
-    chr_bank[2] = chr.data() + R[1] * CHR_PAGE_SIZE;
-    chr_bank[3] = chr.data() + (R[1] | 1) * CHR_PAGE_SIZE;
+    chr_bank[0] = chr.data() + R0_a * CHR_PAGE_SIZE;
+    chr_bank[1] = chr.data() + R0_b * CHR_PAGE_SIZE;
+    chr_bank[2] = chr.data() + R1_a * CHR_PAGE_SIZE;
+    chr_bank[3] = chr.data() + R1_b * CHR_PAGE_SIZE;
     chr_bank[4] = chr.data() + R[2] * CHR_PAGE_SIZE;
     chr_bank[5] = chr.data() + R[3] * CHR_PAGE_SIZE;
     chr_bank[6] = chr.data() + R[4] * CHR_PAGE_SIZE;
@@ -172,9 +192,9 @@ void MMC3::setup() {
     chr_bank[1] = chr.data() + R[3] * CHR_PAGE_SIZE;
     chr_bank[2] = chr.data() + R[4] * CHR_PAGE_SIZE;
     chr_bank[3] = chr.data() + R[5] * CHR_PAGE_SIZE;
-    chr_bank[4] = chr.data() + R[0] * CHR_PAGE_SIZE;
-    chr_bank[5] = chr.data() + (R[0] | 1) * CHR_PAGE_SIZE;
-    chr_bank[6] = chr.data() + R[1] * CHR_PAGE_SIZE;
-    chr_bank[7] = chr.data() + (R[1] | 1) * CHR_PAGE_SIZE;
+    chr_bank[4] = chr.data() + R0_a * CHR_PAGE_SIZE;
+    chr_bank[5] = chr.data() + R0_b * CHR_PAGE_SIZE;
+    chr_bank[6] = chr.data() + R1_a * CHR_PAGE_SIZE;
+    chr_bank[7] = chr.data() + R1_b * CHR_PAGE_SIZE;
   }
 }

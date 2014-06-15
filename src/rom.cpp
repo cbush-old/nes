@@ -99,13 +99,13 @@ void ROM::set_mirroring(MirrorMode mode) {
     nametable[3] = nt.data() + 0x400;
 
   } else if (mode == HORIZONTAL) {
-    std::cout << "Horizontal mirroring\n";
+    // std::cout << "Horizontal mirroring\n";
     nametable[0] = nt.data();
     nametable[1] = nt.data();
     nametable[2] = nt.data() + 0x400;
     nametable[3] = nt.data() + 0x400;
   } else if (mode == VERTICAL) {
-    std::cout << "Vertical mirroring\n";
+    // std::cout << "Vertical mirroring\n";
     nametable[0] = nt.data();
     nametable[1] = nt.data() + 0x400;
     nametable[2] = nt.data();
@@ -176,7 +176,7 @@ IROM *load_ROM(IBus *bus, const char *path) {
   );
   rom->set_prg(prg_rom_size);
   rom->set_chr(chr_rom_size);
-  //rom->write_prg(0xc, 0x8000); // fixme: move "set_prg" stuff to constructor
+  rom->write_prg(0xc, 0x8000); // fixme: move "set_prg" stuff to constructor
 
   file.read((char*)rom->get_prg_data(), rom->get_prg_size());
   file.read((char*)rom->get_chr_data(), rom->get_chr_size());
