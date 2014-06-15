@@ -47,8 +47,8 @@ class ROM : public IROM {
 
 };
 
-ROM *load_ROM(const char *);
+IROM *load_ROM(IBus *, const char *);
 
-void unload_ROM(ROM*);
+void unload_ROM(IROM*);
 
 #endif

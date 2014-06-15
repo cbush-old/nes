@@ -13,13 +13,13 @@ class NES : public IBus {
     IAudioDevice *audio;
     IController *controller[2];
     std::vector<IInputDevice*> input;
-    IROM& rom;
+    IROM *rom;
     IPPU *ppu;
     IAPU *apu;
     ICPU *cpu;
 
   public:
-    NES(IROM& rom, std::istream& script);
+    NES(const char *rom_path, std::istream& script);
     virtual ~NES();
 
   public:

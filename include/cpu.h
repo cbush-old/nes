@@ -42,7 +42,7 @@ class CPU : public ICPU {
       X { 0 },
       Y { 0 },
       SP { 0xff };
-    uint16_t PC { 0xC000 }, cyc { 0 };
+    uint16_t PC { 0x8000 }, cyc { 0 };
     uint16_t last_PC;
     uint8_t last_op;
     int result_cycle { 0 };

@@ -4,6 +4,8 @@
 #include "rom.h"
 #include "bit.h"
 
+#include "mmc3.h"
+
 // Mapper 0
 using NROM = ROM;
 

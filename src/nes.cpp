@@ -25,7 +25,7 @@ class NoAudioDevice : public IAudioDevice {
 
 };
 
-NES::NES(IROM& rom, std::istream& script)
+NES::NES(const char *rom_path, std::istream& script)
     : video (new SDLVideoDevice())
     , audio (
         new SDLAudioDevice(this)
@@ -39,16 +39,17 @@ NES::NES(IROM& rom, std::istream& script)
         new ScriptInputDevice(*controller[0], script),
         // new ScriptRecorder(*controller[0]),
     }
-    , rom (rom)
-    , ppu (new PPU(this, &rom, video))
+    , rom (load_ROM(this, rom_path))
+    , ppu (new PPU(this, rom, video))
     , apu (new APU(this, audio))
-    , cpu (new CPU(this, apu, ppu, &rom, controller[0], controller[1]))
+    , cpu (new CPU(this, apu, ppu, rom, controller[0], controller[1]))
     {}
 
 NES::~NES() {
     delete apu;
     delete cpu;
     delete ppu;
+    unload_ROM(rom);
     delete controller[0];
     delete controller[1];
     delete video;

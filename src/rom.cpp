@@ -125,7 +125,7 @@ void ROM::set_mirroring(MirrorMode mode) {
 
 ROM::~ROM() {}
 
-ROM *load_ROM(const char *path) {
+IROM *load_ROM(IBus *bus, const char *path) {
 
   std::ifstream file(path);
 
@@ -164,6 +164,8 @@ ROM *load_ROM(const char *path) {
     case 0: rom = new NROM(); break;
     case 1: rom = new SxROM(); break;
     case 2: rom = new UxROM(); break;
+
+    case 4: rom = new MMC3(bus); break;
     case 71: rom = new Camerica(); break;
     default:
       throw std::runtime_error ("Unsupported mapper");
@@ -174,7 +176,7 @@ ROM *load_ROM(const char *path) {
   );
   rom->set_prg(prg_rom_size);
   rom->set_chr(chr_rom_size);
-  rom->write_prg(0xc, 0x8000); // fixme: move "set_prg" stuff to constructor
+  //rom->write_prg(0xc, 0x8000); // fixme: move "set_prg" stuff to constructor
 
   file.read((char*)rom->get_prg_data(), rom->get_prg_size());
   file.read((char*)rom->get_chr_data(), rom->get_chr_size());
@@ -184,8 +186,6 @@ ROM *load_ROM(const char *path) {
 }
 
 
-void unload_ROM(ROM *rom) {
+void unload_ROM(IROM *rom) {
   delete rom;
 }
-
-
