@@ -100,13 +100,13 @@ void ROM::set_mirroring(MirrorMode mode) {
     nametable[3] = nt.data() + 0x400;
 
   } else if (mode == HORIZONTAL) {
-    std::cout << "Horizontal mirroring\n";
+    // std::cout << "Horizontal mirroring\n";
     nametable[0] = nt.data();
     nametable[1] = nt.data();
     nametable[2] = nt.data() + 0x400;
     nametable[3] = nt.data() + 0x400;
   } else if (mode == VERTICAL) {
-    std::cout << "Vertical mirroring\n";
+    // std::cout << "Vertical mirroring\n";
     nametable[0] = nt.data();
     nametable[1] = nt.data() + 0x400;
     nametable[2] = nt.data();
@@ -128,7 +128,7 @@ void ROM::set_mirroring(MirrorMode mode) {
 
 ROM::~ROM() {}
 
-ROM *load_ROM(const char *path) {
+IROM *load_ROM(IBus *bus, const char *path) {
 
   std::ifstream file(path);
 
@@ -167,6 +167,9 @@ ROM *load_ROM(const char *path) {
     case 0: rom = new NROM(); break;
     case 1: rom = new SxROM(); break;
     case 2: rom = new UxROM(); break;
+
+    case 4: rom = new MMC3(bus); break;
+    case 71: rom = new Camerica(); break;
     default:
       throw std::runtime_error ("Unsupported mapper");
   }
@@ -186,8 +189,6 @@ ROM *load_ROM(const char *path) {
 }
 
 
-void unload_ROM(ROM *rom) {
+void unload_ROM(IROM *rom) {
   delete rom;
 }
-
-

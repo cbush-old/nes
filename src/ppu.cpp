@@ -2,15 +2,15 @@
 #include <thread>
 #include <chrono>
 #include <cstring>
-
-
-// So much of this comes from bisqwit's NES!!!
+#include <cmath>
 
 const uint16_t ATTRIBUTE_TABLE_BASE_ADDR = 0x23c0;
 const uint16_t NAME_TABLE_BASE_ADDR = 0x2000;
 const uint16_t NAME_TABLE_SIZE = 0x400;
 const uint16_t PATTERN_TABLE_SIZE = 0x1000;
 
+
+// Many thanks to bisqwit's NES!
 
 void PPU::render_load_shift_registers() {
   bg_shift_pat &= 0xffff0000;
@@ -91,9 +91,17 @@ void PPU::render_copy_vertical() {
 
 void PPU::render_set_vblank() {
 
-  if (++frameskip_count > frameskip) {
+  double rate = bus->get_rate();
+  double remainder = fmod(1.0, rate);
+  static int s = 0;
+
+  if (++frameskip_count >= 1.0 * rate) {
     frameskip_count = 0;
-    video->set_buffer(framebuffer);
+    if (rate > 1.0 && remainder > 0.001 && s++ >= 1.0 / remainder) {
+      s = 0;
+    } else {
+      video->set_buffer(framebuffer);
+    }
   }
 
   bus->on_frame();
@@ -521,6 +529,7 @@ void PPU::regw_address(uint8_t value) {
   } else {
     scroll.vaddr_hi = value & 0x3f;
   }
+  //rom->read_chr((value << 8) & 0x1000);
   loopy_w ^= 1;
 }
 
@@ -546,11 +555,6 @@ uint8_t PPU::regr_data() {
   vram.raw = vram.raw + (!!reg.vramincr * 31 + 1);
   return result;
 }
-
-void PPU::set_frameskip(int n) {
-  frameskip = n;
-}
-
 
 PPU::PPU(IBus *bus, IROM *rom, IVideoDevice *video)
   : bus(bus)

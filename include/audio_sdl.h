@@ -16,7 +16,7 @@ class Buffer {
 
   public:
     void push_back(T v) {
-      if (_cursor < SIZE - 1) {
+      if (_cursor < SIZE) {
         _data[_cursor++] = v;
       }
     }
@@ -66,7 +66,10 @@ class Buffer {
 
 class SDLAudioDevice : public IAudioDevice {
   public:
-    SDLAudioDevice();
+    static const size_t BUFFER_SIZE = 100000;
+
+  public:
+    SDLAudioDevice(IBus*);
     ~SDLAudioDevice();
 
   public:
@@ -77,11 +80,15 @@ class SDLAudioDevice : public IAudioDevice {
     // Secret Rabbit Code
     struct SRC_STATE_tag *_state { NULL };
     int _error;
-    Buffer<float, 1000000> _in, _out;
+    Buffer<float, BUFFER_SIZE> _in, _out;
 
   private:
-    std::recursive_mutex _mutex, _in_mutex;
+    IBus *_bus;
+    std::recursive_mutex _mutex;
     int _device { 0 };
+    bool _unpaused { false };
+    bool _dumping { false };
+    double _rate { 1.0 };
 
 };
 

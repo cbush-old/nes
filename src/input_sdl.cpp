@@ -20,16 +20,10 @@ const std::map<int, Button> lookup {
   { SDLK_f, Button::CONTROL_A }, 
 };
 
-SDLInputDevice::SDLInputDevice(IController& controller)
-  : port(controller)
+SDLInputDevice::SDLInputDevice(IBus& bus, IController& controller)
+  : _bus(bus)
+  , _port(controller)
   {}
-
-bool slooow = false;
-int frameskip { 0 };
-
-int SDLInputDevice::get_frameskip() const {
-  return frameskip;
-}
 
 void SDLInputDevice::tick() {
 
@@ -39,19 +33,15 @@ void SDLInputDevice::tick() {
     if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
       auto const& i = lookup.find(e.key.keysym.sym);
       if (i != lookup.end()) {
-        port.set_button_state(i->second, (e.type == SDL_KEYDOWN) * IController::BUTTON_ON);
+        _port.set_button_state(i->second, (e.type == SDL_KEYDOWN) * IController::BUTTON_ON);
       } else if (e.key.keysym.sym == SDLK_q) {
-        slooow = e.type == SDL_KEYDOWN;
+        _bus.set_rate(e.type == SDL_KEYDOWN ? 0.4 : 1.0);
       } else if (e.key.keysym.sym == SDLK_w) {
-        frameskip = (e.type == SDL_KEYDOWN) * 10;
+        _bus.set_rate(e.type == SDL_KEYDOWN ? 4.0 : 1.0);
       }
     } else if (e.type == SDL_QUIT) {
-      throw 1;
+      throw 1; // FIXME: bus.stop() or something
     }
-  }
-
-  if (slooow) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 
 }

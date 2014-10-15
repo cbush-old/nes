@@ -13,23 +13,30 @@ class NES : public IBus {
     IAudioDevice *audio;
     IController *controller[2];
     std::vector<IInputDevice*> input;
-    IROM& rom;
+    IROM *rom;
     IPPU *ppu;
     IAPU *apu;
     ICPU *cpu;
 
   public:
-    NES(IROM& rom, std::istream& script);
+    NES(const char *rom_path, std::istream& script);
     virtual ~NES();
 
   public:
     void run();
 
   public:
-    void pull_NMI();
-    void pull_IRQ();
-    void on_frame();
-    void on_cpu_tick();
+    void pull_NMI() override;
+    void pull_IRQ() override;
+    void on_frame() override;
+    void on_cpu_tick() override;
+
+  public:
+    double get_rate() const override;
+    void set_rate(double) override;
+
+  private:
+    double _rate { 1.0 };
 
 };
 

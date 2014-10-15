@@ -29,8 +29,6 @@ class PPU : public IPPU {
      **/
     void tick();
 
-    void set_frameskip(int n);
-
   private:
     int frameskip { 0 };
     int frameskip_count { 0 };
@@ -73,17 +71,17 @@ class PPU : public IPPU {
 
       bit< 3, 16> raw;
       bit< 0,8> xscroll;
-        bit< 0,3> xfine;
-        bit< 3,5> xcoarse;
-      
+      bit< 0,3> xfine;
+      bit< 3,5> xcoarse;
+
       bit< 3,8> vaddr_lo;
-        bit< 8,5> ycoarse;
-      
+      bit< 8,5> ycoarse;
+
       bit<11,8> vaddr_hi;
-        bit<13,2> base_nta;
-          bit<13,1> base_nta_x;
-        bit<14,1> base_nta_y;
-        bit<15,3> yfine;
+      bit<13,2> base_nta;
+      bit<13,1> base_nta_x;
+      bit<14,1> base_nta_y;
+      bit<15,3> yfine;
 
     } scroll, vram;
 

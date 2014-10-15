@@ -89,19 +89,20 @@ void SxROM::regw(uint8_t value, uint16_t addr) {
       break;
   }
 
+  const uint16_t size = 0x4000;
   switch (_prg_size) {
     case 0:
-      prg_bank[0] = prg.data() + _prg_reg * 0x4000;
-      prg_bank[1] = prg.data() + _prg_reg * 0x4000 + 0x4000;
+      prg_bank[0] = prg.data() + (_prg_reg & ~1) * size;
+      prg_bank[1] = prg.data() + (_prg_reg & ~1) * size + size;
       break;
 
     case 1:
       if (!_slot_select) {
         prg_bank[0] = prg.data();
-        prg_bank[1] = prg.data() + _prg_reg * 0x4000;
+        prg_bank[1] = prg.data() + _prg_reg * size;
       } else {
-        prg_bank[0] = prg.data() + _prg_reg * 0x4000;
-        prg_bank[1] = prg.data() + prg.size() - 0x4000;
+        prg_bank[0] = prg.data() + _prg_reg * size;
+        prg_bank[1] = prg.data() + prg.size() - size;
       }
       break;
   }

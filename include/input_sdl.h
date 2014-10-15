@@ -5,16 +5,16 @@
 
 class SDLInputDevice : public IInputDevice {
   public:
-    SDLInputDevice(IController& controller);
-    ~SDLInputDevice(){}
+    SDLInputDevice(IBus &bus, IController& controller);
+    virtual ~SDLInputDevice(){}
 
   public:
-    void tick();
-
-    int get_frameskip() const;
+    virtual void tick() override;
 
   private:
-    IController& port;
+    IBus& _bus;
+    IController& _port;
+
 };
 
 #endif

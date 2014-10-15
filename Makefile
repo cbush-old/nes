@@ -27,6 +27,7 @@ SOURCES= \
 	src/input_script_recorder.cpp \
 	src/mappers/sxrom.cpp \
 	src/mappers/uxrom.cpp \
+	src/mappers/mmc3.cpp \
 	main.cpp
 
 OBJECTS= $(SOURCES:.cpp=.o)
@@ -40,4 +41,4 @@ nes: $(OBJECTS)
 	$(CC) $(CFLAGS) $(INCLUDE) $< -o $@
 
 clean:
-	rm *.o src/*.o src/mappers/*.o
+	rm -f $(OBJECTS) nes

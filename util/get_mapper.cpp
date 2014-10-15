@@ -3,10 +3,11 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include <iomanip>
 
 using namespace std;
 
-void print_mapper(string const& src){
+void print_mapper(string const& src) {
 
   ifstream file(src);
   
@@ -33,21 +34,24 @@ void print_mapper(string const& src){
   
   int mapper_id { (flag6 >> 4) | (flag7 & 0xf0) };
   
-  cout << src << ": Mapper " << mapper_id << '\n';
+  cout << std::setw(3) << std::setfill('0') << mapper_id << '\n';
 
 }
 
-int main(int argc, char* argv[]){
-  
+int main(int argc, char* argv[]) {
   if(argc < 2){
     cout << "Usage: " << argv[0] << " [roms...]\n";
     return 1;
   }
-  
+
   vector<string> args (argv + 1, argv + argc);
-  
-  for(auto& i : args){
-    print_mapper(i);
+
+  for (auto& i : args) {
+    try {
+      print_mapper(i);
+    } catch(std::runtime_error const& e) {
+      std::cerr << "Error with " << i << ": " << e.what() << "\n";
+    }
   }
 
 }

@@ -164,6 +164,7 @@ void CPU::run() {
   PC = read(0xfffc) | (read(0xfffd) << 8);
 
   for(;;) {
+
     last_PC = PC;
     last_op = next();
     
