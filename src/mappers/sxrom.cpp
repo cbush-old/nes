@@ -44,6 +44,7 @@ void SxROM::set_prg(uint8_t count) {
 void SxROM::set_chr(uint8_t count) {
 
   chr.resize(count ? count * 0x2000 : 0x4000);
+  std::cout << std::hex << "prg: " << prg.size() << "<\n";
   chr_bank.push_back(chr.data());
   chr_bank.push_back(chr.data() + 0x1000);
 
@@ -79,12 +80,12 @@ void SxROM::regw(uint8_t value, uint16_t addr) {
 
   switch (_chr_mode) {
     case 0:
-      chr_bank[0] = chr.data() + _regA * 0x2000;
-      chr_bank[1] = chr.data() + _regA * 0x2000 + 0x1000;
+      chr_bank[0] = chr.data() + _regA * 0x1000;
+      chr_bank[1] = chr.data() + _regA * 0x1000 + 0x800;
       break;
     case 1:
-      chr_bank[0] = chr.data() + _regA * 0x2000;
-      chr_bank[1] = chr.data() + _regC * 0x2000;
+      chr_bank[0] = chr.data() + _regA * 0x1000;
+      chr_bank[1] = chr.data() + _regC * 0x1000;
       break;
   }
 

@@ -1,7 +1,7 @@
 #include "nes.h"
 
 #include "rom.h"
-#include "cpu.h"
+#include "cpu2.h"
 #include "ppu.h"
 #include "apu.h"
 

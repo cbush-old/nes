@@ -33,15 +33,15 @@ class CPU : public ICPU {
       N_FLAG = 0x80, V_FLAG = 0x40, D_FLAG = 0x08,
       I_FLAG = 0x04, Z_FLAG = 0x02, C_FLAG = 0x01
     };
-    
+
     std::vector<uint8_t> memory;
-    
+
     uint8_t 
-      P { 0x24 },
+      P { 0x34 },
       A { 0 },
       X { 0 },
       Y { 0 },
-      SP { 0xff };
+      SP { 0xfd };
     uint16_t PC { 0xC000 }, cyc { 0 };
     uint16_t last_PC;
     uint8_t last_op;
