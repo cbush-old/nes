@@ -28,6 +28,7 @@ class NoAudioDevice : public IAudioDevice {
 NES::NES(const char *rom_path, std::istream& script)
     : video (new SDLVideoDevice())
     , audio (
+        //new NoAudioDevice()
         new SDLAudioDevice(this)
     )
     , controller {
@@ -73,6 +74,22 @@ using time_point = Clock::time_point;
 time_point tick { Clock::now() };
 
 void NES::on_frame() {
+    // TODO
+}
+
+int cpu_ticks_tmp;
+
+void NES::on_cpu_tick() {
+    apu->tick();
+    ppu->on_cpu_tick();
+
+    if (++cpu_ticks_tmp < 340 * 240 / 3) {
+        return;
+    }
+
+    cpu_ticks_tmp = 0;
+
+    video->on_frame();
 
     for (auto& i : input) {
         i->tick();
@@ -94,13 +111,6 @@ void NES::on_frame() {
 
 }
 
-void NES::on_cpu_tick() {
-    apu->tick();
-    ppu->tick();
-    ppu->tick();
-    ppu->tick();
-}
-
 void NES::set_rate(double rate) {
     _rate = rate;
 }
@@ -110,5 +120,7 @@ double NES::get_rate() const {
 }
 
 void NES::run() {
+    cpu_ticks_tmp = 0;
+    ppu->start();
     cpu->run();
 }

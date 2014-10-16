@@ -1,9 +1,10 @@
 #ifndef BIT_H
 #define BIT_H
 
+#include <iostream>
 #include <cstdint>
 
-// sexy bisqwit
+// this handy class is lifted from bisqwit
 template <size_t position, size_t length = 1, typename T = uint32_t>
 struct bit {
 

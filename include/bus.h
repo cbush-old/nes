@@ -20,9 +20,15 @@ class IPPU {
 
   public:
     /**
-     * @brief advance the component's internal clock
+     * @brief start the ppu engine
      **/
-    virtual void tick() =0;
+    virtual void start() =0;
+
+    /**
+     * @brief notify the ppu that a cpu cycle has passed
+     **/
+    virtual void on_cpu_tick() =0;
+
 
   public: // Register write
     /**
@@ -232,6 +238,11 @@ class IVideoDevice {
      * @param buffer the pixel data to set
      **/
     virtual void set_buffer(Framebuffer const& buffer) =0;
+
+    /**
+     * @brief alert the video device that a frame is ready
+     **/
+    virtual void on_frame() =0;
 
 };
 

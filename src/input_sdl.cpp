@@ -1,5 +1,6 @@
 #include "input_sdl.h"
 
+#include <iostream>
 #include <map>
 #include <thread>
 #include <chrono>

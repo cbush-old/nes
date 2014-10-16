@@ -163,6 +163,7 @@ void CPU::run() {
 
   PC = read(0xfffc) | (read(0xfffd) << 8);
 
+  try {
   for(;;) {
 
     last_PC = PC;
@@ -188,7 +189,8 @@ void CPU::run() {
     result_cycle = 0;
 
   }
-
+  } catch (int tmp) {}
+  std::cout << "CPU died peacefully" << std::endl;
 }
 
 template<>
