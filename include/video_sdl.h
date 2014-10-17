@@ -16,7 +16,7 @@ class SDLVideoDevice : public IVideoDevice {
     struct SDL_Window *window;
     void *glcon;
     uint32_t texture;
-    Framebuffer _buffer;
+    Framebuffer const *_buffer { nullptr };
 
 };
 

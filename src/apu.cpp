@@ -569,3 +569,9 @@ void APU::write(uint8_t value, uint8_t index) {
   }
 }
 
+
+void APU::on_event(IEvent const& e) {
+
+}
+
+

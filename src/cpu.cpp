@@ -153,44 +153,9 @@ CPU::CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController* controller0, I
   memory[0x1fc] = 0x69;
 }
 
-void CPU::pull_NMI() {
-  push2(PC);
-  stack_push<&CPU::ProcStatus>();
-  PC = read(0xfffa) | (read(0xfffb) << 8);
-}
 
-void CPU::run() {
-
+void CPU::pre_start() {
   PC = read(0xfffc) | (read(0xfffd) << 8);
-
-  try {
-  for(;;) {
-
-    last_PC = PC;
-    last_op = next();
-    
-  #ifdef DEBUG_CPU
-    print_status();
-  #endif
-    
-    (this->*ops[last_op])();
-    
-    if (IRQ == 0 && (P & I_FLAG) == 0) {
-      push2(PC);
-      stack_push<&CPU::ProcStatus>();
-      P |= I_FLAG;
-      PC = read(0xfffe) | (read(0xffff) << 8);
-    }
-
-    for (int i = 0; i < cycles[last_op] + result_cycle; ++i) {
-      bus->on_cpu_tick();
-    }
-
-    result_cycle = 0;
-
-  }
-  } catch (int tmp) {}
-  std::cout << "CPU died peacefully" << std::endl;
 }
 
 template<>
@@ -224,7 +189,58 @@ void CPU::print_status() {
   << '\n';
 }
 
+
+void CPU::pull_NMI() {
+  //std::lock_guard<std::mutex> lock(_mutex);
+  _nmi = true;
+}
+
 void CPU::pull_IRQ() {
+  //std::lock_guard<std::mutex> lock(_mutex);
   IRQ = true;
 }
+
+void CPU::on_event(IEvent const& e) {
+
+}
+
+void CPU::tick() {
+
+  if (spent_cycles) {
+    --spent_cycles;
+    return;
+  }
+
+  if (_nmi) {
+    push2(PC);
+    stack_push<&CPU::ProcStatus>();
+    PC = read(0xfffa) | (read(0xfffb) << 8);
+    _nmi = false;
+    result_cycle += 2;
+  }
+
+  if (!IRQ && (P & I_FLAG) == 0) {
+    push2(PC);
+    stack_push<&CPU::ProcStatus>();
+    P |= I_FLAG;
+    PC = read(0xfffe) | (read(0xffff) << 8);
+    result_cycle += 2;
+  }
+
+  last_PC = PC;
+  last_op = next();
+  
+#ifdef DEBUG_CPU
+  print_status();
+#endif
+    
+  (this->*ops[last_op])();
+
+  spent_cycles = cycles[last_op] + result_cycle - 1;
+  result_cycle = 0;
+
+}
+
+
+
 

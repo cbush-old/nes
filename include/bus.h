@@ -1,6 +1,8 @@
 #ifndef BUS_H
 #define BUS_H
 
+#include "async_component.h"
+
 #include <string>
 #include <vector>
 #include <array>
@@ -11,24 +13,13 @@ using Framebuffer = std::array<uint32_t, 256 * 240>;
 class State {
 };
 
+
 /**
  * @brief Interface of a picture processing unit
  **/
-class IPPU {
+class IPPU : public AsyncComponent {
   public:
     virtual ~IPPU(){}
-
-  public:
-    /**
-     * @brief start the ppu engine
-     **/
-    virtual void start() =0;
-
-    /**
-     * @brief notify the ppu that a cpu cycle has passed
-     **/
-    virtual void on_cpu_tick() =0;
-
 
   public: // Register write
     /**
@@ -149,7 +140,7 @@ class IPPU {
 /**
  * @brief Interface of an onboard audio processing unit
  **/
-class IAPU {
+class IAPU : public AsyncComponent {
   public:
     virtual ~IAPU(){}
 
@@ -166,11 +157,6 @@ class IAPU {
      * @param index the register to write to
      **/
     virtual void write(uint8_t value, uint8_t index) =0;
-
-    /**
-     * @brief advance the component's internal clock
-     **/
-    virtual void tick() =0;
 
 };
 
@@ -363,11 +349,6 @@ class IBus {
 
   public: // Events
     /**
-     * @brief function to be called on every cpu cycle
-     **/
-    virtual void on_cpu_tick(){}
-
-    /**
      * @brief function to be called on every frame
      **/
     virtual void on_frame() =0;
@@ -396,15 +377,9 @@ class IBus {
 /**
  * @brief Interface for the CPU
  **/
-class ICPU {
+class ICPU : public AsyncComponent {
   public:
     virtual ~ICPU(){}
-
-  public:
-    /**
-     * @brief start emulation
-     **/
-    virtual void run() =0;
 
   public:
     /**

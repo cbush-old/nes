@@ -1,7 +1,7 @@
 #include "nes.h"
 
 #include "rom.h"
-#include "cpu2.h"
+#include "cpu.h"
 #include "ppu.h"
 #include "apu.h"
 
@@ -25,11 +25,12 @@ class NoAudioDevice : public IAudioDevice {
 
 };
 
+
 NES::NES(const char *rom_path, std::istream& script)
     : video (new SDLVideoDevice())
     , audio (
-        //new NoAudioDevice()
-        new SDLAudioDevice(this)
+        new NoAudioDevice()
+        //new SDLAudioDevice(this)
     )
     , controller {
         new Std_controller(),
@@ -68,6 +69,8 @@ void NES::pull_IRQ() {
     cpu->pull_IRQ();
 }
 
+std::mutex BIG_LOCK;
+
 using Clock = std::chrono::high_resolution_clock;
 using time_point = Clock::time_point;
 
@@ -75,40 +78,6 @@ time_point tick { Clock::now() };
 
 void NES::on_frame() {
     // TODO
-}
-
-int cpu_ticks_tmp;
-
-void NES::on_cpu_tick() {
-    apu->tick();
-    ppu->on_cpu_tick();
-
-    if (++cpu_ticks_tmp < 340 * 240 / 3) {
-        return;
-    }
-
-    cpu_ticks_tmp = 0;
-
-    video->on_frame();
-
-    for (auto& i : input) {
-        i->tick();
-    }
-
-    int s = (int)((1.0 / (60.0 * _rate) * 1000.0));
-    std::chrono::milliseconds sleep (s);
-
-    time_point tock (Clock::now());
-    tock -= tick.time_since_epoch();
-    sleep -= std::chrono::time_point_cast<std::chrono::milliseconds>(tock).time_since_epoch();
-
-    if (sleep < std::chrono::milliseconds(0)) {
-        sleep = std::chrono::milliseconds(0);
-    }
-
-    std::this_thread::sleep_for(sleep);
-    tick = Clock::now();
-
 }
 
 void NES::set_rate(double rate) {
@@ -120,7 +89,22 @@ double NES::get_rate() const {
 }
 
 void NES::run() {
-    cpu_ticks_tmp = 0;
+
     ppu->start();
-    cpu->run();
+    apu->start();
+    cpu->start();
+
+    try {
+        for (;;) {
+            for (auto& i : input) {
+                i->tick();
+            }
+            video->on_frame();
+        }
+    } catch (int) {}
+
+    cpu->stop();
+    ppu->stop();
+    apu->stop();
+
 }

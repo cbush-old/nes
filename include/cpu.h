@@ -1,6 +1,8 @@
 #ifndef CPU_H
 #define CPU_H
 
+#include "bus.h"
+
 #include <iostream>
 #include <thread>
 #include <cmath>
@@ -15,7 +17,6 @@
 #include <stdexcept>
 #include <sstream>
 
-#include "bus.h"
 
 class CPU : public ICPU {
   private:
@@ -27,6 +28,12 @@ class CPU : public ICPU {
 
   public:
     CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController* controller0, IController* controller1);
+
+  protected:
+    virtual uint32_t CLOCK_FREQUENCY_HZ() const override { return 1789772; };
+    void on_event(IEvent const& e) override;
+    void tick() override;
+    void pre_start() override;
 
   private:
     enum Flag {
@@ -46,6 +53,7 @@ class CPU : public ICPU {
     uint16_t last_PC;
     uint8_t last_op;
     int result_cycle { 0 };
+    int spent_cycles { 0 };
     
   private:
     typedef void(CPU::*op)(); // operation
@@ -160,9 +168,9 @@ class CPU : public ICPU {
     static const op ops[256];
     static const char* const opasm[256];
 
-
     void print_status();
     bool IRQ { true };
+    bool _nmi { false };
 
 };
 

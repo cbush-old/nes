@@ -8,6 +8,7 @@
 
 #include "bus.h"
 #include "bit.h"
+#include "async_component.h"
 
 class APU : public IAPU {
   private:
@@ -19,11 +20,15 @@ class APU : public IAPU {
     ~APU();
 
   public:
-    void tick();
-
-  public:
     uint8_t read() const;
     void write(uint8_t, uint8_t);
+
+  protected:
+    virtual uint32_t CLOCK_FREQUENCY_HZ() const override { return 1789773; };
+    void on_event(IEvent const& e) override;
+
+  protected:
+    void tick() override;
 
   public:
     State dummy; // temp

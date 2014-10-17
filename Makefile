@@ -1,5 +1,5 @@
 CC= g++
-CFLAGS=-c -Wall -std=c++11 -O3 -DDEBUG_PPU_PRINT_FRAMERATE
+CFLAGS=-c -Wall -std=c++11
 INCLUDE= \
 	-I. \
 	-Iinclude \
@@ -13,6 +13,7 @@ LDFLAGS= -L/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries -L/o
 LIBS= -lSDL2 -lGL -lsamplerate
 
 SOURCES= \
+	src/async_component.cpp \
 	src/apu.cpp     \
 	src/cpu.cpp     \
 	src/ppu.cpp     \

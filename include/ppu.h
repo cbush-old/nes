@@ -12,6 +12,8 @@
 #include <thread>
 #include <mutex>
 
+#include "async_component.h"
+
 class PPU : public IPPU {
   public:
     using ObjectAttributeMemory = std::array<uint8_t, 0x100>;
@@ -20,10 +22,6 @@ class PPU : public IPPU {
   public:
     PPU(IBus *bus, IROM *rom, IVideoDevice *video);
     ~PPU();
-
-  public:
-    void on_cpu_tick();
-    void start();
 
   public: // Register read/write
     void regw_control(uint8_t value);
@@ -36,6 +34,10 @@ class PPU : public IPPU {
     uint8_t regr_status();
     uint8_t regr_OAM_data();
     uint8_t regr_data();
+
+  protected:
+    virtual uint32_t CLOCK_FREQUENCY_HZ() const override { return 5369318; };
+    void on_event(IEvent const& e) override;
 
   private: // Render functions
     using Renderf = std::function<void(PPU&)>;
@@ -71,9 +73,10 @@ class PPU : public IPPU {
     void render_load_shift_registers();
     void render_skip_cycle();
 
-  private:
+  protected:
     void tick();
 
+  private:
     /**
      * @brief (internal) write to vram
      * @param value the value to write
@@ -101,11 +104,6 @@ class PPU : public IPPU {
     Renderf_array::const_iterator tick_renderer;
 
   private:
-    semaphore<7> _semaphore;
-    std::mutex _mutex;
-    std::thread _execution_thread;
-    bool _done { false };
-
     bool odd_frame { 0 };
     int frameskip { 0 };
     int frameskip_count { 0 };

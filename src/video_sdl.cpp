@@ -57,15 +57,12 @@ SDLVideoDevice::~SDLVideoDevice() {
 
 
 void SDLVideoDevice::set_buffer(Framebuffer const& buffer) {
-  size_t i = 0;
-  std::cout << "copying buffer\n";
-  for (auto x : buffer) {
-    _buffer[i++] = x;
-  }
+  _buffer = &buffer;
 }
 
 void SDLVideoDevice::on_frame() {
-  std::cout << "video frame\n";
+  if (!_buffer) return;
+
   glTexImage2D(
     GL_TEXTURE_2D,
     0,
@@ -75,7 +72,7 @@ void SDLVideoDevice::on_frame() {
     0,
     GL_RGBA,
     GL_UNSIGNED_INT_8_8_8_8, 
-    static_cast<const GLvoid*>(_buffer.data())
+    static_cast<const GLvoid*>(_buffer->data())
   );
   glBegin(GL_TRIANGLE_STRIP);
   glTexCoord2f(0.0, 0.0f);  glVertex2i(0,0);
