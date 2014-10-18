@@ -34,9 +34,14 @@ class NES : public IBus {
     double get_rate() const override;
     void set_rate(double) override;
 
+  public:
+    void signal(AsyncComponent const*) override;
+
   private:
     double _rate { 1.0 };
-
+    uint8_t _ppu_ticks { 0 };
+    std::mutex _mutex;
+    semaphore _semaphore;
 };
 
 #endif

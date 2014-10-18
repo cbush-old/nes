@@ -108,7 +108,6 @@ void PPU::render_set_vblank() {
 
   if (reg.NMI_enabled) {
     // warning: called from another thread
-    std::cout << "pull nmi\n";
     bus->pull_NMI(); // FIXME: this is actually pulled on the next cycle
   }
 
@@ -498,28 +497,28 @@ void PPU::tick() {
 }
 
 void PPU::regw_control(uint8_t value) {
-  //std::lock_guard<std::mutex> lock(_mutex);
+  std::lock_guard<std::mutex> lock(_mutex);
   reg.PPUCTRL = value; 
   scroll.base_nta = reg.base_nta; 
 }
 
 void PPU::regw_mask(uint8_t value) {
-  //std::lock_guard<std::mutex> lock(_mutex);
+  std::lock_guard<std::mutex> lock(_mutex);
   reg.PPUMASK = value;
 }
 
 void PPU::regw_OAM_address(uint8_t value) {
-  //std::lock_guard<std::mutex> lock(_mutex);
+  std::lock_guard<std::mutex> lock(_mutex);
   reg.OAMADDR = value;
 }
 
 void PPU::regw_OAM_data(uint8_t value) {
-  //std::lock_guard<std::mutex> lock(_mutex);
+  std::lock_guard<std::mutex> lock(_mutex);
   OAM[reg.OAMADDR++] = value;
 }
 
 void PPU::regw_scroll(uint8_t value) {
-  //std::lock_guard<std::mutex> lock(_mutex);
+  std::lock_guard<std::mutex> lock(_mutex);
   if (loopy_w) {
     scroll.yfine = value & 7;
     scroll.ycoarse = value >> 3;
@@ -530,7 +529,7 @@ void PPU::regw_scroll(uint8_t value) {
 }
 
 void PPU::regw_address(uint8_t value) {
-  //std::lock_guard<std::mutex> lock(_mutex);
+  std::lock_guard<std::mutex> lock(_mutex);
   if (loopy_w) {
     scroll.vaddr_lo = value;
     vram.raw = (unsigned)scroll.raw;
@@ -541,13 +540,13 @@ void PPU::regw_address(uint8_t value) {
 }
 
 void PPU::regw_data(uint8_t value) {
-  //std::lock_guard<std::mutex> lock(_mutex);
+  std::lock_guard<std::mutex> lock(_mutex);
   write(value, vram.raw);
   vram.raw = vram.raw + (bool(reg.vramincr) * 31 + 1);
 }
 
 uint8_t PPU::regr_status() {
-  //std::lock_guard<std::mutex> lock(_mutex);
+  std::lock_guard<std::mutex> lock(_mutex);
   uint8_t result { reg.PPUSTATUS };
   reg.vblanking = false;
   loopy_w = false;
@@ -555,12 +554,12 @@ uint8_t PPU::regr_status() {
 }
 
 uint8_t PPU::regr_OAM_data() {
-  //std::lock_guard<std::mutex> lock(_mutex);
+  std::lock_guard<std::mutex> lock(_mutex);
   return OAM[reg.OAMADDR] & (reg.OAM_data == 2 ? 0xE3 : 0xFF);
 }
 
 uint8_t PPU::regr_data() {
-  //std::lock_guard<std::mutex> lock(_mutex);
+  std::lock_guard<std::mutex> lock(_mutex);
   uint8_t result = read_buffer;
   read_buffer = read(vram.raw, true);
   vram.raw = vram.raw + (!!reg.vramincr * 31 + 1);
@@ -568,7 +567,8 @@ uint8_t PPU::regr_data() {
 }
 
 PPU::PPU(IBus *bus, IROM *rom, IVideoDevice *video)
-  : bus(bus)
+  : IPPU(*bus)
+  , bus(bus)
   , rom(rom)
   , video(video)
   , tick_renderer(renderfuncs.begin())

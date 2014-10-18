@@ -77,7 +77,7 @@ using time_point = Clock::time_point;
 time_point tick { Clock::now() };
 
 void NES::on_frame() {
-    // TODO
+    _semaphore.signal();
 }
 
 void NES::set_rate(double rate) {
@@ -90,21 +90,33 @@ double NES::get_rate() const {
 
 void NES::run() {
 
-    ppu->start();
-    apu->start();
+    //apu->start();
     cpu->start();
+    ppu->start();
 
     try {
+        _semaphore.wait();
         for (;;) {
+            _semaphore.wait();
             for (auto& i : input) {
                 i->tick();
             }
             video->on_frame();
+            //std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }
     } catch (int) {}
 
     cpu->stop();
     ppu->stop();
-    apu->stop();
+    //apu->stop();
 
+}
+
+void NES::signal(AsyncComponent const* component) {
+    //std::lock_guard<std::mutex> lock(_mutex);
+    if (component == cpu) {
+    } else if (component == ppu) {
+        ppu->signal();
+        cpu->signal();
+    }
 }

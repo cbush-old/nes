@@ -2,21 +2,42 @@
 #define ASYNC_COMPONENT_H
 
 #include "ievent.h"
+#include "semaphore.h"
 
 #include <mutex>
 #include <thread>
 #include <queue>
 #include <condition_variable>
 
+class AsyncComponent;
+
+class IAsyncComponentMonitor {
+  public:
+    virtual ~IAsyncComponentMonitor(){}
+
+  public:
+    virtual void signal(AsyncComponent const*) =0;
+};
+
 class AsyncComponent {
   public:
-    AsyncComponent();
+    AsyncComponent(IAsyncComponentMonitor&);
     virtual ~AsyncComponent();
 
   public:
     void start();
     void stop();
-    void post(IEvent const&);
+
+    /**
+     * @brief alert the component that it can continue execution
+     **/
+    void signal();
+
+    /**
+     * @brief post an event to the component
+     * @param event the event to post to the component
+     **/
+    void post(IEvent const& event);
 
   public:
     /**
@@ -48,6 +69,9 @@ class AsyncComponent {
     std::condition_variable *_sync { nullptr };
     std::thread _thread;
     std::queue<std::shared_ptr<const IEvent>> _queue;
+    semaphore _semaphore;
+    IAsyncComponentMonitor& _monitor;
+    size_t _ticks { 0 };
 
 };
 

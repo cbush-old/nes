@@ -4,7 +4,6 @@
 #include <mutex>
 #include <condition_variable>
 
-template<int MAX>
 class semaphore {
   public:
     semaphore(){}

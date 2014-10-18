@@ -391,7 +391,8 @@ struct DMC : Generator {
 };
 
 APU::APU(IBus *bus, IAudioDevice *audio)
-  : bus(bus)
+  : IAPU(*bus)
+  , bus(bus)
   , audio(audio)
   , _generator ({
     new Pulse(),

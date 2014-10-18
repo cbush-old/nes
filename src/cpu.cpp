@@ -136,7 +136,8 @@ uint16_t CPU::next2() {
 }
 
 CPU::CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController* controller0, IController* controller1)
-  : bus(bus)
+  : ICPU(*bus)
+  , bus(bus)
   , apu(apu)
   , ppu(ppu)
   , rom(rom)

@@ -19,6 +19,7 @@ class State {
  **/
 class IPPU : public AsyncComponent {
   public:
+    IPPU(IAsyncComponentMonitor& m): AsyncComponent(m){}
     virtual ~IPPU(){}
 
   public: // Register write
@@ -142,6 +143,7 @@ class IPPU : public AsyncComponent {
  **/
 class IAPU : public AsyncComponent {
   public:
+    IAPU(IAsyncComponentMonitor& m): AsyncComponent(m){}
     virtual ~IAPU(){}
 
   public:
@@ -339,7 +341,7 @@ class IROM {
 /**
  * @brief interface for a basic system, handling interrupts
  **/
-class IBus {
+class IBus : public IAsyncComponentMonitor {
   public:
     virtual ~IBus(){}
 
@@ -379,6 +381,7 @@ class IBus {
  **/
 class ICPU : public AsyncComponent {
   public:
+    ICPU(IAsyncComponentMonitor& m): AsyncComponent(m){}
     virtual ~ICPU(){}
 
   public:
