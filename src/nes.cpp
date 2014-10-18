@@ -1,7 +1,7 @@
 #include "nes.h"
 
 #include "rom.h"
-#include "cpu2.h"
+#include "cpu.h"
 #include "ppu.h"
 #include "apu.h"
 
@@ -28,7 +28,8 @@ class NoAudioDevice : public IAudioDevice {
 NES::NES(const char *rom_path, std::istream& script)
     : video (new SDLVideoDevice())
     , audio (
-        new SDLAudioDevice(this)
+        //new SDLAudioDevice(this)
+        new NoAudioDevice()
     )
     , controller {
         new Std_controller(),
@@ -73,25 +74,8 @@ using time_point = Clock::time_point;
 time_point tick { Clock::now() };
 
 void NES::on_frame() {
-
-    for (auto& i : input) {
-        i->tick();
-    }
-
-    int s = (int)((1.0 / (60.0 * _rate) * 1000.0));
-    std::chrono::milliseconds sleep (s);
-
-    time_point tock (Clock::now());
-    tock -= tick.time_since_epoch();
-    sleep -= std::chrono::time_point_cast<std::chrono::milliseconds>(tock).time_since_epoch();
-
-    if (sleep < std::chrono::milliseconds(0)) {
-        sleep = std::chrono::milliseconds(0);
-    }
-
-    std::this_thread::sleep_for(sleep);
-    tick = Clock::now();
-
+    _semaphore[0].signal();
+    _semaphore[1].wait();
 }
 
 void NES::on_cpu_tick() {
@@ -110,5 +94,30 @@ double NES::get_rate() const {
 }
 
 void NES::run() {
-    cpu->run();
+
+    std::thread t0 { [&] {
+        cpu->run();
+    }};
+
+    t0.detach();
+
+    for (;;) {
+
+        _semaphore[0].wait();
+
+        video->on_frame();
+
+        try {
+            for (auto& i : input) {
+                i->tick();
+            }
+        } catch(int) {
+            std::cout << "stop" << std::endl;
+            cpu->stop();
+            break;
+        }
+
+        _semaphore[1].signal();
+    }
+
 }

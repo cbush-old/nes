@@ -9,12 +9,14 @@ class SDLVideoDevice : public IVideoDevice {
     ~SDLVideoDevice();
 
   public:
-    void set_buffer(Framebuffer const& buffer);
+    void set_buffer(Framebuffer const& buffer) override;
+    void on_frame() override;
 
   private:
     struct SDL_Window *window;
     void *glcon;
     uint32_t texture;
+    Framebuffer const *_buffer;
 
 };
 

@@ -163,7 +163,7 @@ void CPU::run() {
 
   PC = read(0xfffc) | (read(0xfffd) << 8);
 
-  for(;;) {
+  while (!_done) {
 
     last_PC = PC;
     last_op = next();
@@ -188,6 +188,8 @@ void CPU::run() {
     result_cycle = 0;
 
   }
+
+  std::cout << "*** cpu done ***" << std::endl;
 
 }
 
@@ -226,3 +228,6 @@ void CPU::pull_IRQ() {
   IRQ = true;
 }
 
+void CPU::stop() {
+  _done = true;
+}

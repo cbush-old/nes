@@ -2,6 +2,7 @@
 #define NES_H
 
 #include "bus.h"
+#include "semaphore.h"
 #include <vector>
 
 /**
@@ -37,7 +38,7 @@ class NES : public IBus {
 
   private:
     double _rate { 1.0 };
-
+    semaphore _semaphore[2];
 };
 
 #endif

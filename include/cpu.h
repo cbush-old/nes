@@ -28,6 +28,9 @@ class CPU : public ICPU {
   public:
     CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController* controller0, IController* controller1);
 
+  public:
+    void stop() override;
+
   private:
     enum Flag {
       N_FLAG = 0x80, V_FLAG = 0x40, D_FLAG = 0x08,
@@ -163,6 +166,7 @@ class CPU : public ICPU {
 
     void print_status();
     bool IRQ { true };
+    bool _done { false };
 
 };
 

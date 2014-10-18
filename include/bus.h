@@ -232,6 +232,7 @@ class IVideoDevice {
      * @param buffer the pixel data to set
      **/
     virtual void set_buffer(Framebuffer const& buffer) =0;
+    virtual void on_frame() =0;
 
 };
 
@@ -394,6 +395,11 @@ class ICPU {
      * @brief start emulation
      **/
     virtual void run() =0;
+
+    /**
+     * @brief stop emulation
+     **/
+    virtual void stop() =0;
 
   public:
     /**
