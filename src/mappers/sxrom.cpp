@@ -81,7 +81,7 @@ void SxROM::regw(uint8_t value, uint16_t addr) {
   switch (_chr_mode) {
     case 0:
       chr_bank[0] = chr.data() + _regA * 0x1000;
-      chr_bank[1] = chr.data() + _regA * 0x1000 + 0x800;
+      chr_bank[1] = chr.data() + _regA * 0x1000 + 0x1000;
       break;
     case 1:
       chr_bank[0] = chr.data() + _regA * 0x1000;
