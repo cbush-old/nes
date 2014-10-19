@@ -27,6 +27,12 @@ const uint8_t LENGTHS[] {
 /* 0x1_ */  12,  16,  24,  18,  48,  20,  96,  22, 192,  24,  72,  26,  16,  28,  32,  30
 };
 
+const uint16_t DMC_RATE[] {
+//  0x0  0x1  0x2  0x3  0x4  0x5  0x6  0x7  0x8  0x9  0xA  0xB  0xC  0xD  0xE  0xF
+    428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54
+};
+
+
 
 struct Generator {
   union {
@@ -71,7 +77,7 @@ struct Generator {
     bit<0, 4> frequency_index;
     bit<6, 1> loop_sample;
     bit<7, 1> IRQ_enable;
-    bit<8, 7> direct_load;
+    bit<8, 7> output_level;
     bit<16, 8> sample_address;
     bit<24, 8> sample_length;
   };
@@ -245,7 +251,7 @@ struct Pulse : Generator_with_envelope {
   }
 
   void adjust_period() {
-    timer = timer + (!sweep_negative * 2 - 1) * (timer >> sweep_shift);
+    //timer = timer + (sweep_negative * 2 - 1);// * (timer >> sweep_shift);
   }
 
   virtual void on_half_frame() override {
@@ -375,19 +381,100 @@ struct Noise : Generator_with_envelope {
   }
 };
 
-struct DMC : Generator {
-  ~DMC(){}
 
-  void reg3_write(uint8_t value) {
-    reg3 = value;
-  }
+class DMC : public Generator {
+  public:
+    DMC(IBus& bus): _bus(bus){}
+    ~DMC(){}
 
-  void update() {
-  }
+  public:
+    void update() {
+      if (++_t <= DMC_RATE[frequency_index]) {
+        return;
+      }
 
-  double sample() const {
-    return 0.0;
-  }
+      _t = 0;
+
+      if (!IRQ_enable) {
+        _interrupt = false;
+      }
+
+      if (_interrupt) {
+        _bus.pull_NMI();
+      }
+
+      if (!_silence) {
+        bool inc = _shift & 1;
+        if (inc && output_level <= 125) {
+          output_level = output_level + 2;
+        } else if (!inc && output_level >= 2) {
+          output_level = output_level - 2;
+        }
+      }
+
+      _shift >>= 1;
+
+      if (!--_bits_remaining) {
+        _bits_remaining = 8;
+        if (!_sample) {
+          _silence = true;
+        } else {
+          _silence = false;
+          _shift = _sample;
+          _sample = 0;
+        }
+      }
+
+
+      if (!_sample) {
+
+        if (!_bytes_remaining) {
+          if (loop_sample || true) {
+            _address = (sample_address << 12) | 0xC000;
+            _bytes_remaining = (sample_length << 12) | 1;
+          } else if (IRQ_enable) {
+            _interrupt = true;
+          }
+        }
+
+        if (_bytes_remaining) {
+          // stall CPU for 4 cycles
+          _sample = _bus.cpu_read(_address);
+
+          ++_address;
+          if (!_address) {
+            _address |= 0x8000;
+          }
+
+          --_bytes_remaining;
+        }
+
+      }
+
+    }
+
+    double sample() const {
+      return output_level / 127.0;
+    }
+
+  protected:
+    void reg3_write(uint8_t value) {
+      reg3 = value;
+      sample_address = value;
+      std::cout << "addr: " << std::hex << sample_address << std::endl;
+    }
+
+  private:
+    IBus& _bus;
+    uint8_t _sample { 0 };
+    uint16_t _address { 0 };
+    uint16_t _bytes_remaining { 0 };
+    uint8_t _bits_remaining { 1 };
+    uint8_t _shift { 0 };
+    uint16_t _t { 0 };
+    bool _interrupt { false };
+    bool _silence { false };
+
 };
 
 APU::APU(IBus *bus, IAudioDevice *audio)
@@ -398,7 +485,7 @@ APU::APU(IBus *bus, IAudioDevice *audio)
     new Pulse(),
     new Triangle(),
     new Noise(),
-    new DMC()
+    new DMC(*bus)
   })
   {}
 

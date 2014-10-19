@@ -72,7 +72,7 @@ class CPU : public ICPU {
     }
     
   public:
-    uint8_t read(uint16_t) const;
+    uint8_t read(uint16_t) const override;
   
   private:
     void write(uint8_t, uint16_t);

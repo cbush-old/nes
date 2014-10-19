@@ -28,8 +28,8 @@ class NoAudioDevice : public IAudioDevice {
 NES::NES(const char *rom_path, std::istream& script)
     : video (new SDLVideoDevice())
     , audio (
-        //new SDLAudioDevice(this)
-        new NoAudioDevice()
+        new SDLAudioDevice(this)
+        //new NoAudioDevice()
     )
     , controller {
         new Std_controller(),
@@ -58,6 +58,10 @@ NES::~NES() {
     for (auto& i : input) {
         delete i;
     }
+}
+
+uint8_t NES::cpu_read(uint16_t addr) const {
+    return cpu->read(addr);
 }
 
 void NES::pull_NMI() {

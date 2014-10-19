@@ -367,6 +367,12 @@ class IBus {
      **/
     virtual void on_second_elapsed(){}
 
+    /**
+     * @brief read cpu-space memory
+     **/
+    virtual uint8_t cpu_read(uint16_t addr) const =0;
+
+
   public: // Emulation settings
     /**
      * @brief get the rate of emulation
@@ -411,6 +417,8 @@ class ICPU {
      * @brief signal an interrupt request (irq) to the cpu
      **/
     virtual void pull_IRQ() =0;
+
+    virtual uint8_t read(uint16_t) const =0;
 
 };
 

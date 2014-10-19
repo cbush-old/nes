@@ -31,6 +31,7 @@ class NES : public IBus {
     void pull_IRQ() override;
     void on_frame() override;
     void on_cpu_tick() override;
+    uint8_t cpu_read(uint16_t) const override;
 
   public:
     double get_rate() const override;
