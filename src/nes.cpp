@@ -100,6 +100,7 @@ double NES::get_rate() const {
 void NES::run() {
 
     std::thread t0 { [&] {
+        ((CPU*)cpu)->set_observer((SDLVideoDevice*)video);
         cpu->run();
     }};
 

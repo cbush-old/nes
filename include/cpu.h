@@ -14,6 +14,7 @@
 #include <string>
 #include <stdexcept>
 #include <sstream>
+#include "observable.h"
 
 #include "bus.h"
 
@@ -39,13 +40,14 @@ class CPU : public ICPU {
 
     std::vector<uint8_t> memory;
 
-    uint8_t 
+    observable<uint8_t>
       P { 0x34 },
       A { 0 },
       X { 0 },
       Y { 0 },
       SP { 0xfd };
-    uint16_t PC { 0xC000 }, cyc { 0 };
+    observable<uint16_t> PC { 0xC000 };
+    uint16_t cyc { 0 };
     uint16_t last_PC;
     uint8_t last_op;
     int result_cycle { 0 };
@@ -58,21 +60,24 @@ class CPU : public ICPU {
     typedef uint8_t(CPU::*condition)(); // branch condition
     typedef uint8_t(CPU::*rmw_op)(uint8_t); // read-modify-write
       
-    template<Flag F> inline void set_if(bool cond){
-      if(cond) P|=F; else P&=~F;
+    template<Flag F>
+    inline void set_if(bool cond) {
+      if (cond) P |= F; else P &= ~F;
     }
   
-    template<Flag F> inline void clear_if(bool cond){
-      if(cond) P&=~F;
+    template<Flag F>
+    inline void clear_if(bool cond) {
+      if (cond) P &= ~F;
     }
   
-    inline void setZN(uint8_t x){
+    inline void setZN(uint8_t x) {
       set_if<Z_FLAG>(!x);
       set_if<N_FLAG>(x&0x80);
     }
-    
+
   public:
     uint8_t read(uint16_t) const override;
+    void set_observer(IObserver<uint16_t>* observer);
   
   private:
     void write(uint8_t, uint16_t);
@@ -83,12 +88,12 @@ class CPU : public ICPU {
     uint8_t next();
     uint16_t next2();
     
-    void addcyc();  
+    void addcyc();
 
-    template <typename T> 
-    inline uint16_t sum_check_pgx(uint16_t addr, T x) {
+    template <typename T>
+    inline uint16_t sum_check_pgx(uint16_t addr, T const& x) {
       uint16_t r = addr + x;
-      if((r&0xff00) != (addr&0xff00))
+      if((r & 0xff00) != (addr & 0xff00))
         addcyc();
       return r;
     }
@@ -101,28 +106,27 @@ class CPU : public ICPU {
 
   private:
     // addressing modes
-    inline uint16_t ACC(){ return 0; } // template only
-    inline uint16_t X__(){ return 0; }
-    inline uint16_t Y__(){ return 0; }
-    inline uint16_t IMM(){ return next(); }
-    inline uint16_t ZPG(){ return next(); }
-    inline uint16_t ZPX(){ return (next() + X)&0xff; }
-    inline uint16_t ZPY(){ return (next() + Y)&0xff; }
-    inline uint16_t ABS(){ return next2(); }
-    inline uint16_t ABX(){ return next2() + X; }
-    inline uint16_t ABY(){ return next2() + Y; }
-    inline uint16_t IDX(){
-      
+    inline uint16_t ACC() { return 0; } // template only
+    inline uint16_t X__() { return 0; }
+    inline uint16_t Y__() { return 0; }
+    inline uint16_t IMM() { return next(); }
+    inline uint16_t ZPG() { return next(); }
+    inline uint16_t ZPX() { return (next() + X)&0xff; }
+    inline uint16_t ZPY() { return (next() + Y)&0xff; }
+    inline uint16_t ABS() { return next2(); }
+    inline uint16_t ABX() { return next2() + X; }
+    inline uint16_t ABY() { return next2() + Y; }
+    inline uint16_t IDX() {
       uint16_t addr = next() + X;
       return read(addr&0xff)|((uint16_t)read((addr+1)&0xff) << 8);
     }
-    inline uint16_t IDY(){
-      
+
+    inline uint16_t IDY() {
       uint16_t addr = next();
       return ((uint16_t)read(addr)|(read((addr+1)&0xff)<<8))+Y;
     }
-    inline uint16_t IND(){
-      
+
+    inline uint16_t IND() {
       // When on page boundary (i.e. $xxFF) IND gets LSB from $xxFF like normal 
       // but takes MSB from $xx00
       uint16_t addr = next2();
@@ -162,7 +166,6 @@ class CPU : public ICPU {
 
     static const op ops[256];
     static const char* const opasm[256];
-
 
     void print_status();
     bool IRQ { true };

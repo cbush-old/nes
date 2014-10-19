@@ -84,7 +84,7 @@ struct Generator {
 
   const std::function<void(uint8_t)> regw[4] {
     [this](uint8_t value) { reg0 = value; },
-    [this](uint8_t value) { reg1 = value; },
+    [this](uint8_t value) { reg1_write(value); },
     [this](uint8_t value) { reg2 = value; },
     [this](uint8_t value) {
       // Writing to reg3 typically has side-effects.
@@ -106,7 +106,11 @@ struct Generator {
     return _channel_volume;
   }
 
+  virtual void reg1_write(uint8_t value) {
+    reg1 = value;
+  }
   virtual void reg3_write(uint8_t value) =0;
+
   virtual void update() =0;
   virtual double sample() const =0;
 
@@ -239,19 +243,29 @@ struct Pulse : Generator_with_envelope {
 
   uint16_t t { 0 };
   uint8_t shift { 0 };
-
   uint16_t _sweep_divider { 0 };
+  uint16_t _target { 0 };
+  bool _silenced { false };
   bool _sweep_reload { false };
 
   void reg3_write(uint8_t value) {
     reg3 = value;
     reload_length_counter();
     shift = 0; // restart sequencer
+    _silenced = false;
     start_envelope();
   }
 
+  void reg1_write(uint8_t value) override {
+    reg1 = value;
+    adjust_period();
+  }
+
   void adjust_period() {
-    //timer = timer + (sweep_negative * 2 - 1);// * (timer >> sweep_shift);
+    _target = timer + (sweep_negative ? -1 : 1) * (timer >> sweep_shift);
+    if (timer < 8 || _target > 0x7ff) {
+      _silenced = true;
+    }
   }
 
   virtual void on_half_frame() override {
@@ -262,17 +276,18 @@ struct Pulse : Generator_with_envelope {
         adjust_period();
       }
 
-      _sweep_divider = sweep_period;
+      _sweep_divider = sweep_period + 1;
       _sweep_reload = false;
     
     } else {
 
-      if (_sweep_divider == 0) {
-
+      if (!_sweep_divider) {
         if (sweep_enabled) {
-          _sweep_divider = sweep_period;
+          _sweep_divider = sweep_period + 1;
           adjust_period();
-
+          if (!_silenced && sweep_shift) {
+            timer = _target;
+          }
         }
 
       } else {
@@ -291,7 +306,7 @@ struct Pulse : Generator_with_envelope {
   }
 
   double sample() const {
-    if (timer < 8 || !length_counter_active()) {
+    if (_silenced || !length_counter_active()) {
       return 0.0;
     }
 

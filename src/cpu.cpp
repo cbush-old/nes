@@ -177,7 +177,7 @@ void CPU::run() {
     if (IRQ == 0 && (P & I_FLAG) == 0) {
       push2(PC);
       stack_push<&CPU::ProcStatus>();
-      P |= I_FLAG;
+      set<I_FLAG>();
       PC = read(0xfffe) | (read(0xffff) << 8);
     }
 
@@ -231,3 +231,10 @@ void CPU::pull_IRQ() {
 void CPU::stop() {
   _done = true;
 }
+
+void CPU::set_observer(IObserver<uint16_t>* observer) {
+  std::cout << "Set observer\n";
+  PC.add_observer(observer);
+}
+
+

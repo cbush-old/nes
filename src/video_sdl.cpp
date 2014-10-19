@@ -1,6 +1,8 @@
 #include "video_sdl.h"
 #include "SDL.h"
 
+#include <iostream>
+
 #ifndef GL_GLEXT_PROTOTYPES
 #define GL_GLEXT_PROTOTYPES
 #endif
@@ -13,7 +15,7 @@ SDLVideoDevice::SDLVideoDevice():
     SDL_CreateWindow(
       "",
       SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,
-      512,480,
+      1024,480,
       SDL_WINDOW_OPENGL
     )
   ),
@@ -24,7 +26,8 @@ SDLVideoDevice::SDLVideoDevice():
 
   glMatrixMode(GL_PROJECTION|GL_MODELVIEW);
   glLoadIdentity();
-  glOrtho(0,256,240,0,0,1);
+  //glOrtho(0,256,240,0,0,1);
+  glOrtho(0,512,240,0,0,1);
   glClearColor(0,0.6,0,1);
   glClear(GL_COLOR_BUFFER_BIT);
   glEnable(GL_TEXTURE_2D);
@@ -77,7 +80,35 @@ void SDLVideoDevice::on_frame() {
   glTexCoord2f(0.0, 1.0f);  glVertex2i(0,240);
   glTexCoord2f(1.0, 1.0f);  glVertex2i(256,240);
   glEnd();
+
+  glTexImage2D(
+    GL_TEXTURE_2D,
+    0,
+    GL_RGBA,
+    256,
+    240,
+    0,
+    GL_RGBA,
+    GL_UNSIGNED_INT_8_8_8_8, 
+    static_cast<const GLvoid*>(_buffer2.data())
+  );
+  glBegin(GL_TRIANGLE_STRIP);
+  glTexCoord2f(0.0, 0.0f);  glVertex2i(256,0);
+  glTexCoord2f(1.0, 0.0f);  glVertex2i(512,0);
+  glTexCoord2f(0.0, 1.0f);  glVertex2i(256,240);
+  glTexCoord2f(1.0, 1.0f);  glVertex2i(512,240);
+  glEnd();
+
   SDL_GL_SwapWindow(window);
   glClear(GL_COLOR_BUFFER_BIT);
+
+  for (auto& c : _buffer2) {
+    c *= 0.6;
+  }
 }
 
+
+void SDLVideoDevice::on_change(observable<uint16_t> const* pc, uint16_t was, uint16_t is) {
+  _buffer2[was & 0xefff] -= 0x10000000;
+  _buffer2[is & 0xefff] = 0xff0000ff;
+}
