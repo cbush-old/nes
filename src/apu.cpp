@@ -134,7 +134,7 @@ struct Generator {
 };
 
 class Generator_with_length_counter : public Generator {
-  private:
+  protected:
     uint8_t _counter { 0 };
 
   public:
@@ -207,6 +207,11 @@ class Generator_with_envelope : public Generator_with_length_counter {
       } else {
         --_counter;
       }
+    }
+
+    void disable() override {
+      _counter = 0;
+      _enabled = false;
     }
 
   protected:
@@ -355,7 +360,7 @@ struct Triangle : Generator_with_length_counter {
   }
 
   double sample() const {
-    if (!length_counter_active()) {
+    if (!_enabled || !length_counter_active() || timer < 2) {
       return 0.0;
     }
     return TRIANGLE_STEPS[step] / 15.0;
@@ -389,7 +394,7 @@ struct Noise : Generator_with_envelope {
   }
 
   double sample() const {
-    if (!length_counter_active()) {
+    if (!_enabled || !length_counter_active()) {
       return 0.0;
     }
     return double(shift & 1) * envelope_sample();
@@ -409,10 +414,6 @@ class DMC : public Generator {
       }
 
       _t = 0;
-
-      if (!IRQ_enable) {
-        _interrupt = false;
-      }
 
       if (_interrupt) {
         _bus.pull_NMI();
@@ -444,9 +445,9 @@ class DMC : public Generator {
       if (!_sample) {
 
         if (!_bytes_remaining) {
-          if (loop_sample || true) {
-            _address = (sample_address << 12) | 0xC000;
-            _bytes_remaining = (sample_length << 12) | 1;
+          if (loop_sample) {
+            _address = (sample_address << 13) | 0xC000;
+            _bytes_remaining = (sample_length << 11) | 1;
           } else if (IRQ_enable) {
             _interrupt = true;
           }
@@ -471,6 +472,20 @@ class DMC : public Generator {
     double sample() const {
       return output_level / 127.0;
     }
+
+    void disable() override {
+      _interrupt = false;
+      _bytes_remaining = 0;
+    }
+
+    void enable() override {
+      if (!_bytes_remaining) {
+        std::cout << "enable dmc\n";
+        _address = (sample_address << 13) | 0xC000;
+        _bytes_remaining = (sample_length << 11) | 1;
+      }
+    }
+
 
   protected:
     void reg3_write(uint8_t value) {
@@ -502,7 +517,9 @@ APU::APU(IBus *bus, IAudioDevice *audio)
     new Noise(),
     new DMC(*bus)
   })
-  {}
+{
+  write(0, 0x17);
+}
 
 APU::~APU() {
   for (int i = 0; i < 5; ++i) {
@@ -596,7 +613,10 @@ void APU::tick() {
     sample += (g->sample() - 0.5) * g->get_channel_volume();
   }
 
+  //sample += _generator[4]->sample() - 0.5;
 
+
+  /*
   int samples = 1;
   double rate = bus->get_rate();
 
@@ -624,10 +644,9 @@ void APU::tick() {
       }
     }
   }
-
-  for (int i = 0; i < samples; ++i) {
-    audio->put_sample(sample);
-  }
+  for (int i = 0; i < samples; ++i)
+  */
+  audio->put_sample(sample);
 
 }
 
@@ -648,7 +667,7 @@ void APU::write(uint8_t value, uint8_t index) {
 
     value &= 0x1f;
     for (int i = 0; i < 5; ++i) {
-      if (value & 1) {
+      if (value & (1 << i)) {
         _generator[i]->enable();
       } else {
         _generator[i]->disable();

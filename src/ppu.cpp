@@ -10,8 +10,6 @@ const uint16_t NAME_TABLE_SIZE = 0x400;
 const uint16_t PATTERN_TABLE_SIZE = 0x1000;
 
 
-// Many thanks to bisqwit's NES!
-
 void PPU::render_load_shift_registers() {
   bg_shift_pat &= 0xffff0000;
   bg_shift_pat |= tilepat;
@@ -89,6 +87,8 @@ void PPU::render_copy_vertical() {
   }
 }
 
+bool _do_NMI { false };
+
 void PPU::render_set_vblank() {
 
   double rate = bus->get_rate();
@@ -109,7 +109,7 @@ void PPU::render_set_vblank() {
   reg.vblanking = true; 
 
   if (reg.NMI_enabled) {
-    bus->pull_NMI(); // FIXME: this is actually pulled on the next cycle
+    _do_NMI = true;
   }
 
 }
@@ -177,7 +177,6 @@ void PPU::render() {
 
   bg_shift_pat <<= 2;
   bg_shift_attr <<= 2;
-
 
   // Prepare fetch pattern from the NT
   if(X_MOD_8 == 1) {
@@ -459,6 +458,12 @@ uint8_t PPU::read(uint16_t addr, bool no_palette /* = false */) const {
 
 void PPU::tick() {
 
+
+  if (_do_NMI) {
+    bus->pull_NMI();
+    _do_NMI = false;
+  }
+
   if (cycle == 1) {
     if (scanline == 241) {
       render_set_vblank();
@@ -488,8 +493,8 @@ void PPU::tick() {
 
     }
     
-    scanline_end = 340;
     ++scanline;
+    scanline_end = scanline & 1 && reg.show_bg ? 339 : 340;
 
   }
 
