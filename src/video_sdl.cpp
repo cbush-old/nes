@@ -108,7 +108,29 @@ void SDLVideoDevice::on_frame() {
 }
 
 
+
 void SDLVideoDevice::on_change(observable<uint16_t> const* pc, uint16_t was, uint16_t is) {
   _buffer2[was & 0xefff] -= 0x10000000;
   _buffer2[is & 0xefff] = 0xff0000ff;
 }
+
+void SDLVideoDevice::on_change(observable<uint8_t> const* p, uint8_t was, uint8_t is) {
+  static size_t a = 0;
+  if (!a) {
+    a = (size_t)p;
+  }
+
+  auto c = (int)((is / 255.0) * 0xffffff00) | 0xff;
+  auto i = ((size_t)p - a) / sizeof(observable<uint8_t>);
+  i *= 4;
+
+  for (int j = 0; j < 4; ++j) {
+    for (int k = 0; k < 4; ++k) {
+      _buffer2[i + 256 * (i / 256) * 3 + 256 * j + k] = c;
+    }
+  }
+
+}
+
+
+

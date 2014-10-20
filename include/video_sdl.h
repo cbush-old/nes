@@ -4,7 +4,7 @@
 #include "bus.h"
 #include "observable.h"
 
-class SDLVideoDevice : public IVideoDevice, public IObserver<uint16_t> {
+class SDLVideoDevice : public IVideoDevice, public IObserver<uint8_t>, public IObserver<uint16_t> {
   public:
     SDLVideoDevice();
     ~SDLVideoDevice();
@@ -15,6 +15,7 @@ class SDLVideoDevice : public IVideoDevice, public IObserver<uint16_t> {
 
   public:
     void on_change(observable<uint16_t> const*, uint16_t, uint16_t) override;
+    void on_change(observable<uint8_t> const*, uint8_t, uint8_t) override;
 
   private:
     struct SDL_Window *window;

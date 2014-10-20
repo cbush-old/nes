@@ -11,6 +11,7 @@
 #include <cctype>
 #include <fstream>
 #include <vector>
+#include <array>
 #include <string>
 #include <stdexcept>
 #include <sstream>
@@ -38,7 +39,7 @@ class CPU : public ICPU {
       I_FLAG = 0x04, Z_FLAG = 0x02, C_FLAG = 0x01
     };
 
-    std::vector<uint8_t> memory;
+    std::array<observable<uint8_t>, 0x800> memory;
 
     observable<uint8_t>
       P { 0x34 },
@@ -77,7 +78,8 @@ class CPU : public ICPU {
 
   public:
     uint8_t read(uint16_t) const override;
-    void set_observer(IObserver<uint16_t>* observer);
+    void set_observer16(IObserver<uint16_t>* observer);
+    void set_observer(IObserver<uint8_t>* observer);
   
   private:
     void write(uint8_t, uint16_t);

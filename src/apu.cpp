@@ -145,7 +145,7 @@ class Generator_with_length_counter : public Generator {
       clock_length_counter();
     }
 
-    virtual void disable() {
+    virtual void disable() override {
       _enabled = false;
       _counter = 0;
     }
@@ -207,11 +207,6 @@ class Generator_with_envelope : public Generator_with_length_counter {
       } else {
         --_counter;
       }
-    }
-
-    void disable() override {
-      _counter = 0;
-      _enabled = false;
     }
 
   protected:

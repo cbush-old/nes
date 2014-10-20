@@ -144,7 +144,6 @@ CPU::CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController* controller0, I
     controller0,
     controller1,
   }
-  , memory(0x800, 0xff)
 {
   memory[0x008] = 0xf7;
   memory[0x009] = 0xef;
@@ -232,9 +231,16 @@ void CPU::stop() {
   _done = true;
 }
 
-void CPU::set_observer(IObserver<uint16_t>* observer) {
+void CPU::set_observer16(IObserver<uint16_t>* observer) {
   std::cout << "Set observer\n";
   PC.add_observer(observer);
 }
 
+void CPU::set_observer(IObserver<uint8_t>* observer) {
+  std::cout << "Set observer8\n";
+  for (auto& i : memory) {
+    i.add_observer(observer);
+    i = 0xff;
+  }
+}
 

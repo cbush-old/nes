@@ -19,6 +19,7 @@ class IObserver {
 template<typename T>
 class observable {
   public:
+    observable(): _value(){}
     observable(T v): _value(v){}
 
   public:
@@ -37,7 +38,7 @@ class observable {
 
   public:
     #define BINARY_OPERATOR(op, arg) observable<T>& operator op (arg x) { T was = _value; _value op x; notify(was, _value); return *this; }
-    BINARY_OPERATOR( =, T const&);
+    BINARY_OPERATOR( =, const int);
     BINARY_OPERATOR(|=, const int);
     BINARY_OPERATOR(&=, const int);
     BINARY_OPERATOR(^=, const int);
