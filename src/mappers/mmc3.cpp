@@ -35,27 +35,25 @@ uint8_t MMC3::read_prg(uint16_t addr) const {
   }
 }
 
+
 uint8_t MMC3::read_chr(uint16_t addr) const {
   if ((addr & 0x1000) && !_edge) {
     _edge = true;
 
-    if (_edge_counter >= 0) {
+    if (_IRQ_counter == 0) {
 
-      if (_IRQ_counter == 0) {
-        _IRQ_counter = _IRQ_reload;
-      } else if (--_IRQ_counter == 0 && _IRQ_enabled) {
-        _IRQ_pending = true;
-        _bus->pull_IRQ();
-      }
+      _IRQ_counter = _IRQ_reload;
+
+    } else if (--_IRQ_counter == 0 && _IRQ_enabled) {
+      _IRQ_pending = true;
+      _bus->pull_IRQ();
+      std::cout << "mmc3 pull irq\n";
     }
+
     _edge_counter = 0;
 
   } else if (!(addr & 0x1000)) {
     _edge = false;
-  }
-
-  if (_edge == false) {
-    ++_edge_counter;
   }
 
   if (addr > 0x1fff) {

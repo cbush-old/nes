@@ -122,8 +122,8 @@ void SDLAudioDevice::on_buffer_request(uint8_t *stream, int length) {
 
   if (available < length) {
     // underrun
-    std::cerr << "Underrun!\n";
-    memset(stream, 0, length);
+    //std::cerr << "Underrun!\n";
+    memset(stream + available, 0, length - available);
     length = available;
   }
 

@@ -103,7 +103,8 @@ void SDLVideoDevice::on_frame() {
   glClear(GL_COLOR_BUFFER_BIT);
 
   for (auto& c : _buffer2) {
-    c *= 0.6;
+    c *= 0.7;
+    
   }
 }
 
