@@ -350,6 +350,7 @@ class IBus {
   public:
     virtual void pull_NMI() =0;
     virtual void pull_IRQ() =0;
+    virtual void release_IRQ() =0;
 
   public: // Events
     /**
@@ -417,6 +418,7 @@ class ICPU {
      * @brief signal an interrupt request (irq) to the cpu
      **/
     virtual void pull_IRQ() =0;
+    virtual void release_IRQ() =0;
 
     virtual uint8_t read(uint16_t) const =0;
 

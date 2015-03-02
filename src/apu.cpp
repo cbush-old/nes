@@ -475,7 +475,6 @@ class DMC : public Generator {
 
     void enable() override {
       if (!_bytes_remaining) {
-        std::cout << "enable dmc\n";
         _address = (sample_address << 13) | 0xC000;
         _bytes_remaining = (sample_length << 11) | 1;
       }
@@ -486,7 +485,6 @@ class DMC : public Generator {
     void reg3_write(uint8_t value) {
       reg3 = value;
       sample_address = value;
-      std::cout << "addr: " << std::hex << sample_address << std::endl;
     }
 
   private:

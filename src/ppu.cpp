@@ -262,6 +262,11 @@ void PPU::render() {
   }
 
 
+  if (X == 256) {
+    // hack
+    read(0x1000);
+  }
+
   // Prepare sprite data
   //
   if (X_ODD_64_TO_256) {
@@ -374,7 +379,7 @@ void PPU::render_pixel() {
   }
 
   if (showsp) {
-    for(int sno = 0; sno < sprrenpos; ++sno){
+    for (int sno = 0; sno < sprrenpos; ++sno) {
       auto& s = OAM3[sno];
       
       unsigned xdiff = cycle - s.x;

@@ -37,6 +37,7 @@ uint8_t MMC3::read_prg(uint16_t addr) const {
 
 
 uint8_t MMC3::read_chr(uint16_t addr) const {
+
   if ((addr & 0x1000) && !_edge) {
     _edge = true;
 
@@ -45,15 +46,14 @@ uint8_t MMC3::read_chr(uint16_t addr) const {
       _IRQ_counter = _IRQ_reload;
 
     } else if (--_IRQ_counter == 0 && _IRQ_enabled) {
-      _IRQ_pending = true;
+
       _bus->pull_IRQ();
-      std::cout << "mmc3 pull irq\n";
+      _IRQ_pending = true;
+
     }
-
-    _edge_counter = 0;
-
   } else if (!(addr & 0x1000)) {
     _edge = false;
+
   }
 
   if (addr > 0x1fff) {
@@ -151,7 +151,10 @@ void MMC3::write_prg(uint8_t value, uint16_t addr) {
         break;
 
       case 0xe001:
-        _IRQ_enabled = true;
+        _bus->release_IRQ();
+        if (!_IRQ_enabled) {
+          _IRQ_enabled = true;
+        }
         break;
     }
   }

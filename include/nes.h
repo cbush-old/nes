@@ -29,6 +29,7 @@ class NES : public IBus {
   public:
     void pull_NMI() override;
     void pull_IRQ() override;
+    void release_IRQ() override;
     void on_frame() override;
     void on_cpu_tick() override;
     uint8_t cpu_read(uint16_t) const override;

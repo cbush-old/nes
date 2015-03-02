@@ -72,6 +72,12 @@ void NES::pull_IRQ() {
     cpu->pull_IRQ();
 }
 
+void NES::release_IRQ() {
+    if (cpu) {
+        cpu->release_IRQ();
+    }
+}
+
 using Clock = std::chrono::high_resolution_clock;
 using time_point = Clock::time_point;
 

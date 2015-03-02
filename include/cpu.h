@@ -102,8 +102,8 @@ class CPU : public ICPU {
 
   public:
     void pull_NMI();
-    void pull_IRQ();
-    void reset_IRQ();
+    void pull_IRQ() override;
+    void release_IRQ() override;
     void run();
 
   private:
