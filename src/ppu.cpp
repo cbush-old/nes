@@ -87,7 +87,6 @@ void PPU::render_copy_vertical() {
   }
 }
 
-bool _do_NMI { false };
 
 void PPU::render_set_vblank() {
 
@@ -99,8 +98,6 @@ void PPU::render_set_vblank() {
     frameskip_count = 0;
     if (rate > 1.0 && remainder > 0.001 && s++ >= 1.0 / remainder) {
       s = 0;
-    } else {
-      video->set_buffer(framebuffer);
     }
   }
 
@@ -109,7 +106,7 @@ void PPU::render_set_vblank() {
   reg.vblanking = true; 
 
   if (reg.NMI_enabled) {
-    _do_NMI = true;
+    bus->pull_NMI();
   }
 
 }
@@ -326,12 +323,12 @@ void PPU::render() {
 
 
 //<int X, int X_MOD_8, int Tile_Decode_Mode, bool X_ODD_64_TO_256, bool X_LT_256>
-#define X(a) &PPU::render<\
+#define X(a) (&PPU::render<\
   (((a)==0)||((a)==1)||((a)==256)||((a)==257)||((a)==337)?(a):(280 <= a && a < 305)?304:-1),\
   ((a) & 7),\
   ((1 <= (a) && (a) <= 257) || (321 <= (a) && (a) <= 340)),\
   bool(((a) & 1) && ((a) >= 64) && ((a) < 256)),\
-  bool((a) < 256)>
+  bool((a) < 256)>)
 
 #define Y(a) X(a),X(a+1),X(a+2),X(a+3),X(a+4),X(a+5),X(a+6),X(a+7),X(a+8),X(a+9)
 const PPU::Renderf_array PPU::renderfuncs {
@@ -463,12 +460,6 @@ uint8_t PPU::read(uint16_t addr, bool no_palette /* = false */) const {
 
 void PPU::tick() {
 
-
-  if (_do_NMI) {
-    bus->pull_NMI();
-    _do_NMI = false;
-  }
-
   if (cycle == 1) {
     if (scanline == 241) {
       render_set_vblank();
@@ -507,7 +498,7 @@ void PPU::tick() {
 
 void PPU::regw_control(uint8_t value) {
   reg.PPUCTRL = value; 
-  scroll.base_nta = reg.base_nta; 
+  scroll.base_nta = reg.base_nta;
 }
 
 void PPU::regw_mask(uint8_t value) {
@@ -539,7 +530,6 @@ void PPU::regw_address(uint8_t value) {
   } else {
     scroll.vaddr_hi = value & 0x3f;
   }
-  //rom->read_chr((value << 8) & 0x1000);
   loopy_w ^= 1;
 }
 
@@ -549,7 +539,7 @@ void PPU::regw_data(uint8_t value) {
 }
 
 uint8_t PPU::regr_status() {
-  uint8_t result { reg.PPUSTATUS };
+  uint8_t result { static_cast<uint8_t>(reg.PPUSTATUS) };
   reg.vblanking = false;
   loopy_w = false;
   return result;
@@ -572,7 +562,15 @@ PPU::PPU(IBus *bus, IROM *rom, IVideoDevice *video)
   , video(video)
   , tick_renderer(renderfuncs.begin())
 {
-    reg.PPUSTATUS = 0x80;
+  for (auto& i : framebuffer) {
+    i = 0x008000ff;
+  }
+
+  video->set_buffer(framebuffer);
+  reg.PPUCTRL = 0x00;
+  reg.PPUMASK = 0x00;
+  reg.PPUSTATUS = 0x00;
+  reg.OAMADDR = 0;
 }
 
 

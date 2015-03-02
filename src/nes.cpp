@@ -13,6 +13,8 @@
 #include "input_script.h"
 #include "input_script_recorder.h"
 
+#include <thread>
+#include <chrono>
 #include <iostream>
 
 class NoAudioDevice : public IAudioDevice {
@@ -105,31 +107,33 @@ double NES::get_rate() const {
 
 void NES::run() {
 
+    ((CPU*)cpu)->set_observer16((SDLVideoDevice*)video);
+    ((CPU*)cpu)->set_observer((SDLVideoDevice*)video);
+
     std::thread t0 { [&] {
-        ((CPU*)cpu)->set_observer16((SDLVideoDevice*)video);
-        ((CPU*)cpu)->set_observer((SDLVideoDevice*)video);
         cpu->run();
     }};
 
-    t0.detach();
+    try {
 
-    for (;;) {
+        for (;;) {
 
-        _semaphore[0].wait();
+            _semaphore[0].wait();
 
-        video->on_frame();
+            video->on_frame();
 
-        try {
             for (auto& i : input) {
                 i->tick();
             }
-        } catch(int) {
-            std::cout << "stop" << std::endl;
-            cpu->stop();
-            break;
+
+            _semaphore[1].signal();
         }
 
+    } catch(std::runtime_error const& e) {
+        std::cout << "stop" << std::endl;
+        cpu->stop();
         _semaphore[1].signal();
     }
 
+    t0.join();
 }

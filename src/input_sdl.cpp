@@ -2,6 +2,7 @@
 
 #include <map>
 #include <thread>
+#include <stdexcept>
 #include <chrono>
 
 #include <SDL2/SDL.h>
@@ -40,7 +41,7 @@ void SDLInputDevice::tick() {
         _bus.set_rate(e.type == SDL_KEYDOWN ? 4.0 : 1.0);
       }
     } else if (e.type == SDL_QUIT) {
-      throw 1; // FIXME: bus.stop() or something
+      throw std::runtime_error("quit"); // FIXME: bus.stop() or something
     }
   }
 

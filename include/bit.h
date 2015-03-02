@@ -9,11 +9,11 @@ struct bit {
 
   T value;
 
-  constexpr T mask() {
+  constexpr T mask() const {
     return (1u << length) - 1u;
   };
 
-  constexpr T not_mask_at_pos() {
+  constexpr T not_mask_at_pos() const {
     return ~(mask() << position);
   };
 

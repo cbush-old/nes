@@ -1,5 +1,5 @@
 CC= g++
-CFLAGS=-c -Wall -std=c++11 -O3 -DDEBUG_PPU_PRINT_FRAMERATE
+CFLAGS= -c -Wall -std=c++11 -Wno-unused-const-variable -Wno-missing-braces -O3
 INCLUDE= \
 	-I. \
 	-Iinclude \

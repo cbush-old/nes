@@ -152,17 +152,17 @@ CPU::CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController* controller0, I
   memory[0x1fc] = 0x69;
 }
 
+bool do_NMI { false };
+
 void CPU::pull_NMI() {
-  push2(PC);
-  stack_push<&CPU::ProcStatus>();
-  PC = read(0xfffa) | (read(0xfffb) << 8);
+  do_NMI = true;
 }
 
 void CPU::run() {
 
   PC = read(0xfffc) | (read(0xfffd) << 8);
 
-  while (!_done) {
+  for (;;) {
 
     last_PC = PC;
     last_op = next();
@@ -179,11 +179,24 @@ void CPU::run() {
 
     result_cycle = 0;
 
-    if (!IRQ && ((P & I_FLAG) == 0)) {
+    if (_done) {
+      break;
+    }
+
+    if (do_NMI) {
+
+      do_NMI = false;
+      push2(PC);
+      stack_push<&CPU::ProcStatus>();
+      PC = read(0xfffa) | (read(0xfffb) << 8);
+
+    } else if (!IRQ && ((P & I_FLAG) == 0)) {
+
       push2(PC);
       stack_push<&CPU::ProcStatus>();
       set<I_FLAG>();
       PC = read(0xfffe) | (read(0xffff) << 8);
+
     }
 
   }

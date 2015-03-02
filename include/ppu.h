@@ -67,7 +67,7 @@ class PPU : public IPPU {
     } reg;
     
     mutable union {
-      uint32_t data;
+      uint32_t data { 0 };
 
       bit< 3, 16> raw;
       bit< 0,8> xscroll;
