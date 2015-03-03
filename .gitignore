@@ -6,4 +6,5 @@ util/test
 *.out
 *.o
 nes
+*.hex
 

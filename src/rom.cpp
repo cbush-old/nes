@@ -55,7 +55,10 @@ ROM::ROM()
   : nt (0x800)
   , ram (0x4000)
   , nametable (4)
-  {}
+{
+  std::ifstream file ("save.hex");
+  file.read(reinterpret_cast<char*>(ram.data()), ram.size());
+}
 
 void ROM::set_prg(uint8_t count) {
 
@@ -126,7 +129,10 @@ void ROM::set_mirroring(MirrorMode mode) {
   }
 }
 
-ROM::~ROM() {}
+ROM::~ROM() {
+  std::ofstream file ("save.hex");
+  file.write(reinterpret_cast<const char*>(ram.data()), ram.size());
+}
 
 IROM *load_ROM(IBus *bus, const char *path) {
 
