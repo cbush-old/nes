@@ -17,12 +17,6 @@ void PPU::render_load_shift_registers() {
   bg_shift_attr |= 0x5555 * tileattr;
 }
 
-void PPU::render_skip_cycle() {
-  if (reg.show_bg) {
-    scanline_end = 340;
-  }
-}
-
 void PPU::render_nt_lookup_0() {
   ioaddr = NAME_TABLE_BASE_ADDR + (vram.raw & 0xfff);
 }
@@ -44,7 +38,7 @@ void PPU::render_fetch_bg_low_0() {
 }
 
 void PPU::render_fetch_bg_low_1() {
-  // Interlace the two patterns (temp)
+  // Interlace the two patterns (temp) // directly lifted from bisqwit
   unsigned p = tilepat | (read(pat_addr + 8) << 8);
   p = (p & 0xf00f) | ((p & 0x0f00)>>4) | ((p & 0x00f0)<<4);
   p = (p & 0xc3c3) | ((p & 0x3030)>>2) | ((p & 0x0c0c)<<2);
@@ -168,12 +162,13 @@ void PPU::render_OAM_write() {
   sprtmp = OAM[reg.OAMADDR];
 }
 
-template<int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256>
+template<int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256, bool X_LT_337>
 void PPU::render() {
 
-
-  bg_shift_pat <<= 2;
-  bg_shift_attr <<= 2;
+  if (X && X_LT_337) {
+    bg_shift_pat <<= 2;
+    bg_shift_attr <<= 2;
+  }
 
   // Prepare fetch pattern from the NT
   if(X_MOD_8 == 1) {
@@ -181,11 +176,9 @@ void PPU::render() {
   }
 
   // Also, 2nd fetch in cycle is another NT byte at the end of the scanline
-  if (X_MOD_8 == 3 && !TDM) {
-    render_nt_lookup_0();
-  }
+  // ...TODO...
 
-  // Fetch pattern byte
+
   if (X_MOD_8 == 2) {
     render_nt_lookup_1();
   }
@@ -194,29 +187,29 @@ void PPU::render() {
     render_attr_lookup_0();
   } 
 
-  // Fetch attribute
+
   if (X_MOD_8 == 4 && TDM) {
     render_attr_lookup_1();
   }
 
+  // got the address, get the bytes
   if(X_MOD_8 == 5) {
     render_fetch_bg_low_0();
   }
 
-  // Fetch upper tile byte
   if(X_MOD_8 == 6) {
     render_fetch_bg_low_1();
   }
 
-  if (X != 0 && X_MOD_8 == 7) {
+  if (X_MOD_8 == 7) {
     render_fetch_bg_high_0();
   }
 
-  if (X != 0 && X_MOD_8 == 0) {
+  if (X && X_MOD_8 == 0) {
     render_fetch_bg_high_1();
   }
 
-  if (X != 0 && X_MOD_8 == 0 && TDM) {
+  if (X && X_MOD_8 == 0 && TDM) {
     render_incr_horizontal();
   }
 
@@ -260,7 +253,7 @@ void PPU::render() {
 
 
   if (X == 256) {
-    // hack
+    // hack for mmc3 scanline counter
     read(0x1000);
   }
 
@@ -322,13 +315,14 @@ void PPU::render() {
 }
 
 
-//<int X, int X_MOD_8, int Tile_Decode_Mode, bool X_ODD_64_TO_256, bool X_LT_256>
+//<int X, int X_MOD_8, int Tile_Decode_Mode, bool X_ODD_64_TO_256, bool X_LT_256, bool X_LT_337>
 #define X(a) (&PPU::render<\
-  (((a)==0)||((a)==1)||((a)==256)||((a)==257)||((a)==337)?(a):(280 <= a && a < 305)?304:-1),\
+  (((a)==0)||((a)==1)||((a)==256)||((a)==257)||((a)==328)||((a)==336)||((a)==337)?(a):(280 <= a && a < 305)?304:-1),\
   ((a) & 7),\
   ((1 <= (a) && (a) <= 257) || (321 <= (a) && (a) <= 340)),\
   bool(((a) & 1) && ((a) >= 64) && ((a) < 256)),\
-  bool((a) < 256)>)
+  bool((a) < 256),\
+  bool((a) < 337)>)
 
 #define Y(a) X(a),X(a+1),X(a+2),X(a+3),X(a+4),X(a+5),X(a+6),X(a+7),X(a+8),X(a+9)
 const PPU::Renderf_array PPU::renderfuncs {
@@ -475,22 +469,11 @@ void PPU::tick() {
 
   ++cycle;
 
-  if (cycle > scanline_end) {
+  if (cycle == 341) {
 
-    if(reg.rendering_enabled && scanline == -1 && odd_frame) {
-
-      cycle = 1;
-      tick_renderer = renderfuncs.begin() + 1;
-
-    } else {
-
-      cycle = 0;
-      tick_renderer = renderfuncs.begin();
-
-    }
-    
+    cycle = (reg.rendering_enabled && (scanline == -1) && odd_frame);// || ((scanline & 1) && reg.show_bg);
+    tick_renderer = renderfuncs.begin() + cycle;
     ++scanline;
-    scanline_end = scanline & 1 && reg.show_bg ? 339 : 340;
 
   }
 

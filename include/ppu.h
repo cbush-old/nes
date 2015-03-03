@@ -139,7 +139,7 @@ class PPU : public IPPU {
     static const std::array<std::vector<Renderf>, 32> renderers;
     static std::array<std::vector<Renderf>*, 88740> rendererps;
 
-    template<int, char, bool, bool, bool>
+    template<int, char, bool, bool, bool, bool>
     void render();
 
     static const Renderf_array renderfuncs;
