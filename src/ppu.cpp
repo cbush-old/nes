@@ -30,7 +30,7 @@ void PPU::render_attr_lookup_0() {
 }
 
 void PPU::render_attr_lookup_1() {
-  tileattr = (read(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse&2))) & 3;
+  tileattr = (read(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse & 2))) & 3;
 }
 
 void PPU::render_fetch_bg_low_0() {
@@ -232,7 +232,7 @@ void PPU::render() {
 
 
 
-  if (X_MOD_8 == 0) {
+  if (X && X_MOD_8 == 0) {
     render_load_shift_registers();
   }
 
