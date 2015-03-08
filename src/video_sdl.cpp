@@ -2,6 +2,7 @@
 #include "SDL.h"
 
 #include <iostream>
+#include <cmath>
 
 #ifndef GL_GLEXT_PROTOTYPES
 #define GL_GLEXT_PROTOTYPES

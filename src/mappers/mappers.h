@@ -56,6 +56,17 @@ class UxROM : public ROM {
 
 };
 
+// Mapper 3
+class CNROM : public ROM {
+  public:
+    CNROM(){}
+    ~CNROM(){}
+
+  public:
+    virtual void write_prg(uint8_t value, uint16_t addr) override;
+
+};
+
 
 // Mapper 71
 using Camerica = UxROM;

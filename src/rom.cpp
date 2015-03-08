@@ -173,7 +173,7 @@ IROM *load_ROM(IBus *bus, const char *path) {
     case 0: rom = new NROM(); break;
     case 1: rom = new SxROM(); break;
     case 2: rom = new UxROM(); break;
-
+    case 3: rom = new CNROM(); break;
     case 4: rom = new MMC3(bus); break;
     case 71: rom = new Camerica(); break;
     default:
