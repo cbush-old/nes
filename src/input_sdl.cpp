@@ -24,7 +24,8 @@ const std::map<int, Button> lookup {
 SDLInputDevice::SDLInputDevice(IBus& bus, IController& controller)
   : _bus(bus)
   , _port(controller)
-  {}
+{
+}
 
 void SDLInputDevice::tick() {
 

@@ -249,15 +249,19 @@ void CPU::stop() {
 }
 
 void CPU::set_observer16(IObserver<uint16_t>* observer) {
+#if 0
   std::cout << "Set observer\n";
   PC.add_observer(observer);
+#endif
 }
 
 void CPU::set_observer(IObserver<uint8_t>* observer) {
+#if 0
   std::cout << "Set observer8\n";
   for (auto& i : memory) {
     i.add_observer(observer);
     i = 0xff;
   }
+#endif
 }
 

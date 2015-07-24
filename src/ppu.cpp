@@ -400,6 +400,7 @@ void PPU::render_pixel() {
     }
   }
 
+
   pixel = palette[(attr * 4 + pixel) & 0x1f] & (0x30 + (!reg.grayscale) * 0x0f);
 
   framebuffer[scanline * 256 + cycle] = RGB[pixel&0x3f];

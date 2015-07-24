@@ -9,6 +9,7 @@
 #include "audio_sdl.h"
 #include "audio_sox_pipe.h"
 #include "video_sdl.h"
+#include "video_tty.h"
 #include "input_sdl.h"
 #include "input_script.h"
 #include "input_script_recorder.h"
@@ -16,6 +17,7 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
+#include <sys/time.h>
 
 class NoAudioDevice : public IAudioDevice {
   public:
@@ -29,6 +31,7 @@ class NoAudioDevice : public IAudioDevice {
 
 NES::NES(const char *rom_path, std::istream& script)
     : video (new SDLVideoDevice())
+    //video (new TTYVideoDevice())
     , audio (
         new SDLAudioDevice(this)
         //new NoAudioDevice()
@@ -120,12 +123,22 @@ void NES::run() {
 
             _semaphore[0].wait();
 
+            timeval t;
+            gettimeofday(&t, NULL);
+            long tock = ((unsigned long long)t.tv_sec * 1000000) + t.tv_usec;
+
             video->on_frame();
 
             for (auto& i : input) {
                 i->tick();
             }
 
+            gettimeofday(&t, NULL);
+            long tick = ((unsigned long long)t.tv_sec * 1000000) + t.tv_usec;
+
+            std::this_thread::sleep_for(std::chrono::microseconds(
+                std::max(0l, 6000 - (tick - tock))
+            ));
             _semaphore[1].signal();
         }
 
