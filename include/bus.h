@@ -1,6 +1,8 @@
 #ifndef BUS_H
 #define BUS_H
 
+#include "log.h"
+
 #include <string>
 #include <vector>
 #include <array>

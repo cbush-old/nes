@@ -13,6 +13,7 @@
 #include "input_sdl.h"
 #include "input_script.h"
 #include "input_script_recorder.h"
+#include "log.h"
 
 #include <thread>
 #include <chrono>
@@ -137,7 +138,7 @@ void NES::run() {
             long tick = ((unsigned long long)t.tv_sec * 1000000) + t.tv_usec;
 
             std::this_thread::sleep_for(std::chrono::microseconds(
-                std::max(0l, 6000 - (tick - tock))
+                std::max(0l, 1000 - (tick - tock))
             ));
             _semaphore[1].signal();
         }

@@ -161,6 +161,7 @@ void CPU::pull_NMI() {
 void CPU::run() {
 
   PC = read(0xfffc) | (read(0xfffd) << 8);
+  logi("PC: %x", (uint16_t)PC);
 
   for (;;) {
 

@@ -168,14 +168,13 @@ template<mode M> inline void jump() {
 }
 
 template<condition C> inline void branch() {
-
   if((this->*C)()) {
-    PC = sum_check_pgx<char>(PC, next());
+    int8_t v = static_cast<int8_t>(next());
+    PC = sum_check_pgx(PC, v);
     addcyc();
   } else {
     ++PC;
   }
-
 }
 
 
