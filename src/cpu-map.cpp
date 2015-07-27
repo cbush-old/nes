@@ -1,3 +1,5 @@
+#include "cpu.h"
+
 // cutting down on the number of times
 // &CPU:: would otherwise appear
 #define ACC &CPU::ACC

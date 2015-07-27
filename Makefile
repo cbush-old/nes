@@ -18,6 +18,8 @@ SOURCES= \
 	src/ppu.cpp     \
 	src/rom.cpp     \
 	src/nes.cpp     \
+	src/cpu-map.cpp     \
+	src/cpu-asm.cpp     \
 	src/controller_std.cpp \
 	src/audio_sdl.cpp \
 	src/audio_sox_pipe.cpp \

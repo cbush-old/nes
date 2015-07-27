@@ -211,9 +211,6 @@ uint8_t CPU::read<&CPU::IMM>() {
   return (uint8_t)IMM();
 }
 
-#include "cpu-map.cc"
-#include "cpu-asm.cc"
-
 void CPU::print_status() {
   cout 
   << hex << std::uppercase << std::setfill('0')

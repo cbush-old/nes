@@ -10,8 +10,8 @@ class SDLVideoDevice : public IVideoDevice, public IObserver<uint8_t>, public IO
     ~SDLVideoDevice();
 
   public:
-    void set_buffer(Framebuffer const& buffer) override;
     void on_frame() override;
+    void put_pixel(uint8_t x, uint8_t y, PaletteIndex i) override;
 
   public:
     void on_change(observable<uint16_t> const*, uint16_t, uint16_t) override;
@@ -21,7 +21,7 @@ class SDLVideoDevice : public IVideoDevice, public IObserver<uint8_t>, public IO
     struct SDL_Window *window;
     void *glcon;
     uint32_t texture;
-    Framebuffer const *_buffer;
+    Framebuffer _buffer;
     Framebuffer _buffer2;
 
 };

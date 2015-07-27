@@ -141,7 +141,6 @@ class IPPU {
 
 };
 
-
 /**
  * @brief Interface of an onboard audio processing unit
  **/
@@ -221,6 +220,8 @@ class IController {
 };
 
 
+using PaletteIndex = uint8_t;
+
 /**
  * Interface for a video output device
  **/
@@ -229,12 +230,8 @@ class IVideoDevice {
     virtual ~IVideoDevice(){}
 
   public:
-    /**
-     * @brief set the video buffer to the given raster
-     * @param buffer the pixel data to set
-     **/
-    virtual void set_buffer(Framebuffer const& buffer) =0;
     virtual void on_frame() =0;
+    virtual void put_pixel(uint8_t x, uint8_t y, PaletteIndex i) =0;
 
 };
 

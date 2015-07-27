@@ -8,8 +8,8 @@ class TTYVideoDevice : public IVideoDevice {
     ~TTYVideoDevice(){}
 
   public:
-    virtual void set_buffer(Framebuffer const& buffer) override;
-    virtual void on_frame() override;
+    void on_frame() override;
+    void put_pixel(uint8_t x, uint8_t y, PaletteIndex i) override;
 
 };
 

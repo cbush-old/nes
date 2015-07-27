@@ -1,3 +1,5 @@
+#include "cpu.h"
+
 const char* const CPU::opasm[] {
   /* 0x00 */ "brk",
   /* 0x01 */ "ora (d,x)",
