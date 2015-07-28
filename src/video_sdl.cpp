@@ -77,8 +77,10 @@ SDLVideoDevice::~SDLVideoDevice() {
 }
 
 
+static Framebuffer buffer;
+
 void SDLVideoDevice::put_pixel(uint8_t x, uint8_t y, PaletteIndex i) {
-  _buffer.at(y * 256 + (x % 256)) = RGB[i];
+  buffer.at(y * 256 + (x % 256)) = RGB[i];
 }
 
 
@@ -92,7 +94,7 @@ void SDLVideoDevice::on_frame() {
     0,
     GL_RGBA,
     GL_UNSIGNED_INT_8_8_8_8, 
-    static_cast<const GLvoid*>(_buffer.data())
+    static_cast<const GLvoid*>(buffer.data())
   );
   glBegin(GL_TRIANGLE_STRIP);
   glTexCoord2f(0.0, 0.0f);  glVertex2i(0,0);
@@ -128,6 +130,16 @@ void SDLVideoDevice::on_frame() {
   }
 }
 
+#include "image.h"
+#include <sstream>
+#include <ctime>
+
+void screenshot() {
+  std::stringstream ss;
+  ss << "nes-snap-" << time(NULL) << ".png";
+  logi("create %s", ss.str().c_str());
+  save_image(ss.str().c_str(), 256, 240, buffer.data());
+}
 
 
 void SDLVideoDevice::on_change(observable<uint16_t> const* pc, uint16_t was, uint16_t is) {

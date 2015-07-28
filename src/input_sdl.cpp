@@ -27,6 +27,8 @@ SDLInputDevice::SDLInputDevice(IBus& bus, IController& controller)
 {
 }
 
+extern void screenshot();
+
 void SDLInputDevice::tick() {
 
   SDL_Event e;
@@ -36,8 +38,9 @@ void SDLInputDevice::tick() {
       auto const& i = lookup.find(e.key.keysym.sym);
       if (i != lookup.end()) {
         _port.set_button_state(i->second, (e.type == SDL_KEYDOWN) * IController::BUTTON_ON);
-      } else if (e.key.keysym.sym == SDLK_q) {
-        _bus.set_rate(e.type == SDL_KEYDOWN ? 0.4 : 1.0);
+      } else if (e.key.keysym.sym == SDLK_q && e.type == SDL_KEYUP) {
+        //_bus.set_rate(e.type == SDL_KEYDOWN ? 0.4 : 1.0);
+        screenshot();
       } else if (e.key.keysym.sym == SDLK_w) {
         _bus.set_rate(e.type == SDL_KEYDOWN ? 4.0 : 1.0);
       }

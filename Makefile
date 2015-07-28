@@ -10,7 +10,9 @@ INCLUDE= \
 	-I/usr/include/SDL2 
 
 LDFLAGS= -L/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries -L/opt/local/lib
-LIBS= -lSDL2 -lGL -lsamplerate
+LIBS= -lSDL2 -lGL -lsamplerate \
+	`imlib2-config --cflags` `imlib2-config --libs`
+
 
 SOURCES= \
 	src/apu.cpp     \
@@ -32,6 +34,7 @@ SOURCES= \
 	src/mappers/uxrom.cpp \
 	src/mappers/cnrom.cpp \
 	src/mappers/mmc3.cpp \
+	src/image.cpp \
 	main.cpp
 
 OBJECTS= $(SOURCES:.cpp=.o)

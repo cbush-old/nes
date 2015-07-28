@@ -7,4 +7,6 @@ util/test
 *.o
 nes
 *.hex
+*.png
+.DS_Store
 
