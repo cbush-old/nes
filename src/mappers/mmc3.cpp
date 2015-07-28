@@ -22,7 +22,7 @@ uint8_t MMC3::read_prg(uint16_t addr) const {
   if (addr < 0x6000) {
     // ??
     std::cerr << "MMC3 read from " << std::hex << addr << "\n";
-    return 0;
+    throw 1;
 
   } else if (addr < 0x8000) {
 

@@ -35,7 +35,7 @@ NES::NES(const char *rom_path, std::istream& script)
     : video (
         // new SDLVideoDevice()
         // new TTYVideoDevice()
-        new AutoSnapshotVideoDevice(rom_path, 6)
+        new AutoSnapshotVideoDevice(rom_path, 4)
     )
     , audio (
         //new SDLAudioDevice(this)

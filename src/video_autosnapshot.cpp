@@ -10,7 +10,7 @@ AutoSnapshotVideoDevice::AutoSnapshotVideoDevice(std::string const& ROM_name, si
   : _delay_seconds(delay_seconds)
 {
   auto pos = ROM_name.rfind('/');
-  auto pos2 = ROM_name.find('.');
+  auto pos2 = ROM_name.rfind('.');
   _ROM_name = ROM_name.substr(pos + 1, pos2 - pos - 1);
 }
 
