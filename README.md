@@ -23,9 +23,12 @@ This is my NES emulator. It's implemented in C++. It's a work in progress, for e
 This project wouldn't be possible without:
 
 - #nesdev on efnet
-- nesdev wiki
+- nesdev wiki and contributors
 - FCEUX team
 - bisqwit
 - tepples
+- many people in #nesdev
+- Andrew John Jacobs (http://www.obelisk.demon.co.uk/6502)
 - time
 
+and many more.
