@@ -24,6 +24,9 @@ static const uint32_t RGB[64] {
   0xF8D878FF, 0xD8F878FF, 0xB8F8B8FF, 0xB8F8D8FF, 0x00FCFCFF, 0xF8D8F8FF, 0x000000FF, 0x000000FF,
 };
 
+uint32_t palette_index_to_rgba(PaletteIndex i) {
+  return RGB[i];
+}
 
 
 SDLVideoDevice::SDLVideoDevice():

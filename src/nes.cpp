@@ -10,6 +10,7 @@
 #include "audio_sox_pipe.h"
 #include "video_sdl.h"
 #include "video_tty.h"
+#include "video_autosnapshot.h"
 #include "input_sdl.h"
 #include "input_script.h"
 #include "input_script_recorder.h"
@@ -31,18 +32,21 @@ class NoAudioDevice : public IAudioDevice {
 };
 
 NES::NES(const char *rom_path, std::istream& script)
-    : video (new SDLVideoDevice())
-    //video (new TTYVideoDevice())
+    : video (
+        // new SDLVideoDevice()
+        // new TTYVideoDevice()
+        new AutoSnapshotVideoDevice(rom_path)
+    )
     , audio (
-        new SDLAudioDevice(this)
-        //new NoAudioDevice()
+        //new SDLAudioDevice(this)
+        new NoAudioDevice()
     )
     , controller {
         new Std_controller(),
         new Std_controller(),
     }
     , input {
-        new SDLInputDevice(*this, *controller[0]),
+        // new SDLInputDevice(*this, *controller[0]),
         new ScriptInputDevice(*controller[0], script),
         // new ScriptRecorder(*controller[0]),
     }
@@ -124,9 +128,11 @@ void NES::run() {
 
             _semaphore[0].wait();
 
+#if NES_CONTROLS_DELAY
             timeval t;
             gettimeofday(&t, NULL);
             long tock = ((unsigned long long)t.tv_sec * 1000000) + t.tv_usec;
+#endif
 
             video->on_frame();
 
@@ -134,12 +140,15 @@ void NES::run() {
                 i->tick();
             }
 
+#if NES_CONTROLS_DELAY
             gettimeofday(&t, NULL);
             long tick = ((unsigned long long)t.tv_sec * 1000000) + t.tv_usec;
 
             std::this_thread::sleep_for(std::chrono::microseconds(
                 std::max(0l, 1000 - (tick - tock))
             ));
+#endif
+
             _semaphore[1].signal();
         }
 

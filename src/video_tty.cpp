@@ -1,7 +1,7 @@
 #include "video_tty.h"
 #include <cstdio>
 
-Framebuffer buffer;
+static Framebuffer buffer;
 
 char get_char(uint32_t x) {
   return x ? 'A' + x : ' ';

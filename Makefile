@@ -27,6 +27,7 @@ SOURCES= \
 	src/audio_sox_pipe.cpp \
 	src/video_sdl.cpp \
 	src/video_tty.cpp \
+	src/video_autosnapshot.cpp \
 	src/input_sdl.cpp \
 	src/input_script.cpp \
 	src/input_script_recorder.cpp \
