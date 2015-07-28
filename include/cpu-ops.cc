@@ -229,4 +229,5 @@ inline void NOP() {
 
 inline void BAD_OP() {
   print_status();
+  throw 1;
 }

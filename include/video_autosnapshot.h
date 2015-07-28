@@ -5,7 +5,7 @@
 
 class AutoSnapshotVideoDevice : public IVideoDevice {
   public:
-    AutoSnapshotVideoDevice(std::string const& ROM_name);
+    AutoSnapshotVideoDevice(std::string const& ROM_name, size_t delay_seconds = 3);
     ~AutoSnapshotVideoDevice(){}
 
   public:
@@ -14,7 +14,7 @@ class AutoSnapshotVideoDevice : public IVideoDevice {
 
   private:
     Framebuffer _buffer;
-    size_t _frame { 0 };
+    size_t _frame { 0 }, _delay_seconds { 3 };
     std::string _ROM_name;
 
 };

@@ -6,7 +6,8 @@
 
 extern uint32_t palette_index_to_rgba(PaletteIndex i);
 
-AutoSnapshotVideoDevice::AutoSnapshotVideoDevice(std::string const& ROM_name)
+AutoSnapshotVideoDevice::AutoSnapshotVideoDevice(std::string const& ROM_name, size_t delay_seconds /* = 3 */)
+  : _delay_seconds(delay_seconds)
 {
   auto pos = ROM_name.rfind('/');
   auto pos2 = ROM_name.find('.');
@@ -18,7 +19,7 @@ void AutoSnapshotVideoDevice::put_pixel(uint8_t x, uint8_t y, PaletteIndex i) {
 }
 
 void AutoSnapshotVideoDevice::on_frame() {
-  if (++_frame > 3 * 60) {
+  if (++_frame > _delay_seconds * 60) {
     std::stringstream ss;
     ss << "screenshots/" << _ROM_name << ".png";
     logi("create %s", ss.str().c_str());

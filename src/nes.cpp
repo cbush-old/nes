@@ -35,7 +35,7 @@ NES::NES(const char *rom_path, std::istream& script)
     : video (
         // new SDLVideoDevice()
         // new TTYVideoDevice()
-        new AutoSnapshotVideoDevice(rom_path)
+        new AutoSnapshotVideoDevice(rom_path, 6)
     )
     , audio (
         //new SDLAudioDevice(this)
@@ -128,7 +128,7 @@ void NES::run() {
 
             _semaphore[0].wait();
 
-#if NES_CONTROLS_DELAY
+#ifdef NES_CONTROLS_DELAY
             timeval t;
             gettimeofday(&t, NULL);
             long tock = ((unsigned long long)t.tv_sec * 1000000) + t.tv_usec;
@@ -140,7 +140,7 @@ void NES::run() {
                 i->tick();
             }
 
-#if NES_CONTROLS_DELAY
+#ifdef NES_CONTROLS_DELAY
             gettimeofday(&t, NULL);
             long tick = ((unsigned long long)t.tv_sec * 1000000) + t.tv_usec;
 
