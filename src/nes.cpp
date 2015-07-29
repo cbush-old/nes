@@ -34,7 +34,7 @@ class NoAudioDevice : public IAudioDevice {
 NES::NES(const char *rom_path, std::istream& script)
     : video (
 #if defined(USE_AUTOSNAPSHOT_VIDEO)
-        new AutoSnapshotVideoDevice(rom_path, 4)
+        new AutoSnapshotVideoDevice(rom_path, 25)
 #elif defined(USE_TTY_VIDEO)
         new TTYVideoDevice()
 #else
