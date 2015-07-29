@@ -19,7 +19,7 @@
 
 #include "bus.h"
 
-class CPU : public ICPU {
+class CPU : public ICPU, public IRestorable {
   private:
     IBus *bus;
     IAPU *apu;
@@ -52,7 +52,7 @@ class CPU : public ICPU {
     uint16_t last_PC;
     uint8_t last_op;
     int result_cycle { 0 };
-    
+
   private:
     typedef void(CPU::*op)(); // operation
     typedef uint16_t(CPU::*mode)(); // addressing mode
@@ -168,6 +168,11 @@ class CPU : public ICPU {
     void dump_memory() const;
     bool IRQ { false };
     bool _done { false };
+
+
+  public:
+    IRestorable::State const* get_state() const override;
+    void restore_state(IRestorable::State const*) override;
 
 };
 
