@@ -205,13 +205,12 @@ template<op F1, op F2, int I=1> inline void unofficial() {
 //
 //
 inline void JSR() {
-  auto v = ABS();
-  push2(PC);
-  PC = v;
+  push2(PC + 1);
+  PC = ABS();
 }
 
 inline void RTS() {
-  PC = sum_check_pgx(pull2(), 0);
+  PC = pull2() + 1;
 }
 
 inline void BRK() {
