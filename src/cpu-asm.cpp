@@ -89,7 +89,7 @@ const char* const CPU::opasm[] {
   /* 0x55 */ "and d,x",
   /* 0x56 */ "rol d,x",
   /* 0x57 */ "rla d,x",
-  /* 0x58 */ "sec",
+  /* 0x58 */ "cli",
   /* 0x59 */ "and a,y",
   /* 0x5a */ "nop",
   /* 0x5b */ "rla a,y",

@@ -65,12 +65,7 @@ class CPU : public ICPU {
     inline void set_if(bool cond) {
       if (cond) P |= F; else P &= ~F;
     }
-  
-    template<Flag F>
-    inline void clear_if(bool cond) {
-      if (cond) P &= ~F;
-    }
-  
+
     inline void setZN(uint8_t x) {
       set_if<Z_FLAG>(!x);
       set_if<N_FLAG>(x&0x80);
@@ -170,7 +165,8 @@ class CPU : public ICPU {
     static const char* const opasm[256];
 
     void print_status();
-    bool IRQ { true };
+    void dump_memory() const;
+    bool IRQ { false };
     bool _done { false };
 
 };

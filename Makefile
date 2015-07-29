@@ -1,5 +1,6 @@
 CC= clang++
 CFLAGS= -c -Wall -std=c++14 -Wno-unused-const-variable -Wno-missing-braces -O3
+#CFLAGS+= -DDEBUG_CPU
 INCLUDE= \
 	-I. \
 	-Iinclude \

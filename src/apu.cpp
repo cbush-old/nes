@@ -670,6 +670,11 @@ void APU::write(uint8_t value, uint8_t index) {
   } else if (index == 0x17) {
 
     _frame_counter.data = value & 0xc0;
+
+    if (_frame_counter.interrupt_inhibit) {
+      bus->release_IRQ();
+    }
+
     // FIXME: this actually happens 3-4 cycles after write...
     _cycle = 0;
 

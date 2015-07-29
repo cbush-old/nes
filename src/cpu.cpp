@@ -184,19 +184,20 @@ void CPU::run() {
       break;
     }
 
-    if (do_NMI) {
+    if (IRQ && ((P & I_FLAG) == 0)) {
+      print_status();
+      push2(PC);
+      stack_push<&CPU::ProcStatus>();
+      P |= I_FLAG;
+      PC = read(0xfffe) | (read(0xffff) << 8);
+      logi("IRQ. PC=0x%x", (uint16_t)PC);
+    } 
 
+    else if (do_NMI) {
       do_NMI = false;
       push2(PC);
       stack_push<&CPU::ProcStatus>();
       PC = read(0xfffa) | (read(0xfffb) << 8);
-
-    } else if (!IRQ && ((P & I_FLAG) == 0)) {
-
-      push2(PC);
-      stack_push<&CPU::ProcStatus>();
-      set<I_FLAG>();
-      PC = read(0xfffe) | (read(0xffff) << 8);
 
     }
 
@@ -235,11 +236,11 @@ void CPU::print_status() {
 }
 
 void CPU::pull_IRQ() {
-  IRQ = false;
+  IRQ = true;
 }
 
 void CPU::release_IRQ() {
-  IRQ = true;
+  IRQ = false;
 }
 
 void CPU::stop() {
@@ -263,3 +264,17 @@ void CPU::set_observer(IObserver<uint8_t>* observer) {
 #endif
 }
 
+void CPU::dump_memory() const {
+  int w = 16;
+  std::printf("CPU   ");
+  for (int i = 0; i < w; ++i) {
+    std::printf("%02x ", i);
+  }
+  for (int i = 0; i < 0x800; ++i) {
+    if (i % w == 0) {
+      std::printf("\n%03x   ", i);
+    }
+    std::printf("%02x ", (uint8_t)memory[i]);
+  }
+  std::printf("\n");
+}

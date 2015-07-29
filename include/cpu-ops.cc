@@ -67,9 +67,9 @@ template<mode M> inline void ORA() {
 
 template<mode M> inline void BIT() {
   uint8_t m = read<M>();
-  set_if<N_FLAG>(m&0x80);
-  set_if<V_FLAG>(m&0x40);
-  set_if<Z_FLAG>(!(A&m));
+  set_if<N_FLAG>(m & 0x80);
+  set_if<V_FLAG>(m & 0x40);
+  set_if<Z_FLAG>(!(A & m));
 }
 
 template<regr R, mode M> inline void compare() {
@@ -85,7 +85,7 @@ template<regr R, mode M> inline void compare() {
 template<mode M> inline void ADC() {
   uint8_t m = read<M>();
   int r = A + m + !!(P&C_FLAG);
-  set_if<V_FLAG>(~(A^m) & (A^r) & 0x80);
+  set_if<V_FLAG>((~(A^m) & (A^r)) & 0x80);
   set_if<C_FLAG>(r >> 8);
   setZN(A = r);
 }
@@ -164,7 +164,8 @@ uint8_t ROR(uint8_t v) { // rmw
 //
 //
 template<mode M> inline void jump() {
-  PC = (this->*M)();
+  auto v = (this->*M)();
+  PC = v;
 }
 
 template<condition C> inline void branch() {
@@ -204,18 +205,17 @@ template<op F1, op F2, int I=1> inline void unofficial() {
 //
 //
 inline void JSR() {
-  push2(PC + 1);
-  PC = ABS();
+  auto v = ABS();
+  push2(PC);
+  PC = v;
 }
 
 inline void RTS() {
-  PC = pull2() + 1;
+  PC = sum_check_pgx(pull2(), 0);
 }
 
 inline void BRK() {
-  push2(PC + 1);
-  stack_push<&CPU::ProcStatus>();
-  PC = read(0xfffe) | (read(0xffff)<<8);
+  pull_IRQ();
 }
 
 inline void RTI() {
@@ -229,5 +229,6 @@ inline void NOP() {
 
 inline void BAD_OP() {
   print_status();
+  dump_memory();
   throw 1;
 }

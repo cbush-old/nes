@@ -3,7 +3,7 @@
 
 #include <cstdio>
 
-#define log_(...) printf("%s %d: ", __FILE__, __LINE__); printf(__VA_ARGS__); printf("\n");
+#define log_(...) printf("%s.%d:%s\t", __FILE__, __LINE__, __FUNCTION__); printf(__VA_ARGS__); printf("\n");
 
 #define logv(...) log_(__VA_ARGS__);
 #define logi(...) log_(__VA_ARGS__);

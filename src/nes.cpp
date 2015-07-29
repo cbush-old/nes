@@ -33,21 +33,21 @@ class NoAudioDevice : public IAudioDevice {
 
 NES::NES(const char *rom_path, std::istream& script)
     : video (
-        // new SDLVideoDevice()
+        new SDLVideoDevice()
         // new TTYVideoDevice()
-        new AutoSnapshotVideoDevice(rom_path, 4)
+        // new AutoSnapshotVideoDevice(rom_path, 4)
     )
     , audio (
-        //new SDLAudioDevice(this)
-        new NoAudioDevice()
+        new SDLAudioDevice(this)
+        // new NoAudioDevice()
     )
     , controller {
         new Std_controller(),
         new Std_controller(),
     }
     , input {
-        // new SDLInputDevice(*this, *controller[0]),
-        new ScriptInputDevice(*controller[0], script),
+        new SDLInputDevice(*this, *controller[0]),
+        // new ScriptInputDevice(*controller[0], script),
         // new ScriptRecorder(*controller[0]),
     }
     , rom (load_ROM(this, rom_path))
