@@ -84,7 +84,7 @@ void SDLAudioDevice::put_sample(int16_t sample) {
       data.data_out = _out.data() + _out.size();
       data.input_frames = _in.size();
       data.output_frames = _out.available_size();
-      data.src_ratio = 44800.0 / 1789773.0;
+      data.src_ratio = RATIO;
       data.end_of_input = 0;
       int error = src_process(_state, &data);
 

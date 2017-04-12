@@ -16,7 +16,7 @@ set(SRC_FILES ${SRC_FILES} ${SRC_SHADERS})
 set(INCLUDE_DIRS
   ${SRC_DIR}
   ${LIB_DIR}/glm
-  ${LIB_DIR}/SDL-mirror
+  ${LIB_DIR}/SDL-mirror/include
 )
 
 find_package(OpenGL REQUIRED)
@@ -24,11 +24,14 @@ find_package(OpenGL REQUIRED)
 set(SYSTEM_INCLUDE_DIRS
   ${OPENGL_INCLUDE_DIR}/Headers
   ${OPENGL_INCLUDE_DIR}/Headers/OpenGL
-  /opt/local/include
+  /opt/local/include # libsamplerate
 )
 
 # GLM
 file(GLOB_RECURSE LIB_GLM_INCLUDE "${LIB_DIR}/glm/*.hpp")
+
+# SDL2
+add_subdirectory("${LIB_DIR}/SDL-mirror")
 
 source_group(mappers        REGULAR_EXPRESSION "${SRC_DIR}/mappers/.*")
 
@@ -41,28 +44,24 @@ add_library(nes STATIC ${SRC_FILES})
 
 message(STATUS "OpenGL headers: ${OPENGL_INCLUDE_DIR}")
 
-option(BS_BUILD_TESTS "Build tests for BS" ON)
-
-if (BS_BUILD_TESTS)
-  add_subdirectory("${TESTS_DIR}")
-endif()
-
 set(GAME_RES_DIR ${PROJECT_SOURCE_DIR}/game/res)
 
 add_executable(main main.cpp)
 
 find_library(IMLIB2 Imlib2 /opt/local/lib)
+find_library(SAMPLERATE samplerate /opt/local/lib)
 
 target_link_libraries(main
   nes
-  SDL2
+  SDL2-static
   ${IMLIB2}
+  ${SAMPLERATE}
   ${OPENGL_LIBRARIES}
 )
 
-# add_custom_command(TARGET main POST_BUILD
-#   COMMAND ${CMAKE_COMMAND} -E copy_directory
-#     ${RES_DIR} $<TARGET_FILE_DIR:main>/res)
+add_custom_command(TARGET main POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${RES_DIR} $<TARGET_FILE_DIR:main>/res)
 
 add_custom_command(TARGET main POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory

@@ -15,6 +15,12 @@ class Buffer {
     size_t _cursor;
 
   public:
+    Buffer()
+        : _cursor(0)
+    {
+        std::memset(_data, 0, sizeof(_data));
+    }
+
     void push_back(T v) {
       if (_cursor < SIZE) {
         _data[_cursor++] = v;

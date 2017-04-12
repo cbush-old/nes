@@ -96,10 +96,10 @@ class CPU : public ICPU, public IRestorable {
     }
 
   public:
-    void pull_NMI();
-    void pull_IRQ() override;
-    void release_IRQ() override;
-    void run();
+    virtual void pull_NMI() override;
+    virtual void pull_IRQ() override;
+    virtual void release_IRQ() override;
+    virtual void run() override;
 
   private:
     // addressing modes

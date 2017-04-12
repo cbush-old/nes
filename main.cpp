@@ -9,9 +9,9 @@ int main(int argc, char* argv[]){
 
   try {
 
-    std::ifstream script (argv[2]);
+    std::ifstream script;
 
-    NES nes (argv[1], script);
+    NES nes ("res/smb.nes", script);
 
     nes.run();
 

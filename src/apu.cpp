@@ -141,7 +141,7 @@ class Generator_with_length_counter : public Generator {
     ~Generator_with_length_counter() =0;
 
   public:
-    virtual void on_half_frame() {
+    virtual void on_half_frame() override {
       clock_length_counter();
     }
 
@@ -248,7 +248,7 @@ struct Pulse : Generator_with_envelope {
   bool _silenced { false };
   bool _sweep_reload { false };
 
-  void reg3_write(uint8_t value) {
+  void reg3_write(uint8_t value) override {
     reg3 = value;
     reload_length_counter();
     shift = 0; // restart sequencer
@@ -298,14 +298,14 @@ struct Pulse : Generator_with_envelope {
     }
   }
 
-  void update() {
+  void update() override {
     if (++t > timer) {
       t = 0;
       ++shift;
     }
   }
 
-  double sample() const {
+  double sample() const override {
     if (_silenced || !length_counter_active()) {
       return 0.0;
     }
@@ -334,18 +334,18 @@ struct Triangle : Generator_with_length_counter {
     }
   }
 
-  virtual bool get_length_counter_halt() const {
+  virtual bool get_length_counter_halt() const override {
     return triangle_length_counter_halt;
   }
 
-  void reg3_write(uint8_t value) {
+  void reg3_write(uint8_t value) override {
     reg3 = value;
     triangle_length_counter_halt = 1;
     reload_length_counter();
     _linear_counter_reload = true;
   }
 
-  void update() {
+  void update() override {
     if (++t > timer) {
       t = 0;
       if (length_counter_active() && _linear_counter > 0) {
@@ -354,7 +354,7 @@ struct Triangle : Generator_with_length_counter {
     }
   }
 
-  double sample() const {
+  double sample() const override {
     if (!_enabled || !length_counter_active() || timer < 2) {
       return 0.0;
     }
@@ -403,7 +403,7 @@ class DMC : public Generator {
     ~DMC(){}
 
   public:
-    void update() {
+    virtual void update() override {
       if (++_t <= DMC_RATE[frequency_index]) {
         return;
       }
@@ -464,16 +464,16 @@ class DMC : public Generator {
 
     }
 
-    double sample() const {
+    virtual double sample() const override {
       return output_level / 127.0;
     }
 
-    void disable() override {
+    virtual void disable() override {
       _interrupt = false;
       _bytes_remaining = 0;
     }
 
-    void enable() override {
+    virtual void enable() override {
       if (!_bytes_remaining) {
         _address = (sample_address << 13) | 0xC000;
         _bytes_remaining = (sample_length << 11) | 1;
@@ -482,7 +482,7 @@ class DMC : public Generator {
 
 
   protected:
-    void reg3_write(uint8_t value) {
+    void reg3_write(uint8_t value) override {
       reg3 = value;
       sample_address = value;
     }
@@ -503,13 +503,13 @@ class DMC : public Generator {
 APU::APU(IBus *bus, IAudioDevice *audio)
   : bus(bus)
   , audio(audio)
-  , _generator ({
-    new Pulse(),
-    new Pulse(),
-    new Triangle(),
-    new Noise(),
-    new DMC(*bus)
-  })
+  , _generator {
+      {new Pulse(),
+          new Pulse(),
+          new Triangle(),
+          new Noise(),
+          new DMC(*bus)}
+  }
 {
   write(0, 0x17);
 }

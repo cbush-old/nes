@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <chrono>
 
-#include <SDL2/SDL.h>
+#include "SDL.h"
 
 using Button = IController::Button;
 using ButtonState = IController::ButtonState;

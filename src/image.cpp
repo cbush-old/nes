@@ -1,6 +1,9 @@
 #include "image.h"
 #include "log.h"
+
+#define X_DISPLAY_MISSING
 #include <Imlib2.h>
+
 
 extern "C" {
 
