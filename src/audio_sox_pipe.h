@@ -5,17 +5,17 @@
 
 #include <cstdio>
 
-class SoxPipeAudioDevice : public IAudioDevice {
-  public:
+class SoxPipeAudioDevice : public IAudioDevice
+{
+public:
     SoxPipeAudioDevice();
     ~SoxPipeAudioDevice();
 
-  public:
+public:
     void put_sample(int16_t);
 
-  private:
+private:
     FILE *_pipe;
-
 };
 
 #endif

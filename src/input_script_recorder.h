@@ -7,20 +7,22 @@
 #include <fstream>
 #include <set>
 
-class ScriptRecorder : public IInputDevice {
-  public:
-    ScriptRecorder(IController& controller);
+class ScriptRecorder : public IInputDevice
+{
+public:
+    ScriptRecorder(IController &controller);
     ~ScriptRecorder();
 
-  public:
+public:
     void tick();
 
-  private:
-    IController& port;
-    std::ofstream out { "out.tas" };
+private:
+    IController &port;
+    std::ofstream out{ "out.tas" };
     std::set<IController::Button> pressed;
-    unsigned wait { 0 };
-
+    unsigned wait{ 0 };
 };
 
 #endif
+
+f

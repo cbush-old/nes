@@ -8,25 +8,26 @@
 /**
  * @brief a basic system
  **/
-class NES : public IBus {
-  protected:
+class NES : public IBus
+{
+protected:
     IVideoDevice *video;
     IAudioDevice *audio;
     IController *controller[2];
-    std::vector<IInputDevice*> input;
+    std::vector<IInputDevice *> input;
     IROM *rom;
     IPPU *ppu;
     IAPU *apu;
     ICPU *cpu;
 
-  public:
-    NES(const char *rom_path, std::istream& script);
+public:
+    NES(const char *rom_path, std::istream &script);
     virtual ~NES();
 
-  public:
+public:
     void run();
 
-  public:
+public:
     void pull_NMI() override;
     void pull_IRQ() override;
     void release_IRQ() override;
@@ -34,12 +35,12 @@ class NES : public IBus {
     void on_cpu_tick() override;
     uint8_t cpu_read(uint16_t) const override;
 
-  public:
+public:
     double get_rate() const override;
     void set_rate(double) override;
 
-  private:
-    double _rate { 1.0 };
+private:
+    double _rate{ 1.0 };
     semaphore _semaphore[2];
 };
 

@@ -3,18 +3,18 @@
 
 #include "bus.h"
 
-class SDLInputDevice : public IInputDevice {
-  public:
-    SDLInputDevice(IBus &bus, IController& controller);
-    virtual ~SDLInputDevice(){}
+class SDLInputDevice : public IInputDevice
+{
+public:
+    SDLInputDevice(IBus &bus, IController &controller);
+    virtual ~SDLInputDevice() {}
 
-  public:
+public:
     virtual void tick() override;
 
-  private:
-    IBus& _bus;
-    IController& _port;
-
+private:
+    IBus &_bus;
+    IController &_port;
 };
 
 #endif

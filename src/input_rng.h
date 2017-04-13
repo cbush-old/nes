@@ -6,16 +6,17 @@
 #include <iostream>
 #include <random>
 
-class RNGInputDevice : public IInputDevice {
-  public:
-    RNGInputDevice(IController& controller);
-    ~RNGInputDevice(){}
+class RNGInputDevice : public IInputDevice
+{
+public:
+    RNGInputDevice(IController &controller);
+    ~RNGInputDevice() {}
 
-  public:
+public:
     void tick();
 
-  private:
-    IController& port;
+private:
+    IController &port;
     std::mt19937 gen;
 };
 

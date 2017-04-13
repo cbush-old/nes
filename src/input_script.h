@@ -5,18 +5,19 @@
 
 #include <iostream>
 
-class ScriptInputDevice : public IInputDevice {
-  public:
-    ScriptInputDevice(IController& controller, std::istream& source);
-    ~ScriptInputDevice(){}
+class ScriptInputDevice : public IInputDevice
+{
+public:
+    ScriptInputDevice(IController &controller, std::istream &source);
+    ~ScriptInputDevice() {}
 
-  public:
+public:
     void tick();
 
-  private:
-    IController& port;
-    std::istream& source;
-    unsigned wait { 0 };
+private:
+    IController &port;
+    std::istream &source;
+    unsigned wait{ 0 };
 };
 
 #endif
