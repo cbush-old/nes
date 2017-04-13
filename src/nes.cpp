@@ -45,7 +45,7 @@ NES::NES(const char *rom_path, std::istream &script)
 #if NO_AUDIO
           new NoAudioDevice()
 #else
-          new SDLAudioDevice(this)
+          new NoAudioDevice()
 #endif
               )
     , controller{
@@ -184,4 +184,3 @@ void NES::run()
 
     t0.join();
 }
-    }

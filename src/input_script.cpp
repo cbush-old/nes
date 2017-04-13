@@ -49,18 +49,15 @@ void ScriptInputDevice::tick()
 
         if (c == 'w')
         {
-
             source >> wait;
             return;
         }
         else if (c == ' ' || c == '\n' || c == '\t' || c == '\r')
         {
-
             continue;
         }
         else if (c == '+' || c == '-')
         {
-
             mod = c;
         }
         else if (mod)
@@ -78,4 +75,4 @@ void ScriptInputDevice::tick()
     std::cout << "Script: reached end of file or file error\n";
     done = true;
 }
- }
+

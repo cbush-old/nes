@@ -19,12 +19,11 @@ public:
     APU(IBus *bus, IAudioDevice *audio);
     ~APU();
 
-public:
-    void tick();
+    virtual void tick() override;
 
-public:
-    uint8_t read() const;
-    void write(uint8_t, uint8_t);
+    virtual uint8_t read() const override;
+
+    virtual void write(uint8_t, uint8_t) override;
 
 private:
     std::array<struct Generator *, 5> _generator;
