@@ -193,6 +193,9 @@ CPU::CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController *controller0, I
     memory[0x00a] = 0xdf;
     memory[0x00f] = 0xbf;
     memory[0x1fc] = 0x69;
+
+    PC = read(0xfffc) | (read(0xfffd) << 8);
+    logi("PC: %x", (uint16_t)PC);
 }
 
 bool do_NMI{ false };
@@ -204,53 +207,43 @@ void CPU::pull_NMI()
 
 void CPU::run()
 {
-
-    PC = read(0xfffc) | (read(0xfffd) << 8);
-    logi("PC: %x", (uint16_t)PC);
-
-    for (;;)
-    {
-
-        last_PC = PC;
-        last_op = next();
+    last_PC = PC;
+    last_op = next();
 
 #ifdef DEBUG_CPU
-        print_status();
+    print_status();
 #endif
 
-        (this->*ops[last_op])();
+    (this->*ops[last_op])();
 
-        for (int i = 0; i < cycles[last_op] + result_cycle; ++i)
-        {
-            bus->on_cpu_tick();
-        }
-
-        result_cycle = 0;
-
-        if (_done)
-        {
-            break;
-        }
-
-        if (IRQ && ((P & I_FLAG) == 0))
-        {
-            print_status();
-            push2(PC);
-            stack_push<&CPU::ProcStatus>();
-            P |= I_FLAG;
-            PC = read(0xfffe) | (read(0xffff) << 8);
-        }
-
-        else if (do_NMI)
-        {
-            do_NMI = false;
-            push2(PC);
-            stack_push<&CPU::ProcStatus>();
-            PC = read(0xfffa) | (read(0xfffb) << 8);
-        }
+    for (int i = 0; i < cycles[last_op] + result_cycle; ++i)
+    {
+        bus->on_cpu_tick();
     }
 
-    std::cout << "*** cpu done ***" << std::endl;
+    result_cycle = 0;
+
+    if (_done)
+    {
+        return;
+    }
+
+    if (IRQ && ((P & I_FLAG) == 0))
+    {
+        print_status();
+        push2(PC);
+        stack_push<&CPU::ProcStatus>();
+        P |= I_FLAG;
+        PC = read(0xfffe) | (read(0xffff) << 8);
+    }
+
+    else if (do_NMI)
+    {
+        do_NMI = false;
+        push2(PC);
+        stack_push<&CPU::ProcStatus>();
+        PC = read(0xfffa) | (read(0xfffb) << 8);
+    }
 }
 
 template <>

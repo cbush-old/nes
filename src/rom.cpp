@@ -228,8 +228,3 @@ IROM *load_ROM(IBus *bus, const char *path)
 
     return rom;
 }
-
-void unload_ROM(IROM *rom)
-{
-    delete rom;
-}

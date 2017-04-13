@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.4)
 
 project(nes)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z -Wall -Wno-missing-braces")
 
 set(LIB_DIR ${PROJECT_SOURCE_DIR}/lib)
 set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)

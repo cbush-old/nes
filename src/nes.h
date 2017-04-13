@@ -2,7 +2,8 @@
 #define NES_H
 
 #include "bus.h"
-#include "semaphore.h"
+
+#include <memory>
 #include <vector>
 
 /**
@@ -10,16 +11,6 @@
  **/
 class NES : public IBus
 {
-protected:
-    IVideoDevice *video;
-    IAudioDevice *audio;
-    IController *controller[2];
-    std::vector<IInputDevice *> input;
-    IROM *rom;
-    IPPU *ppu;
-    IAPU *apu;
-    ICPU *cpu;
-
 public:
     NES(const char *rom_path, std::istream &script);
     virtual ~NES();
@@ -27,21 +18,26 @@ public:
 public:
     void run();
 
-public:
-    void pull_NMI() override;
-    void pull_IRQ() override;
-    void release_IRQ() override;
-    void on_frame() override;
-    void on_cpu_tick() override;
-    uint8_t cpu_read(uint16_t) const override;
-
-public:
-    double get_rate() const override;
-    void set_rate(double) override;
+    virtual void pull_NMI() override;
+    virtual void pull_IRQ() override;
+    virtual void release_IRQ() override;
+    virtual void on_frame() override;
+    virtual void on_cpu_tick() override;
+    virtual uint8_t cpu_read(uint16_t) const override;
+    virtual double get_rate() const override;
+    virtual void set_rate(double) override;
 
 private:
     double _rate{ 1.0 };
-    semaphore _semaphore[2];
+    
+    std::unique_ptr<IVideoDevice> video;
+    std::unique_ptr<IAudioDevice> audio;
+    std::array<std::unique_ptr<IController>, 2> controller;
+    std::vector<std::shared_ptr<IInputDevice>> input;
+    std::unique_ptr<IROM> rom;
+    std::unique_ptr<IPPU> ppu;
+    std::unique_ptr<IAPU> apu;
+    std::unique_ptr<ICPU> cpu;
 };
 
 #endif

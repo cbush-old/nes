@@ -41,45 +41,29 @@ NES::NES(const char *rom_path, std::istream &script)
           new SDLVideoDevice()
 #endif
               )
-    , audio(
-#if NO_AUDIO
-          new NoAudioDevice()
-#else
-          new NoAudioDevice()
-#endif
-              )
+    , audio(new NoAudioDevice())
     , controller{
-        new Std_controller(),
-        new Std_controller(),
+        std::unique_ptr<IController>{new Std_controller()},
+        std::unique_ptr<IController>{new Std_controller()},
     }
     , input
-{
+    {
 #if SCRIPT_INPUT
-    new ScriptInputDevice(*controller[0], script),
+        std::shared_ptr<IInputDevice>{new ScriptInputDevice(*controller[0], script)},
 #else
-    new SDLInputDevice(*this, *controller[0]),
+        std::shared_ptr<IInputDevice>{new SDLInputDevice(*this, *controller[0])},
 #endif
     // new ScriptRecorder(*controller[0]),
-}
-, rom(load_ROM(this, rom_path)), ppu(new PPU(this, rom, video)), apu(new APU(this, audio)), cpu(new CPU(this, apu, ppu, rom, controller[0], controller[1]))
+    }
+    , rom(load_ROM(this, rom_path))
+    , ppu(new PPU(this, rom.get(), video.get()))
+    , apu(new APU(this, audio.get()))
+    , cpu(new CPU(this, apu.get(), ppu.get(), rom.get(), controller[0].get(), controller[1].get()))
 {
 }
 
 NES::~NES()
-{
-    delete apu;
-    delete cpu;
-    delete ppu;
-    unload_ROM(rom);
-    delete controller[0];
-    delete controller[1];
-    delete video;
-    delete audio;
-    for (auto &i : input)
-    {
-        delete i;
-    }
-}
+{}
 
 uint8_t NES::cpu_read(uint16_t addr) const
 {
@@ -111,8 +95,12 @@ time_point tick{ Clock::now() };
 
 void NES::on_frame()
 {
-    _semaphore[0].signal();
-    _semaphore[1].wait();
+    video->on_frame();
+
+    for (auto &i : input)
+    {
+        i->tick();
+    }
 }
 
 void NES::on_cpu_tick()
@@ -135,52 +123,16 @@ double NES::get_rate() const
 
 void NES::run()
 {
-
-    ((CPU *)cpu)->set_observer16((SDLVideoDevice *)video);
-    ((CPU *)cpu)->set_observer((SDLVideoDevice *)video);
-
-    std::thread t0{ [&] {
-        cpu->run();
-    } };
-
     try
     {
-
         for (;;)
         {
-
-            _semaphore[0].wait();
-
-#ifdef NES_CONTROLS_DELAY
-            timeval t;
-            gettimeofday(&t, NULL);
-            long tock = ((unsigned long long)t.tv_sec * 1000000) + t.tv_usec;
-#endif
-
-            video->on_frame();
-
-            for (auto &i : input)
-            {
-                i->tick();
-            }
-
-#ifdef NES_CONTROLS_DELAY
-            gettimeofday(&t, NULL);
-            long tick = ((unsigned long long)t.tv_sec * 1000000) + t.tv_usec;
-
-            std::this_thread::sleep_for(std::chrono::microseconds(
-                std::max(0l, 1000 - (tick - tock))));
-#endif
-
-            _semaphore[1].signal();
+            cpu->run();
         }
     }
     catch (std::runtime_error const &e)
     {
         std::cout << "stop" << std::endl;
         cpu->stop();
-        _semaphore[1].signal();
     }
-
-    t0.join();
 }
