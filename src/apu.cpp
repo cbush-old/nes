@@ -5,29 +5,34 @@
 #include <set>
 #include <thread>
 
-const uint8_t PULSE_WAVES[]{
+const uint8_t PULSE_WAVES[]
+{
     0x40, // 0 1 0 0 0 0 0 0 (12.5%)
     0x60, // 0 1 1 0 0 0 0 0 (25%)
     0x78, // 0 1 1 1 1 0 0 0 (50%)
     0x9f, // 1 0 0 1 1 1 1 1 (25% negated)
 };
 
-const uint8_t TRIANGLE_STEPS[]{
+const uint8_t TRIANGLE_STEPS[]
+{
     15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 };
 
-const uint16_t NOISE_PERIODS[]{
+const uint16_t NOISE_PERIODS[]
+{
     4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
 };
 
-const uint8_t LENGTHS[]{
-    //           0    1    2    3    4    5    6    7    8    9    a    b    c    d    e    f
+const uint8_t LENGTHS[]
+{
+    //          0    1    2    3    4    5    6    7    8    9    a    b    c    d    e    f
     /* 0x0_ */ 10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
     /* 0x1_ */ 12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30
 };
 
-const uint16_t DMC_RATE[]{
+const uint16_t DMC_RATE[]
+{
     //  0x0  0x1  0x2  0x3  0x4  0x5  0x6  0x7  0x8  0x9  0xA  0xB  0xC  0xD  0xE  0xF
     428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54
 };
@@ -81,7 +86,8 @@ struct Generator
         bit<24, 8> sample_length;
     };
 
-    const std::function<void(uint8_t)> regw[4]{
+    const std::function<void(uint8_t)> regw[4]
+    {
         [this](uint8_t value) { reg0 = value; },
         [this](uint8_t value) { reg1_write(value); },
         [this](uint8_t value) { reg2 = value; },

@@ -83,7 +83,7 @@ public:
 class SDLAudioDevice : public IAudioDevice
 {
 public:
-    static const size_t BUFFER_SIZE = 100000;
+    static const size_t BUFFER_SIZE = 2048 * 2 * 2;
 
 public:
     SDLAudioDevice(IBus *);

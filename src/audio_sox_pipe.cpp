@@ -1,18 +1,16 @@
 #include "audio_sox_pipe.h"
 
+#include <chrono>
 #include <cstdio>
 #include <iostream>
 #include <unistd.h>
 
 SoxPipeAudioDevice::SoxPipeAudioDevice()
     : _pipe(nullptr)
-    , _index(0)
     , _done(false)
     , _data_available ATOMIC_FLAG_INIT
-    //, _thread(&SoxPipeAudioDevice::run, this)
-{
-    (void)_pipe;
-}
+    , _thread(&SoxPipeAudioDevice::run, this)
+{}
 
 SoxPipeAudioDevice::~SoxPipeAudioDevice()
 {
@@ -22,10 +20,9 @@ SoxPipeAudioDevice::~SoxPipeAudioDevice()
 
 void SoxPipeAudioDevice::run()
 {
-#if 0
     _pipe = popen(
-        "sox -q -t raw -c1 -b 16 -e signed-integer -r1789773 - -t raw -c2 - rate 44100 "
-        " | play -q -t raw -r44100 -c1 -b 16 -e signed-integer -",
+        "sox -q -t raw -c1 -b 16 -e signed-integer -r596591 - -t raw -c1 - rate 44800 "
+        " | play -q -t raw -r44800 -c1 -b 16 -e signed-integer -",
         "w");
     
     if (!_pipe)
@@ -33,28 +30,25 @@ void SoxPipeAudioDevice::run()
         std::cerr << "Failed to open sox pipe.\n";
         return;
     }
-    
+
     while (!_done)
     {
-    /*
-        if (!_data_available.test_and_set(std::memory_order_acquire))
+        static const size_t COUNT = 10;
+        static int16_t sample[COUNT];
+        auto amount = _buffer.read(sample, COUNT);
+        if (amount > 0)
         {
-            std::fwrite(_samples.data(), 2, _samples.size(), _pipe);
-            _index = 0;
+            std::fwrite(sample, 2, amount, _pipe);
         }
-    */
     }
-    
+
     pclose(_pipe);
-#endif
 }
 
 void SoxPipeAudioDevice::put_sample(int16_t sample)
 {
-    _samples[_index] = sample;
-    ++_index;
-    if (_index == _samples.size())
-    {
-        //_data_available.clear(std::memory_order_release);
-    }
+    static int i = 0;
+    if (i++ % 3)
+        return;
+    _buffer.write(sample);
 }

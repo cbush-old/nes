@@ -41,7 +41,7 @@ NES::NES(const char *rom_path, std::istream &script)
           new SDLVideoDevice()
 #endif
               )
-    , audio(new NoAudioDevice())
+    , audio(new SDLAudioDevice(this))
     , controller{
         std::unique_ptr<IController>{new Std_controller()},
         std::unique_ptr<IController>{new Std_controller()},

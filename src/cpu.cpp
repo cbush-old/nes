@@ -5,15 +5,15 @@ using std::cout;
 using std::setw;
 using std::hex;
 using std::vector;
-using std::thread;
 using std::string;
 using std::ifstream;
 using std::exception;
 using std::runtime_error;
 
 // CPU cycle chart
-static const uint8_t cycles[256]{
-    //////// 0 1 2 3 4 5 6 7 8 9 A B C D E F
+static const uint8_t cycles[256]
+{
+    //////// 0 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
     /*0x00*/ 7, 6, 0, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
     /*0x10*/ 2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
     /*0x20*/ 6, 6, 0, 8, 3, 3, 5, 5, 4, 2, 2, 2, 4, 4, 6, 6,
