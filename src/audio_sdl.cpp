@@ -7,7 +7,7 @@
 #include <thread>
 #include <cstdio>
 
-static const double OUTPUT_FREQUENCY = 44100.0;
+static const double OUTPUT_FREQUENCY = 192000.0;
 static const double RATIO = OUTPUT_FREQUENCY / (1789773.0 / 3.0);
 const int AUDIO_BUFFER_SIZE = SDLAudioDevice::BUFFER_SIZE;
 
@@ -77,6 +77,7 @@ void SDLAudioDevice::on_buffer_request(float *stream, size_t count)
     _in.blocking_read(count / RATIO, [this, stream, count, &offset](float *in, size_t in_frames)
     {
         assert(count <= BUFFER_SIZE);
+        
         SRC_DATA data;
         data.data_in = in;
         data.data_out = stream + offset;

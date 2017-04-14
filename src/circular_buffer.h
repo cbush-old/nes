@@ -31,6 +31,16 @@ public:
     template<typename Fn>
     void blocking_read(size_t count, Fn process)
     {
+        /*
+        while (available() < count)
+        {
+            if (_done)
+            {
+                return;
+            }
+        }
+        */
+
         while (count > 0)
         {
             if (_done)
@@ -40,34 +50,30 @@ public:
 
             if (_reader == _writer)
             {
-                std::this_thread::yield();
                 continue;
             }
 
-            if (!_mutex.try_lock())
-            {
-                continue;
-            }
-
-            lock guard(_mutex, std::adopt_lock);
+            lock guard(_mutex);
 
             size_t n = 0;
-            if (_reader < _writer)
+            size_t reader = _reader;
+            size_t writer = _writer;
+            if (reader < writer)
             {
-                n = std::min(count, _writer - _reader);
-                auto consumed = process(_buffer.data() + _reader, n);
+                n = std::min(count, writer - reader);
+                auto consumed = process(_buffer.data() + reader, n);
                 assert(consumed == n);
             }
-            else if (_writer < _reader)
+            else if (writer < reader)
             {
-                const auto first = std::min(count, N - _reader);
+                const auto first = std::min(count, N - reader);
                 size_t second = 0;
-                auto consumed = process(_buffer.data() + _reader, first);
+                auto consumed = process(_buffer.data() + reader, first);
                 assert(consumed == first);
 
                 if (first < count)
                 {
-                    second = std::min<size_t>(count - first, _writer);
+                    second = std::min<size_t>(count - first, writer);
                     consumed = process(_buffer.data(), second);
                     assert(consumed == second);
                 }
@@ -85,19 +91,38 @@ public:
     }
 
 private:
+    size_t available() const
+    {
+        size_t reader = _reader;
+        size_t writer = _writer;
+        if (reader == writer)
+        {
+            return 0;
+        }
+        if (reader < writer)
+        {
+            return writer - reader;
+        }
+        return (N - reader) + writer;
+    }
+
     void advance_reader(size_t count)
     {
-        _reader = (_reader + count) % N;
+        size_t reader = _reader;
+        _reader = (reader + count) % N;
     }
     
     void increment_writer()
     {
-        lock guard(_mutex);
         _writer = (_writer + 1) % N;
         if (_writer == _reader)
         {
-            std::cout << "Writer overrun!\n";
-            advance_reader(N / 2);
+            lock guard(_mutex);
+            if (_writer == _reader)
+            {
+                std::cout << "Writer overrun! writer == reader == " << _writer << '\n';
+                advance_reader(1);
+            }
         }
     }
 
@@ -106,16 +131,13 @@ private:
         void lock()
         {
         }
+
         void unlock()
         {
         }
-        bool try_lock()
-        {
-            return true;
-        }
     };
     
-    using MutexType = DummyMutex;
+    using MutexType = std::mutex;
 
     using lock = std::lock_guard<MutexType>;
     MutexType _mutex;

@@ -5,20 +5,19 @@
 #include "bus.h"
 #include "rom.h"
 
-int main(int argc, char* argv[]){
+int main(int argc, char *argv[])
+{
+    try
+    {
+        std::ifstream script;
 
-  try {
+        NES nes("res/mm2.nes", script);
 
-    std::ifstream script;
+        nes.run();
+    }
+    catch (int)
+    {
 
-    NES nes ("res/mm2.nes", script);
-
-    nes.run();
-
-  } catch(int) {
-
-    std::cout << "died\n";
-
-  }
-
+        std::cout << "died\n";
+    }
 }
