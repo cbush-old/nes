@@ -7,8 +7,8 @@
 #include <thread>
 #include <cstdio>
 
-static const double OUTPUT_FREQUENCY = 44100.0;
-static const double RATIO = OUTPUT_FREQUENCY / (1789773.0 / 3.0);
+static const double OUTPUT_FREQUENCY = 44100.0 / 2;
+//static const double RATIO = OUTPUT_FREQUENCY / (1789773.0 / 3.0);
 const int AUDIO_BUFFER_SIZE = SDLAudioDevice::BUFFER_SIZE;
 
 void audio_callback(void *userdata, uint8_t *stream, int length)
@@ -32,7 +32,7 @@ SDLAudioDevice::SDLAudioDevice(IBus *bus)
     desired.format = AUDIO_F32;
     desired.channels = 1;
     desired.samples = AUDIO_BUFFER_SIZE;
-    desired.callback = &audio_callback;
+    desired.callback = nullptr;
     desired.userdata = this;
 
     _device = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0); // FIXME: handle different configurations
@@ -52,7 +52,6 @@ SDLAudioDevice::SDLAudioDevice(IBus *bus)
 
 SDLAudioDevice::~SDLAudioDevice()
 {
-    _in.kill();
     _state = src_delete(_state);
     SDL_CloseAudioDevice(_device);
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
@@ -60,37 +59,30 @@ SDLAudioDevice::~SDLAudioDevice()
 
 void SDLAudioDevice::put_sample(int16_t sample)
 {
+    static double f = 0;
     static int x = 0;
     ++x;
-    if (x % 3)
+    
+    const auto ratio = 1789773.0 / OUTPUT_FREQUENCY;
+    if (x >= ratio)
     {
-        return;
+        f /= ratio;
+        _in.emplace(f);
+        f = 0;
+        x = 0;
+        if (_in.available() > BUFFER_SIZE)
+        {
+            _in.read(BUFFER_SIZE, [this](float *stream, size_t count)
+            {
+                SDL_QueueAudio(_device, stream, count * sizeof(float));
+                return count;
+            });
+        }
     }
-    x = 0;
 
-    _in.emplace(sample / (float)0x7fff);
+    f += sample / (float)0x7fff;
 }
 
 void SDLAudioDevice::on_buffer_request(float *stream, size_t count)
 {
-    size_t offset = 0;
-    _in.blocking_read(count / RATIO, [this, stream, count, &offset](float *in, size_t in_frames)
-    {
-        assert(count <= BUFFER_SIZE);
-        
-        SRC_DATA data;
-        data.data_in = in;
-        data.data_out = stream + offset;
-        data.input_frames = in_frames;
-        data.output_frames = count;
-        data.src_ratio = RATIO;
-        data.end_of_input = 0;
-        int error = src_process(_state, &data);
-
-        assert(!error);
-        // std::cerr << "SRC error: " << src_strerror(error) << '\n';
-
-        offset += data.output_frames_gen;
-        return data.input_frames_used;
-    });
 }

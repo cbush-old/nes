@@ -20,7 +20,7 @@ private:
 
     FILE *_pipe;
 
-    CircularBuffer<int16_t, 4096> _buffer;
+    CircularBuffer<int16_t, 2048> _buffer;
 
     std::atomic<bool> _done;
     std::atomic_flag _data_available;

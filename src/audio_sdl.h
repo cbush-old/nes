@@ -12,7 +12,7 @@
 class SDLAudioDevice : public IAudioDevice
 {
 public:
-    static const size_t BUFFER_SIZE = 4096;
+    static const size_t BUFFER_SIZE = 2048;
 
     SDLAudioDevice(IBus *);
     ~SDLAudioDevice();
@@ -21,10 +21,9 @@ public:
     void on_buffer_request(float *buffer, size_t samples);
 
 private:
-    // Secret Rabbit Code
     struct SRC_STATE_tag *_state{ NULL };
     int _error;
-    CircularBuffer<float, BUFFER_SIZE * 40> _in;
+    CircularBuffer<float, 256 * 1024 * 1024> _in;
     std::array<float, BUFFER_SIZE> _out;
     IBus *_bus;
     int _device{ 0 };
