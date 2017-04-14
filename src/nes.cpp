@@ -60,7 +60,7 @@ NES::NES(const char *rom_path, std::istream &script)
     , ppu(new PPU(this, rom.get(), video.get()))
     , apu(new APU(this, audio.get()))
     , cpu(new CPU(this, apu.get(), ppu.get(), rom.get(), controller[0].get(), controller[1].get()))
-    , _last_frame(clock::now())
+    , _last_second(clock::now())
     , _frame_counter(0)
 {
 }
@@ -106,18 +106,22 @@ void NES::on_frame()
     }
     
     ++_frame_counter;
-    auto dt = clock::now() - _last_frame;
+    auto dt = clock::now() - _last_second;
     if (dt >= std::chrono::seconds(1))
     {
-        _last_frame = clock::now();
-        std::printf("fps: %lu\n", _frame_counter);
+        _last_second = clock::now();
+        if (_last_fps != _frame_counter)
+        {
+            std::printf("fps: %lu\n", _frame_counter);
+            _last_fps = _frame_counter;
+        }
         _frame_counter = 0;
     }
 }
 
 void NES::on_cpu_tick()
 {
-    //apu->tick();
+    apu->tick();
     ppu->tick();
     ppu->tick();
     ppu->tick();

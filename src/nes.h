@@ -42,8 +42,9 @@ private:
     std::unique_ptr<IAPU> apu;
     std::unique_ptr<ICPU> cpu;
     
-    time_point _last_frame;
+    time_point _last_second;
     size_t _frame_counter;
+    size_t _last_fps;
 };
 
 #endif

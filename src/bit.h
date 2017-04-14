@@ -1,6 +1,7 @@
 #ifndef BIT_H
 #define BIT_H
 
+#include <cctype>
 #include <cstdint>
 
 // sexy bisqwit

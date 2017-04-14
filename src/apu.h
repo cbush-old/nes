@@ -11,10 +11,6 @@
 
 class APU : public IAPU
 {
-private:
-    IBus *bus;
-    IAudioDevice *audio{ nullptr };
-
 public:
     APU(IBus *bus, IAudioDevice *audio);
     ~APU();
@@ -26,6 +22,9 @@ public:
     virtual void write(uint8_t, uint8_t) override;
 
 private:
+    IBus *bus;
+    IAudioDevice *audio{ nullptr };
+
     std::array<struct Generator *, 5> _generator;
 
     union {
