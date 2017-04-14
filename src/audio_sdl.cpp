@@ -7,7 +7,7 @@
 #include <thread>
 #include <cstdio>
 
-static const double OUTPUT_FREQUENCY = 192000.0;
+static const double OUTPUT_FREQUENCY = 44100.0;
 static const double RATIO = OUTPUT_FREQUENCY / (1789773.0 / 3.0);
 const int AUDIO_BUFFER_SIZE = SDLAudioDevice::BUFFER_SIZE;
 
@@ -87,10 +87,8 @@ void SDLAudioDevice::on_buffer_request(float *stream, size_t count)
         data.end_of_input = 0;
         int error = src_process(_state, &data);
 
-        if (error)
-        {
-            std::cerr << "SRC error: " << src_strerror(error) << '\n';
-        }
+        assert(!error);
+        // std::cerr << "SRC error: " << src_strerror(error) << '\n';
 
         offset += data.output_frames_gen;
         return data.input_frames_used;

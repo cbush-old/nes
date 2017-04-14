@@ -48,7 +48,10 @@ public:
                 return;
             }
 
-            if (_reader == _writer)
+            size_t reader = _reader.load(std::memory_order_acquire);
+            size_t writer = _writer.load(std::memory_order_acquire);
+
+            if (reader == writer)
             {
                 continue;
             }
@@ -56,8 +59,6 @@ public:
             lock guard(_mutex);
 
             size_t n = 0;
-            size_t reader = _reader;
-            size_t writer = _writer;
             if (reader < writer)
             {
                 n = std::min(count, writer - reader);
@@ -106,23 +107,29 @@ private:
         return (N - reader) + writer;
     }
 
+    static size_t advance_atomic(std::atomic<size_t> &value, size_t count)
+    {
+        size_t v = value.load(std::memory_order_acquire);
+        size_t desired = (v + count) % N;
+        while (!value.compare_exchange_weak(v, desired, std::memory_order_release, std::memory_order_relaxed))
+        {
+            desired = (v + count) % N;
+        }
+        return desired;
+    }
+
     void advance_reader(size_t count)
     {
-        size_t reader = _reader;
-        _reader = (reader + count) % N;
+        advance_atomic(_reader, count);
     }
-    
+
     void increment_writer()
     {
-        _writer = (_writer + 1) % N;
-        if (_writer == _reader)
+        auto writer = advance_atomic(_writer, 1);
+        
+        if (writer == _reader)
         {
-            lock guard(_mutex);
-            if (_writer == _reader)
-            {
-                std::cout << "Writer overrun! writer == reader == " << _writer << '\n';
-                advance_reader(1);
-            }
+            advance_reader(1);
         }
     }
 
@@ -137,7 +144,7 @@ private:
         }
     };
     
-    using MutexType = std::mutex;
+    using MutexType = DummyMutex;
 
     using lock = std::lock_guard<MutexType>;
     MutexType _mutex;
