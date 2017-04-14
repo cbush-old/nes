@@ -24,7 +24,7 @@ private:
     // Secret Rabbit Code
     struct SRC_STATE_tag *_state{ NULL };
     int _error;
-    CircularBuffer<float, BUFFER_SIZE * 40> _in;
+    CircularBuffer<float, BUFFER_SIZE * 200> _in;
     std::array<float, BUFFER_SIZE> _out;
     IBus *_bus;
     int _device{ 0 };

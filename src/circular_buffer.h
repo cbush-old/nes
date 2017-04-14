@@ -3,6 +3,8 @@
 #include <array>
 #include <atomic>
 #include <cassert>
+#include <iostream>
+#include <mutex>
 #include <thread>
 
 template<typename T, size_t N>
@@ -10,7 +12,8 @@ class CircularBuffer
 {
 public:
     CircularBuffer()
-        : _buffer{0}
+        : _done(false)
+        , _buffer{0}
         , _reader(0)
         , _writer(0)
     {}
@@ -30,11 +33,24 @@ public:
     {
         while (count > 0)
         {
-            while (_reader == _writer)
+            if (_done)
+            {
+                return;
+            }
+
+            if (_reader == _writer)
             {
                 std::this_thread::yield();
+                continue;
             }
-    
+
+            if (!_mutex.try_lock())
+            {
+                continue;
+            }
+
+            lock guard(_mutex, std::adopt_lock);
+
             size_t n = 0;
             if (_reader < _writer)
             {
@@ -63,6 +79,11 @@ public:
         }
     }
 
+    void kill()
+    {
+        _done = true;
+    }
+
 private:
     void advance_reader(size_t count)
     {
@@ -71,13 +92,34 @@ private:
     
     void increment_writer()
     {
+        lock guard(_mutex);
         _writer = (_writer + 1) % N;
         if (_writer == _reader)
         {
+            std::cout << "Writer overrun!\n";
             advance_reader(N / 2);
         }
     }
 
+    struct DummyMutex
+    {
+        void lock()
+        {
+        }
+        void unlock()
+        {
+        }
+        bool try_lock()
+        {
+            return true;
+        }
+    };
+    
+    using MutexType = DummyMutex;
+
+    using lock = std::lock_guard<MutexType>;
+    MutexType _mutex;
+    bool _done;
     std::array<T, N> _buffer;
     std::atomic<size_t> _reader;
     std::atomic<size_t> _writer;
