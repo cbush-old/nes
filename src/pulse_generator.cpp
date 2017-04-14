@@ -8,8 +8,6 @@ static const uint8_t PULSE_WAVES[]
     0x9f, // 1 0 0 1 1 1 1 1 (25% negated)
 };
 
-Pulse::~Pulse() {}
-
 void Pulse::reg3_write(uint8_t value)
 {
     reg3 = value;
@@ -78,16 +76,5 @@ void Pulse::update()
         t = 0;
         ++shift;
     }
-}
-
-double Pulse::sample() const
-{
-    return 0.0;
-    if (_silenced || !length_counter_active())
-    {
-        return 0.0;
-    }
-
-    return bool(PULSE_WAVES[duty] & (1 << (shift % 8))) * envelope_sample();
-    
+    _sample = (_silenced || !length_counter_active()) ? 0 : bool(PULSE_WAVES[duty] & (1 << (shift & 7))) * envelope_sample();
 }

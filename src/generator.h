@@ -7,7 +7,23 @@
 struct Generator
 {
 public:
-    union {
+    void regw(size_t r, uint8_t value);
+
+    void set_channel_volume(int16_t v);
+
+    int16_t get_channel_volume() const;
+
+    int16_t mixed_sample() const;
+
+    virtual void enable();
+
+    virtual void disable();
+
+protected:
+    ~Generator();
+
+    union
+    {
         // Common
         bit<0, 8> reg0;
         bit<8, 8> reg1;
@@ -54,57 +70,27 @@ public:
         bit<24, 8> sample_length;
     };
 
-    const std::function<void(uint8_t)> regw[4]
-    {
-        [this](uint8_t value) { reg0 = value; },
-        [this](uint8_t value) { reg1_write(value); },
-        [this](uint8_t value) { reg2 = value; },
-        [this](uint8_t value) {
-            // Writing to reg3 typically has side-effects.
-            // Handle it in the subclasses.
-            reg3_write(value);
-        },
-    };
-
-    uint16_t _channel_volume{ 0x2000 };
-    uint16_t length_counter{ 0 };
-
-    virtual ~Generator();
-
-    virtual void set_channel_volume(uint16_t v);
-
-    virtual uint16_t get_channel_volume() const;
-
+    bool _enabled{ true };
+    uint8_t _sample{0};
+    
+private:
     virtual void reg1_write(uint8_t value);
 
     virtual void reg3_write(uint8_t value) = 0;
 
-    virtual void update() = 0;
-    virtual double sample() const = 0;
-
-    // (Pulse and noise) envelope and (triangle) linear counter
-    virtual void on_quarter_frame();
-
-    // Length counters & sweep units
-    virtual void on_half_frame();
-
-    virtual void enable();
-
-    virtual void disable();
-
-protected:
-    bool _enabled{ true };
+    int16_t _channel_volume{0x100};
 };
 
 class Generator_with_length_counter : public Generator
 {
 public:
-    ~Generator_with_length_counter() = 0;
+    void on_half_frame();
 
-    virtual void on_half_frame() override;
     virtual void disable() override;
 
 protected:
+    ~Generator_with_length_counter();
+
     virtual bool get_length_counter_halt() const;
 
     void reload_length_counter();
@@ -113,26 +99,26 @@ protected:
 
     void clock_length_counter();
 
-    uint8_t _counter{ 0 };
+private:
+    uint8_t _counter{0};
 };
 
 class Generator_with_envelope : public Generator_with_length_counter
 {
+public:
+    void divider_reload();
+    void divider_clock();
+    void on_divider_output_clock();
+    void on_quarter_frame();
+
+protected:
+    ~Generator_with_envelope();
+    
+    uint8_t envelope_sample() const;
+    void start_envelope();
+
 private:
     bool _started{ false };
     uint8_t _divider_counter;
     uint8_t _counter{ 15 };
-
-public:
-    ~Generator_with_envelope() = 0;
-
-    void divider_reload();
-    void divider_clock();
-    void on_divider_output_clock();
-
-protected:
-    double envelope_sample() const;
-    virtual void on_quarter_frame();
-    virtual void start_envelope();
 };
-

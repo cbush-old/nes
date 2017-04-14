@@ -48,14 +48,6 @@ void Triangle::update()
             step = (step + 1) & 31;
         }
     }
-}
-
-double Triangle::sample() const
-{
-    return 0.0;
-    if (!_enabled || !length_counter_active() || timer < 2)
-    {
-        return 0.0;
-    }
-    return TRIANGLE_STEPS[step] / 15.0;
+    
+    _sample = (!_enabled || !length_counter_active() || timer < 2) ? 0 : TRIANGLE_STEPS[step];
 }

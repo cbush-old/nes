@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
     {
         std::ifstream script;
 
-        NES nes("res/mm2.nes", script);
+        NES nes("res/mm3.nes", script);
 
         nes.run();
     }

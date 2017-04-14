@@ -230,7 +230,6 @@ void CPU::run()
 
     if (IRQ && ((P & I_FLAG) == 0))
     {
-        print_status();
         push2(PC);
         stack_push<&CPU::ProcStatus>();
         P |= I_FLAG;

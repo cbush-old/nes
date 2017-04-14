@@ -21,14 +21,11 @@ public:
     void on_buffer_request(float *buffer, size_t samples);
 
 private:
-    struct SRC_STATE_tag *_state{ NULL };
-    int _error;
-    CircularBuffer<float, 256 * 1024 * 1024> _in;
-    std::array<float, BUFFER_SIZE> _out;
+    CircularBuffer<float, BUFFER_SIZE * 2> _in;
     IBus *_bus;
-    int _device{ 0 };
-    bool _unpaused{ false };
-    double _rate{ 1.0 };
+    int _device{0};
+    bool _unpaused{false};
+    double _rate{1.0};
 };
 
 #endif

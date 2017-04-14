@@ -4,11 +4,12 @@
 
 struct Noise : Generator_with_envelope
 {
-    virtual ~Noise();
+public:
     virtual void reg3_write(uint8_t value) override;
-    virtual void update() override;
-    virtual double sample() const override;
+    
+    void update();
 
+private:
     int t{ 0 };
     uint16_t shift{ 1 };
 };

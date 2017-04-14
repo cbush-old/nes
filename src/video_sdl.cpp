@@ -35,17 +35,18 @@ SDLVideoDevice::SDLVideoDevice()
               "",
               SDL_WINDOWPOS_UNDEFINED,
               SDL_WINDOWPOS_UNDEFINED,
-              1024,
+              512,
               480,
               SDL_WINDOW_OPENGL))
     , glcon(
           new SDL_GLContext(SDL_GL_CreateContext(window)))
 {
 
+    SDL_GL_SetSwapInterval(0);
+
     glMatrixMode(GL_PROJECTION | GL_MODELVIEW);
     glLoadIdentity();
-    //glOrtho(0,256,240,0,0,1);
-    glOrtho(0, 512, 240, 0, 0, 1);
+    glOrtho(0, 256, 240, 0, 0, 1);
     glClearColor(0, 0.6, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
     glEnable(GL_TEXTURE_2D);

@@ -4,13 +4,12 @@
 #include <cctype>
 #include <cstdint>
 
-// sexy bisqwit
+// Highly bisqwit-inspired bit class.
+
 template <size_t position, size_t length = 1, typename T = uint32_t>
-struct bit
+class bit
 {
-
-    T value;
-
+public:
     constexpr T mask() const
     {
         return (1u << length) - 1u;
@@ -24,14 +23,14 @@ struct bit
     template <typename T2>
     bit &operator=(T2 that)
     {
-        value &= not_mask_at_pos();
-        value |= (that & mask()) << position;
+        _value &= not_mask_at_pos();
+        _value |= (that & mask()) << position;
         return *this;
     }
 
-    operator T() const
+    inline operator T() const
     {
-        return (value >> position) & mask();
+        return (_value >> position) & mask();
     }
 
     bit &operator++()
@@ -45,6 +44,9 @@ struct bit
         ++*this;
         return r;
     }
+    
+private:
+    T _value;
 };
 
 #endif

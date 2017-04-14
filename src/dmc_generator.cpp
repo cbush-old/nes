@@ -12,8 +12,6 @@ DMC::DMC(IBus &bus)
     : _bus(bus)
 {}
 
-DMC::~DMC() = default;
-
 void DMC::update()
 {
     if (++_t <= DMC_RATE[frequency_index])
@@ -88,11 +86,7 @@ void DMC::update()
             --_bytes_remaining;
         }
     }
-}
-
-double DMC::sample() const
-{
-    return output_level / 127.0;
+    _sample = output_level;
 }
 
 void DMC::disable()

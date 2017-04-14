@@ -31,7 +31,6 @@ extern void screenshot();
 
 void SDLInputDevice::tick()
 {
-
     SDL_Event e;
 
     while (SDL_PollEvent(&e))

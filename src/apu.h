@@ -8,6 +8,10 @@
 
 #include "bus.h"
 #include "bit.h"
+#include "dmc_generator.h"
+#include "noise_generator.h"
+#include "pulse_generator.h"
+#include "triangle_generator.h"
 
 class APU : public IAPU
 {
@@ -22,10 +26,17 @@ public:
     virtual void write(uint8_t, uint8_t) override;
 
 private:
+    void on_quarter_frame();
+    void on_half_frame();
+
     IBus *bus;
     IAudioDevice *audio{ nullptr };
 
-    std::array<struct Generator *, 5> _generator;
+    Pulse _pulse[2];
+    Triangle _triangle;
+    Noise _noise;
+    DMC _dmc;
+    std::array<Generator *, 5> _generators;
 
     union {
         uint8_t data;

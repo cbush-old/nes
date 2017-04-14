@@ -5,8 +5,6 @@ static const uint16_t NOISE_PERIODS[]
     4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
 };
 
-Noise::~Noise() {}
-
 void Noise::reg3_write(uint8_t value)
 {
     reg3 = value;
@@ -28,14 +26,13 @@ void Noise::update()
         shift &= 0x1fff;
         shift |= feedback << 13;
     }
-}
-
-double Noise::sample() const
-{
-    return 0.0;
+    
     if (!_enabled || !length_counter_active())
     {
-        return 0.0;
+        _sample = 0;
     }
-    return double(shift & 1) * envelope_sample();
+    else
+    {
+        _sample = (shift & 1) * envelope_sample();
+    }
 }

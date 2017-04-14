@@ -27,22 +27,24 @@ public:
     NoAudioDevice() {}
     ~NoAudioDevice() {}
 
-public:
     void put_sample(int16_t) override {}
 };
 
+class NoVideoDevice : public IVideoDevice
+{
+public:
+    NoVideoDevice() {}
+    ~NoVideoDevice() {}
+
+    virtual void on_frame() override {}
+    virtual void put_pixel(uint8_t x, uint8_t y, PaletteIndex i) override {}
+};
+
 NES::NES(const char *rom_path, std::istream &script)
-    : video(
-#if defined(USE_AUTOSNAPSHOT_VIDEO)
-          new AutoSnapshotVideoDevice(rom_path, 4)
-#elif defined(USE_TTY_VIDEO)
-          new TTYVideoDevice()
-#else
-          new SDLVideoDevice()
-#endif
-              )
-    //, audio(new SDLAudioDevice(this))
-    , audio(new NoAudioDevice)
+    : video(new SDLVideoDevice)
+    //: video(new NoVideoDevice)
+    , audio(new SDLAudioDevice(this))
+    //, audio(new NoAudioDevice)
     , controller{
         std::unique_ptr<IController>{new Std_controller()},
         std::unique_ptr<IController>{new Std_controller()},

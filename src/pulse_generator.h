@@ -4,13 +4,13 @@
 
 struct Pulse : Generator_with_envelope
 {
-    virtual ~Pulse();
+public:
+    void on_half_frame();
+    void update();
 
+private:
     virtual void reg1_write(uint8_t value) override;
     virtual void reg3_write(uint8_t value) override;
-    virtual void on_half_frame() override;
-    virtual void update() override;
-    virtual double sample() const override;
 
     void adjust_period();
     

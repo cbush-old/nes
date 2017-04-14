@@ -1,10 +1,5 @@
 #include "apu.h"
 
-#include "dmc_generator.h"
-#include "noise_generator.h"
-#include "pulse_generator.h"
-#include "triangle_generator.h"
-
 #include <cmath>
 #include <functional>
 #include <set>
@@ -13,43 +8,52 @@
 APU::APU(IBus *bus, IAudioDevice *audio)
     : bus(bus)
     , audio(audio)
-    , _generator{
-        { new Pulse(),
-          new Pulse(),
-          new Triangle(),
-          new Noise(),
-          new DMC(*bus) }
+    , _dmc(*bus)
+    , _generators
+    {
+        &_pulse[0],
+        &_pulse[1],
+        &_triangle,
+        &_noise,
+        &_dmc,
     }
 {
     write(0, 0x17);
 }
 
-APU::~APU()
+APU::~APU() = default;
+
+void APU::on_quarter_frame()
 {
-    for (int i = 0; i < 5; ++i)
-    {
-        delete _generator[i];
-    }
+    _pulse[0].on_quarter_frame();
+    _pulse[1].on_quarter_frame();
+    _triangle.on_quarter_frame();
+    _noise.on_quarter_frame();
 }
 
-bool other = false;
+void APU::on_half_frame()
+{
+    _pulse[0].on_half_frame();
+    _pulse[1].on_half_frame();
+    _triangle.on_half_frame();
+    _noise.on_half_frame();
+}
 
 void APU::tick()
 {
-
     // Update generators on every other CPU cycle
     if (_cycle & 1)
     {
-        for (auto &g : _generator)
-        {
-            g->update();
-        }
+        _pulse[0].update();
+        _pulse[1].update();
+        _triangle.update();
+        _noise.update();
+        _dmc.update();
     }
     else
     {
-
         // triangle is updated at CPU rate
-        _generator[2]->update();
+        _triangle.update();
     }
 
     ++_cycle;
@@ -59,24 +63,15 @@ void APU::tick()
 
         if ((_cycle == 3728.5 * 2) || (_cycle == 11185.5 * 2))
         {
-
-            for (auto &g : _generator)
-            {
-                g->on_quarter_frame();
-            }
+            on_quarter_frame();
         }
         else if (_cycle == 7456.5 * 2)
         {
-
-            for (auto &g : _generator)
-            {
-                g->on_quarter_frame();
-                g->on_half_frame();
-            }
+            on_quarter_frame();
+            on_half_frame();
         }
         else if (_cycle == 14914 * 2)
         {
-
             if (!_frame_counter.interrupt_inhibit)
             {
                 bus->pull_IRQ();
@@ -84,12 +79,8 @@ void APU::tick()
         }
         else if (_cycle == 14914.5 * 2)
         {
-
-            for (auto &g : _generator)
-            {
-                g->on_quarter_frame();
-                g->on_half_frame();
-            }
+            on_quarter_frame();
+            on_half_frame();
 
             if (!_frame_counter.interrupt_inhibit)
             {
@@ -106,20 +97,20 @@ void APU::tick()
         }
     }
     else
-    { // five-step sequence
-        bool quarter_frame = (_cycle == 3728.5 * 2) || (_cycle == 7456.5 * 2) || (_cycle == 11185.5 * 2) || (_cycle == 18640.5 * 2);
+    {
+        // five-step sequence
+        const bool quarter_frame = (_cycle == 3728.5 * 2) || (_cycle == 7456.5 * 2) || (_cycle == 11185.5 * 2) || (_cycle == 18640.5 * 2);
 
-        bool half_frame = (_cycle == 7456.5 * 2) || (_cycle == 18640.5 * 2);
+        const bool half_frame = (_cycle == 7456.5 * 2) || (_cycle == 18640.5 * 2);
 
-        if (quarter_frame || half_frame)
+        if (quarter_frame)
         {
-            for (auto &g : _generator)
-            {
-                if (quarter_frame)
-                    g->on_quarter_frame();
-                if (half_frame)
-                    g->on_half_frame();
-            }
+            on_quarter_frame();
+        }
+        
+        if (half_frame)
+        {
+            on_half_frame();
         }
 
         if (_cycle >= 18641)
@@ -131,46 +122,13 @@ void APU::tick()
     // Mix sample
 
     int16_t sample = 0;
+    sample += _pulse[0].mixed_sample();
+    sample += _pulse[1].mixed_sample();
+    sample += _triangle.mixed_sample();
+    sample += _noise.mixed_sample();
+    sample += _dmc.mixed_sample();
 
-    for (auto &g : _generator)
-    {
-        sample += (g->sample() - 0.5) * g->get_channel_volume();
-    }
-
-    //sample += _generator[4]->sample() - 0.5;
-
-    /*
-  int samples = 1;
-  double rate = bus->get_rate();
-
-  static int s = 0, t = 0; // FIXME: make member
-
-  if (rate < 1.0) {
-    samples = 1 / rate;
-    double remainder = fmod(1, rate);
-    if (remainder > 0.0001) {
-      if (++s > (int)(1.0 / remainder)) {
-        s = 0;
-        ++samples;
-      }
-    }
-  } else if (rate > 1.0) {
-    // output a sample every 1/1/rate ticks
-    samples = 0;
-    double remainder = fmod(1.0, 1.0 / rate);
-    if (s++ > 1.0 / (1.0 / rate)) {
-      s = 0;
-      samples = 1;
-      if (remainder > 0.0001 && (t++ > (1.0 / remainder))) {
-        t = 0;
-        samples = 0;
-      }
-    }
-  }
-  for (int i = 0; i < samples; ++i)
-  */
-    (void)audio;
-    //audio->put_sample(sample);
+    audio->put_sample(sample);
 }
 
 uint8_t APU::read() const
@@ -182,12 +140,10 @@ void APU::write(uint8_t value, uint8_t index)
 {
     if (index < 0x14)
     {
-
-        _generator[index / 4]->regw[index & 3](value);
+        _generators[index / 4]->regw(index, value);
     }
     else if (index == 0x15)
     {
-
         _status.control = value;
 
         value &= 0x1f;
@@ -195,17 +151,16 @@ void APU::write(uint8_t value, uint8_t index)
         {
             if (value & (1 << i))
             {
-                _generator[i]->enable();
+                _generators[i]->enable();
             }
             else
             {
-                _generator[i]->disable();
+                _generators[i]->disable();
             }
         }
     }
     else if (index == 0x17)
     {
-
         _frame_counter.data = value & 0xc0;
 
         if (_frame_counter.interrupt_inhibit)
@@ -218,11 +173,8 @@ void APU::write(uint8_t value, uint8_t index)
 
         if (_frame_counter.five_frame_sequence)
         {
-            for (auto &g : _generator)
-            {
-                g->on_quarter_frame();
-                g->on_half_frame();
-            }
+            on_quarter_frame();
+            on_half_frame();
         }
     }
 }

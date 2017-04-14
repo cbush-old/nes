@@ -7,21 +7,11 @@
 #include <thread>
 #include <cstdio>
 
-static const double OUTPUT_FREQUENCY = 44100.0 / 2;
-//static const double RATIO = OUTPUT_FREQUENCY / (1789773.0 / 3.0);
+static const double OUTPUT_FREQUENCY = 44800.0;
 const int AUDIO_BUFFER_SIZE = SDLAudioDevice::BUFFER_SIZE;
 
-void audio_callback(void *userdata, uint8_t *stream, int length)
-{
-    std::memset(stream, 0, length);
-    auto &device = *static_cast<SDLAudioDevice *>(userdata);
-    device.on_buffer_request(reinterpret_cast<float *>(stream), length / sizeof(float));
-}
-
 SDLAudioDevice::SDLAudioDevice(IBus *bus)
-    : _state(src_new(SRC_LINEAR, 1, &_error))
-    , _out{0}
-    , _bus(bus)
+    : _bus(bus)
 {
     SDL_InitSubSystem(SDL_INIT_AUDIO);
 
@@ -52,7 +42,6 @@ SDLAudioDevice::SDLAudioDevice(IBus *bus)
 
 SDLAudioDevice::~SDLAudioDevice()
 {
-    _state = src_delete(_state);
     SDL_CloseAudioDevice(_device);
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
@@ -63,7 +52,7 @@ void SDLAudioDevice::put_sample(int16_t sample)
     static int x = 0;
     ++x;
     
-    const auto ratio = 1789773.0 / OUTPUT_FREQUENCY;
+    const auto ratio = (1789773.0 / OUTPUT_FREQUENCY);
     if (x >= ratio)
     {
         f /= ratio;
@@ -81,8 +70,4 @@ void SDLAudioDevice::put_sample(int16_t sample)
     }
 
     f += sample / (float)0x7fff;
-}
-
-void SDLAudioDevice::on_buffer_request(float *stream, size_t count)
-{
 }
