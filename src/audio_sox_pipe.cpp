@@ -30,7 +30,7 @@ void SoxPipeAudioDevice::run()
         std::cerr << "Failed to open sox pipe.\n";
         return;
     }
-
+#if 0
     while (!_done)
     {
         static const size_t COUNT = 10;
@@ -41,8 +41,9 @@ void SoxPipeAudioDevice::run()
             std::fwrite(sample, 2, amount, _pipe);
         }
     }
-
+#endif
     pclose(_pipe);
+
 }
 
 void SoxPipeAudioDevice::put_sample(int16_t sample)
@@ -50,5 +51,5 @@ void SoxPipeAudioDevice::put_sample(int16_t sample)
     static int i = 0;
     if (i++ % 3)
         return;
-    _buffer.write(sample);
+    //_buffer.write(sample);
 }
