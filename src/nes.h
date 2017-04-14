@@ -3,6 +3,7 @@
 
 #include "bus.h"
 
+#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -28,8 +29,10 @@ public:
     virtual void set_rate(double) override;
 
 private:
+    using clock = std::chrono::high_resolution_clock;
+    using time_point = std::chrono::time_point<clock>;
+
     double _rate{ 1.0 };
-    
     std::unique_ptr<IVideoDevice> video;
     std::unique_ptr<IAudioDevice> audio;
     std::array<std::unique_ptr<IController>, 2> controller;
@@ -38,6 +41,9 @@ private:
     std::unique_ptr<IPPU> ppu;
     std::unique_ptr<IAPU> apu;
     std::unique_ptr<ICPU> cpu;
+    
+    time_point _last_frame;
+    size_t _frame_counter;
 };
 
 #endif
