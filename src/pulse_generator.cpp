@@ -10,6 +10,7 @@ static const uint8_t PULSE_WAVES[]
 
 void Pulse::on_reg3_write(uint8_t value)
 {
+    reg3 = value;
     reload_length_counter();
     shift = 0; // restart sequencer
     _silenced = false;

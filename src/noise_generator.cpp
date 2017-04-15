@@ -7,6 +7,7 @@ static const uint16_t NOISE_PERIODS[]
 
 void Noise::on_reg3_write(uint8_t value)
 {
+    reg3 = value;
     reload_length_counter();
     start_envelope();
 }

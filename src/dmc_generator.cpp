@@ -64,7 +64,7 @@ void DMC::update()
             if (_loop_sample)
             {
                 _address = (_sample_address << 13) | 0xC000;
-                _bytes_remaining = (_sample_length << 11) | 1;
+                _bytes_remaining = (sample_length << 11) | 1;
             }
             else if (_enable_IRQ)
             {
@@ -100,11 +100,12 @@ void DMC::enable()
     if (!_bytes_remaining)
     {
         _address = (_sample_address << 13) | 0xC000;
-        _bytes_remaining = (_sample_length << 11) | 1;
+        _bytes_remaining = (sample_length << 11) | 1;
     }
 }
 
 void DMC::on_reg3_write(uint8_t value)
 {
+    reg3 = value;
     _sample_address = value;
 }
