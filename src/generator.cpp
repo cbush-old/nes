@@ -38,6 +38,9 @@ void Generator::regw(size_t r, uint8_t value)
             break;
         case 3:
             _timer = (_timer & ~0xff00) | ((value & 0b111) << 8);
+            _timer_high = (value >> 8) & 0b111;
+            _length_counter_load = (value >> 3) & 0b11111;
+            _sample_length = value;
             on_reg3_write(value);
             break;
     }
@@ -46,7 +49,7 @@ void Generator::regw(size_t r, uint8_t value)
 void Generator::set_timer(uint16_t value)
 {
     _timer = value;
-    timer_high = (value >> 8) & 0b111;
+    _timer_high = (value >> 8) & 0b111;
     regw(2, _timer & 0xff);
 }
 
@@ -92,7 +95,7 @@ void Generator_with_length_counter::reload_length_counter()
 {
     if (_enabled)
     {
-        _counter = LENGTHS[length_counter_load];
+        _counter = LENGTHS[_length_counter_load];
     }
 }
 

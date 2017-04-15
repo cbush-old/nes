@@ -62,19 +62,15 @@ protected:
     uint8_t _noise_period; // 0, 4
     bool _noise_mode; // 7, 1
 
-    union
-    {
-        bit<24, 8> reg3;
+    // reg3
+    // Pulse and triangle
+    uint8_t _timer_high; // 0, 3
 
-        // Pulse and triangle
-        bit<24, 3> timer_high;
+    // Pulse, triangle and noise
+    uint8_t _length_counter_load; // 3, 5
 
-        // Pulse, triangle and noise
-        bit<27, 5> length_counter_load;
-
-        // DMC only
-        bit<24, 8> sample_length;
-    };
+    // DMC only
+    uint32_t _sample_length; // 0, 8
 
     bool _enabled{ true };
     uint8_t _sample{0};

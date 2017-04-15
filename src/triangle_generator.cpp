@@ -32,7 +32,6 @@ bool Triangle::get_length_counter_halt() const
 
 void Triangle::on_reg3_write(uint8_t value)
 {
-    reg3 = value;
     _triangle_length_counter_halt = true;
     reload_length_counter();
     _linear_counter_reload = true;
