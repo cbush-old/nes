@@ -358,15 +358,24 @@ public: // Events
      **/
     virtual void on_second_elapsed() {}
 
-    /**
-     * @brief read cpu-space memory
-     **/
-    virtual uint8_t cpu_read(uint16_t addr) const = 0;
+    /*!
+     \brief read cpu-space memory
+    */
+    virtual uint8_t read_cpu(uint16_t addr) = 0;
 
-    virtual uint8_t read_chr(uint16_t addr) const = 0;
-    virtual uint8_t read_nt(uint16_t addr) const = 0;
+    virtual uint8_t read_apu() = 0;
+    virtual void write_apu(uint8_t value, uint16_t addr) = 0;
+
+    virtual uint8_t read_prg(uint16_t addr) = 0;
+    virtual uint8_t read_chr(uint16_t addr) = 0;
+    virtual uint8_t read_nt(uint16_t addr) = 0;
+    virtual void write_prg(uint8_t value, uint16_t addr) = 0;
     virtual void write_chr(uint8_t value, uint16_t addr) = 0;
     virtual void write_nt(uint8_t value, uint16_t addr) = 0;
+
+    virtual void write_ppu(uint8_t value, uint16_t index) = 0;
+    virtual uint8_t read_ppu(uint16_t index) = 0;
+    
     virtual void put_pixel(uint8_t x, uint8_t y, PaletteIndex i) = 0;
 
 public: // Emulation settings
@@ -413,7 +422,7 @@ public:
     virtual void pull_IRQ() = 0;
     virtual void release_IRQ() = 0;
 
-    virtual uint8_t read(uint16_t) const = 0;
+    virtual uint8_t read(uint16_t) = 0;
 };
 
 #endif

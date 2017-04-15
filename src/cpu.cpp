@@ -32,7 +32,7 @@ static const uint8_t cycles[256]
     /*0xF0*/ 2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7
 };
 
-uint8_t CPU::read(uint16_t addr) const
+uint8_t CPU::read(uint16_t addr)
 {
 
     if (addr < 0x2000)
@@ -42,24 +42,14 @@ uint8_t CPU::read(uint16_t addr) const
     }
     if (addr < 0x4000)
     {
-        switch (addr & 7)
-        {
-        case 2:
-            return ppu->regr_status();
-        case 4:
-            return ppu->regr_OAM_data();
-        case 7:
-            return ppu->regr_data();
-        default: /* bad read */
-            return 0;
-        }
+        return bus->read_ppu(addr & 7);
     }
     else if (addr < 0x4020)
     {
         switch (addr & 0x1f)
         {
         case 0x15:
-            return apu->read();
+            return bus->read_apu();
         case 0x16:
             return controller[0]->read();
         case 0x17:
@@ -70,8 +60,7 @@ uint8_t CPU::read(uint16_t addr) const
     }
     else
     {
-
-        return rom->read_prg(addr);
+        return bus->read_prg(addr);
     }
 }
 
@@ -85,43 +74,19 @@ void CPU::write(uint8_t value, uint16_t addr)
         memory[addr & 0x7ff] = value;
     }
     else if (addr < 0x4000)
-    { // PPU registers
-
-        switch (addr & 7)
-        {
-        case 0:
-            ppu->regw_control(value);
-            break;
-        case 1:
-            ppu->regw_mask(value);
-            break;
-        case 3:
-            ppu->regw_OAM_address(value);
-            break;
-        case 4:
-            ppu->regw_OAM_data(value);
-            break;
-        case 5:
-            ppu->regw_scroll(value);
-            break;
-        case 6:
-            ppu->regw_address(value);
-            break;
-        case 7:
-            ppu->regw_data(value);
-            break;
-        }
+    {
+        bus->write_ppu(value, addr & 7);
     }
     else if (addr < 0x4020)
-    { // APU and I/O registers
-
+    {
+        // APU and I/O registers
         switch (addr & 0x1f)
         {
         case 0x14:
         { // DMA transfer
             for (int i = 0; i < 256; ++i)
             {
-                ppu->regw_OAM_data(read((value & 7) * 0x100 + i));
+                bus->write_ppu(read((value & 7) * 0x100 + i), 4 /* OAM_DATA */);
             }
         }
         break;
@@ -129,14 +94,13 @@ void CPU::write(uint8_t value, uint16_t addr)
             controller[value & 1]->strobe();
             break;
         default:
-            apu->write(value, addr & 0x1f);
+            bus->write_apu(value, addr & 0x1f);
             break;
         }
     }
     else
     {
-
-        rom->write_prg(value, addr);
+        bus->write_prg(value, addr);
     }
 }
 
@@ -178,12 +142,10 @@ uint16_t CPU::next2()
     return v | ((uint16_t)read(PC++) << 8);
 }
 
-CPU::CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController *controller0, IController *controller1)
+CPU::CPU(IBus *bus, IController *controller0, IController *controller1)
     : bus(bus)
-    , apu(apu)
-    , ppu(ppu)
-    , rom(rom)
-    , controller{
+    , controller
+    {
         controller0,
         controller1,
     }

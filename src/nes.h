@@ -18,6 +18,8 @@ class NES : public IBus
 {
 public:
     NES(const char *rom_path, std::istream &script);
+    NES(NES const &) = delete;
+    NES &operator=(NES const &) = delete;
     virtual ~NES();
 
 public:
@@ -28,17 +30,25 @@ public:
     virtual void release_IRQ() override;
     virtual void on_frame() override;
     virtual void on_cpu_tick() override;
-    virtual uint8_t cpu_read(uint16_t) const override;
+
+    virtual uint8_t read_cpu(uint16_t) override;
     virtual double get_rate() const override;
     virtual void set_rate(double) override;
 
     virtual void rewind(bool on) override;
 
-    virtual uint8_t read_chr(uint16_t addr) const override;
-    virtual uint8_t read_nt(uint16_t addr) const override;
+    virtual void put_pixel(uint8_t x, uint8_t y, PaletteIndex i) override;
+
+    virtual uint8_t read_apu() override;
+    virtual uint8_t read_chr(uint16_t addr) override;
+    virtual uint8_t read_nt(uint16_t addr) override;
+    virtual uint8_t read_prg(uint16_t addr) override;
+    virtual uint8_t read_ppu(uint16_t addr) override;
+    virtual void write_apu(uint8_t value, uint16_t addr) override;
     virtual void write_chr(uint8_t value, uint16_t addr) override;
     virtual void write_nt(uint8_t value, uint16_t addr) override;
-    virtual void put_pixel(uint8_t x, uint8_t y, PaletteIndex i) override;
+    virtual void write_ppu(uint8_t value, uint16_t addr) override;
+    virtual void write_prg(uint8_t value, uint16_t addr) override;
 
 private:
     using clock = std::chrono::high_resolution_clock;

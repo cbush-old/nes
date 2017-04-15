@@ -59,7 +59,7 @@ NES::NES(const char *rom_path, std::istream &script)
     , _rom(load_ROM(this, rom_path))
     , ppu(this)
     , apu(this, _audio.get())
-    , cpu(this, &apu, &ppu, _rom.get(), _controller[0].get(), _controller[1].get())
+    , cpu(this, _controller[0].get(), _controller[1].get())
     , _last_frame(clock::now())
     , _last_second(clock::now())
     , _frame_counter(0)
@@ -70,7 +70,7 @@ NES::NES(const char *rom_path, std::istream &script)
 NES::~NES()
 {}
 
-uint8_t NES::cpu_read(uint16_t addr) const
+uint8_t NES::read_cpu(uint16_t addr)
 {
     return cpu.read(addr);
 }
@@ -181,12 +181,12 @@ void NES::run()
     }
 }
 
-uint8_t NES::read_chr(uint16_t addr) const
+uint8_t NES::read_chr(uint16_t addr)
 {
     return _rom->read_chr(addr);
 }
 
-uint8_t NES::read_nt(uint16_t addr) const
+uint8_t NES::read_nt(uint16_t addr)
 {
     return _rom->read_nt(addr);
 }
@@ -205,3 +205,50 @@ void NES::put_pixel(uint8_t x, uint8_t y, PaletteIndex i)
 {
     _video->put_pixel(x, y, i);
 }
+
+uint8_t NES::read_apu()
+{
+    return apu.read();
+}
+
+uint8_t NES::read_prg(uint16_t addr)
+{
+    return _rom->read_prg(addr);
+}
+
+uint8_t NES::read_ppu(uint16_t addr)
+{
+    switch (addr & 7)
+    {
+        case 2: return ppu.regr_status();
+        case 4: return ppu.regr_OAM_data();
+        case 7: return ppu.regr_data();
+        default: // bad read
+            return 0;
+    }
+}
+
+void NES::write_apu(uint8_t value, uint16_t addr)
+{
+    apu.write(value, addr);
+}
+
+void NES::write_ppu(uint8_t value, uint16_t addr)
+{
+    switch (addr & 7)
+    {
+        case 0: ppu.regw_control(value); break;
+        case 1: ppu.regw_mask(value); break;
+        case 3: ppu.regw_OAM_address(value); break;
+        case 4: ppu.regw_OAM_data(value); break;
+        case 5: ppu.regw_scroll(value); break;
+        case 6: ppu.regw_address(value); break;
+        case 7: ppu.regw_data(value); break;
+    }
+}
+
+void NES::write_prg(uint8_t value, uint16_t addr)
+{
+    _rom->write_prg(value, addr);
+}
+

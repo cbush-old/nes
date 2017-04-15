@@ -22,7 +22,7 @@ class CPU
     : public ICPU
 {
 public:
-    CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController *controller0, IController *controller1);
+    CPU(IBus *bus, IController *controller0, IController *controller1);
     
     CPU(CPU const &) = default;
     CPU(CPU &&) = default;
@@ -30,7 +30,7 @@ public:
     CPU &operator=(CPU &&) = default;
     virtual ~CPU() = default;
 
-    virtual uint8_t read(uint16_t) const override;
+    virtual uint8_t read(uint16_t) override;
 
     virtual void pull_NMI() override;
 
@@ -163,9 +163,6 @@ private:
     static const char *const opasm[256];
 
     IBus *bus;
-    IAPU *apu;
-    IPPU *ppu;
-    IROM *rom;
     IController *controller[2];
 
     std::array<uint8_t, 0x800> memory;

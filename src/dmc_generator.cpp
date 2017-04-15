@@ -75,7 +75,7 @@ void DMC::update()
         if (_bytes_remaining)
         {
             // stall CPU for 4 cycles
-            _sample = _bus.cpu_read(_address);
+            _sample = _bus.read_cpu(_address);
 
             ++_address;
             if (!_address)
