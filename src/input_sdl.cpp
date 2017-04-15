@@ -42,10 +42,10 @@ void SDLInputDevice::tick()
             {
                 _port.set_button_state(i->second, (e.type == SDL_KEYDOWN) * IController::BUTTON_ON);
             }
-            else if (e.key.keysym.sym == SDLK_q && e.type == SDL_KEYUP)
+            else if (e.key.keysym.sym == SDLK_q)
             {
-                //_bus.set_rate(e.type == SDL_KEYDOWN ? 0.4 : 1.0);
-                screenshot();
+                _bus.set_rate(e.type == SDL_KEYDOWN ? 0.4 : 1.0);
+        
             }
             else if (e.key.keysym.sym == SDLK_w)
             {

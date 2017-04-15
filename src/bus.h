@@ -164,7 +164,6 @@ class IAPU
 public:
     virtual ~IAPU() {}
 
-public:
     /**
      * @brief read the current state of the apu
      * @note has side effects
@@ -181,7 +180,7 @@ public:
     /**
      * @brief advance the component's internal clock
      **/
-    virtual void tick() = 0;
+    virtual void tick(double rate) = 0;
 };
 
 /**
@@ -408,16 +407,10 @@ public:
 
 public:
     /**
-     * @brief start emulation
+     * @brief step emulation
      **/
-    virtual void run() = 0;
+    virtual void update(double rate) = 0;
 
-    /**
-     * @brief stop emulation
-     **/
-    virtual void stop() = 0;
-
-public:
     /**
      * @brief trigger a non-maskable interrupt (nmi) in the cpu
      **/

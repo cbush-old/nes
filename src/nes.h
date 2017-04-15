@@ -1,7 +1,10 @@
 #ifndef NES_H
 #define NES_H
 
+#include "apu.h"
 #include "bus.h"
+#include "cpu.h"
+#include "ppu.h"
 
 #include <chrono>
 #include <memory>
@@ -38,9 +41,9 @@ private:
     std::array<std::unique_ptr<IController>, 2> controller;
     std::vector<std::shared_ptr<IInputDevice>> input;
     std::unique_ptr<IROM> rom;
-    std::unique_ptr<IPPU> ppu;
-    std::unique_ptr<IAPU> apu;
-    std::unique_ptr<ICPU> cpu;
+    PPU ppu;
+    APU apu;
+    CPU cpu;
     
     time_point _last_frame;
     time_point _last_second;

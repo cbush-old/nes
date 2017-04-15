@@ -205,7 +205,7 @@ void CPU::pull_NMI()
     do_NMI = true;
 }
 
-void CPU::run()
+void CPU::update(double rate)
 {
     last_PC = PC;
     last_op = next();
@@ -222,11 +222,6 @@ void CPU::run()
     }
 
     result_cycle = 0;
-
-    if (_done)
-    {
-        return;
-    }
 
     if (IRQ && ((P & I_FLAG) == 0))
     {
@@ -282,11 +277,6 @@ void CPU::pull_IRQ()
 void CPU::release_IRQ()
 {
     IRQ = false;
-}
-
-void CPU::stop()
-{
-    _done = true;
 }
 
 void CPU::dump_memory() const

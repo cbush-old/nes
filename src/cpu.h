@@ -32,9 +32,6 @@ private:
 public:
     CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController *controller0, IController *controller1);
 
-public:
-    void stop() override;
-
 private:
     enum Flag
     {
@@ -110,7 +107,7 @@ public:
     virtual void pull_NMI() override;
     virtual void pull_IRQ() override;
     virtual void release_IRQ() override;
-    virtual void run() override;
+    virtual void update(double rate) override;
 
 private:
     // addressing modes
@@ -183,7 +180,6 @@ private:
     void print_status();
     void dump_memory() const;
     bool IRQ{ false };
-    bool _done{ false };
 
 public:
     IRestorable::State const *get_state() const override;

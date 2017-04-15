@@ -59,9 +59,9 @@ NES::NES(const char *rom_path, std::istream &script)
     // new ScriptRecorder(*controller[0]),
     }
     , rom(load_ROM(this, rom_path))
-    , ppu(new PPU(this, rom.get(), video.get()))
-    , apu(new APU(this, audio.get()))
-    , cpu(new CPU(this, apu.get(), ppu.get(), rom.get(), controller[0].get(), controller[1].get()))
+    , ppu(this, rom.get(), video.get())
+    , apu(this, audio.get())
+    , cpu(this, &apu, &ppu, rom.get(), controller[0].get(), controller[1].get())
     , _last_frame(clock::now())
     , _last_second(clock::now())
     , _frame_counter(0)
@@ -73,25 +73,22 @@ NES::~NES()
 
 uint8_t NES::cpu_read(uint16_t addr) const
 {
-    return cpu->read(addr);
+    return cpu.read(addr);
 }
 
 void NES::pull_NMI()
 {
-    cpu->pull_NMI();
+    cpu.pull_NMI();
 }
 
 void NES::pull_IRQ()
 {
-    cpu->pull_IRQ();
+    cpu.pull_IRQ();
 }
 
 void NES::release_IRQ()
 {
-    if (cpu)
-    {
-        cpu->release_IRQ();
-    }
+    cpu.release_IRQ();
 }
 
 void NES::on_frame()
@@ -115,21 +112,19 @@ void NES::on_frame()
         }
         _frame_counter = 0;
     }
-    
-    /*
-    static const auto TARGET_FRAME_DURATION = std::chrono::seconds(1) / 60.0;
 
-    while ((clock::now() - _last_frame) < TARGET_FRAME_DURATION)
+    const auto target_frame_duration = std::chrono::seconds(1) / (60.0 * _rate);
+
+    while ((clock::now() - _last_frame) < target_frame_duration)
         ;
 
     _last_frame = clock::now();
-    */
 }
 
 void NES::on_cpu_tick()
 {
-    apu->tick();
-    ppu->tick3();
+    apu.tick(_rate);
+    ppu.tick3();
 }
 
 void NES::set_rate(double rate)
@@ -148,12 +143,11 @@ void NES::run()
     {
         for (;;)
         {
-            cpu->run();
+            cpu.update(_rate);
         }
     }
     catch (std::runtime_error const &e)
     {
         std::cout << "stop" << std::endl;
-        cpu->stop();
     }
 }

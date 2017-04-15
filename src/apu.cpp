@@ -39,7 +39,7 @@ void APU::on_half_frame()
     _noise.on_half_frame();
 }
 
-void APU::tick()
+void APU::tick(double rate)
 {
     // Update generators on every other CPU cycle
     if (_cycle & 1)
@@ -66,7 +66,7 @@ void APU::tick()
 
     int16_t sample = mix();
 
-    audio->put_sample(sample, 1'789'773);
+    audio->put_sample(sample, 1'789'773 * rate);
 }
 
 void APU::tick_four_frame()

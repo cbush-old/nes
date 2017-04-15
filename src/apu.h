@@ -19,7 +19,7 @@ public:
     APU(IBus *bus, IAudioDevice *audio);
     ~APU();
 
-    virtual void tick() override;
+    virtual void tick(double rate) override;
 
     virtual uint8_t read() const override;
 
