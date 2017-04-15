@@ -9,9 +9,9 @@
 
 using Framebuffer = std::array<uint32_t, 256 * 240>;
 
-/**
- * @brief Interface of a restorable class
- **/
+/*!
+ \brief Interface of a restorable class
+ */
 class IRestorable
 {
 public:
@@ -21,13 +21,10 @@ public:
         virtual ~State() = 0;
     };
 
-public:
     virtual ~IRestorable() {}
 
-public:
     virtual State const *get_state() const = 0;
     virtual void restore_state(State const *) = 0;
-    virtual void destroy_state(State *state) { delete state; }
 };
 
 inline IRestorable::State::~State() {}
@@ -262,9 +259,9 @@ public:
 
 public:
     /*!
-     \brief Receive a mono sample at 1,789,773Hz / 3 == 596591.0Hz
+     \brief Receive a mono sample at frequency hz (usually 1,789,773)
     */
-    virtual void put_sample(int16_t) = 0;
+    virtual void put_sample(int16_t sample, size_t hz) = 0;
 };
 
 /**

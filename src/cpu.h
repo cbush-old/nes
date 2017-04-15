@@ -19,19 +19,19 @@
 #include <thread>
 #include <vector>
 
-class PPU;
-
-class CPU : public ICPU, public IRestorable
+class CPU
+    : public ICPU
+    , public IRestorable
 {
 private:
     IBus *bus;
     IAPU *apu;
-    PPU *ppu;
+    IPPU *ppu;
     IROM *rom;
     IController *controller[2];
 
 public:
-    CPU(IBus *bus, IAPU *apu, PPU *ppu, IROM *rom, IController *controller0, IController *controller1);
+    CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController *controller0, IController *controller1);
 
 public:
     void stop() override;

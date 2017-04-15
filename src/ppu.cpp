@@ -22,7 +22,7 @@ static const std::array<std::vector<Renderf>, 32> renderers{};
 
 #define Y(a) X(a) \
              , X(a + 1), X(a + 2), X(a + 3), X(a + 4), X(a + 5), X(a + 6), X(a + 7), X(a + 8), X(a + 9)
-static const Renderf_array renderfuncs
+const Renderf_array PPU::renderfuncs
 {
     Y(0), Y(10), Y(20), Y(30), Y(40), Y(50), Y(60), Y(70), Y(80), Y(90),
     Y(100), Y(110), Y(120), Y(130), Y(140), Y(150), Y(160), Y(170), Y(180), Y(190),
@@ -170,10 +170,17 @@ void PPU::render_clear_vblank()
     reg.PPUSTATUS = 0;
 }
 
-void PPU::render_fetch_sprite_low_0() {}
-void PPU::render_fetch_sprite_low_1() {}
-void PPU::render_fetch_sprite_high_0() {}
-void PPU::render_fetch_sprite_high_1() {}
+void PPU::render_fetch_sprite_low_0()
+{}
+
+void PPU::render_fetch_sprite_low_1()
+{}
+
+void PPU::render_fetch_sprite_high_0()
+{}
+
+void PPU::render_fetch_sprite_high_1()
+{}
 
 void PPU::render_OAM_clear()
 {
@@ -186,7 +193,6 @@ void PPU::render_OAM_clear()
 
 void PPU::render_OAM_read_0()
 {
-
     if (sprrenpos < sproutpos)
     {
 
@@ -456,7 +462,7 @@ void PPU::render_pixel()
         }
     }
 
-    pixel = palette[(attr * 4 + pixel) & 0x1f] & (0x30 + (!reg.grayscale) * 0x0f);
+    pixel = palette[(attr * 4 + pixel) & 0x1f] & (0x30 + !reg.grayscale * 0x0f);
 
     video->put_pixel(_cycle, scanline, pixel & 0x3f);
 }

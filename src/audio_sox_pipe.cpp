@@ -46,7 +46,7 @@ void SoxPipeAudioDevice::run()
 
 }
 
-void SoxPipeAudioDevice::put_sample(int16_t sample)
+void SoxPipeAudioDevice::put_sample(int16_t sample, size_t hz)
 {
     static int i = 0;
     if (i++ % 3)

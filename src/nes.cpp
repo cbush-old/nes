@@ -27,7 +27,7 @@ public:
     NoAudioDevice() {}
     ~NoAudioDevice() {}
 
-    void put_sample(int16_t) override {}
+    virtual void put_sample(int16_t sample, size_t hz) override {}
 };
 
 class NoVideoDevice : public IVideoDevice
@@ -59,11 +59,14 @@ NES::NES(const char *rom_path, std::istream &script)
     // new ScriptRecorder(*controller[0]),
     }
     , rom(load_ROM(this, rom_path))
-    , ppu(this, rom.get(), video.get())
+    , ppu(new PPU(this, rom.get(), video.get()))
     , apu(new APU(this, audio.get()))
-    , cpu(new CPU(this, apu.get(), &ppu, rom.get(), controller[0].get(), controller[1].get()))
+    , cpu(new CPU(this, apu.get(), ppu.get(), rom.get(), controller[0].get(), controller[1].get()))
+    , _last_frame(clock::now())
+#if DEBUG
     , _last_second(clock::now())
     , _frame_counter(0)
+#endif
 {
 }
 
@@ -93,11 +96,6 @@ void NES::release_IRQ()
     }
 }
 
-using Clock = std::chrono::high_resolution_clock;
-using time_point = Clock::time_point;
-
-time_point tick{ Clock::now() };
-
 void NES::on_frame()
 {
     video->on_frame();
@@ -106,7 +104,8 @@ void NES::on_frame()
     {
         i->tick();
     }
-    
+
+#if DEBUG
     ++_frame_counter;
     auto dt = clock::now() - _last_second;
     if (dt >= std::chrono::seconds(1))
@@ -119,12 +118,22 @@ void NES::on_frame()
         }
         _frame_counter = 0;
     }
+#endif
+    
+    /*
+    static const auto TARGET_FRAME_DURATION = std::chrono::seconds(1) / 60.0;
+
+    while ((clock::now() - _last_frame) < TARGET_FRAME_DURATION)
+        ;
+
+    _last_frame = clock::now();
+    */
 }
 
 void NES::on_cpu_tick()
 {
     apu->tick();
-    ppu.tick3();
+    ppu->tick3();
 }
 
 void NES::set_rate(double rate)

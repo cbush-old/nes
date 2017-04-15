@@ -9,10 +9,11 @@
 #include <gl.h>
 #include <glext.h>
 
-#include <iostream>
+#include <cassert>
 #include <cmath>
-#include <sstream>
 #include <ctime>
+#include <iostream>
+#include <sstream>
 
 // Lookup table for palette index to 32-bit RGB
 static const uint32_t RGB[64]
@@ -36,7 +37,7 @@ SDLVideoDevice::SDLVideoDevice()
     : _window{SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 512, 480, SDL_WINDOW_OPENGL)}
     , _gl_context(SDL_GL_CreateContext(_window))
 {
-    SDL_GL_SetSwapInterval(0);
+    SDL_GL_SetSwapInterval(1);
 
     glMatrixMode(GL_PROJECTION | GL_MODELVIEW);
     glLoadIdentity();

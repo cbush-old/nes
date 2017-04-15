@@ -1,5 +1,7 @@
 #pragma once
 
+#include "log.h"
+
 #include <array>
 #include <atomic>
 #include <cassert>
@@ -63,7 +65,6 @@ public:
             }
             n = first + second;
         }
-        //std::printf("reader=%lu, writer=%lu, n=%lu\n", reader, writer, n);
         advance_reader(n);
         assert(n <= count);
         return n;
@@ -95,6 +96,7 @@ private:
         _writer = (_writer + 1) & (N - 1);
         if (_writer == _reader)
         {
+            logw("writer %p overrun!", static_cast<void *>(this));
             advance_reader(1);
         }
     }

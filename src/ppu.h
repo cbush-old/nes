@@ -16,6 +16,7 @@ using Renderf = std::function<void(PPU &)>;
 using Renderf_array = std::array<Renderf, 342>;
 
 class PPU
+    : public IPPU
 {
 public:
     using ObjectAttributeMemory = std::array<uint8_t, 0x100>;
@@ -26,22 +27,19 @@ public:
     /*!
      \brief Advance the component's internal clock 3 times.
     */
-    void tick3();
+    virtual void tick3() override;
 
     // Register read/write
-    void regw_control(uint8_t value);
-    void regw_mask(uint8_t value);
-    void regw_OAM_address(uint8_t value);
-    void regw_OAM_data(uint8_t value);
-    void regw_scroll(uint8_t value);
-    void regw_address(uint8_t value);
-    void regw_data(uint8_t value);
-    uint8_t regr_status();
-    uint8_t regr_OAM_data();
-    uint8_t regr_data();
-
-    template<int X, char X_MOD_8, bool TileDecodeMode, bool X_ODD_64_TO_256, bool X_LT_256, bool X_LT_337>
-    void render();
+    virtual void regw_control(uint8_t value) override;
+    virtual void regw_mask(uint8_t value) override;
+    virtual void regw_OAM_address(uint8_t value) override;
+    virtual void regw_OAM_data(uint8_t value) override;
+    virtual void regw_scroll(uint8_t value) override;
+    virtual void regw_address(uint8_t value) override;
+    virtual void regw_data(uint8_t value) override;
+    virtual uint8_t regr_status() override;
+    virtual uint8_t regr_OAM_data() override;
+    virtual uint8_t regr_data() override;
 
 private:
     /*!
@@ -59,6 +57,8 @@ private:
     */
     uint8_t read(uint16_t addr, bool no_palette = false) const;
 
+    template<int X, char X_MOD_8, bool TileDecodeMode, bool X_ODD_64_TO_256, bool X_LT_256, bool X_LT_337>
+    void render();
 
     void render_pixel();
     void release_frame();
@@ -180,6 +180,7 @@ private:
         uint16_t pattern;
     } OAM2[8], OAM3[8];
 
+    static const Renderf_array renderfuncs;
     Renderf_array::const_iterator tick_renderer;
 
     bool odd_frame{ 0 };

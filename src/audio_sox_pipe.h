@@ -13,7 +13,7 @@ public:
     SoxPipeAudioDevice();
     ~SoxPipeAudioDevice();
 
-    virtual void put_sample(int16_t) override;
+    virtual void put_sample(int16_t sample, size_t hz) override;
 
 private:
     void run();

@@ -1,6 +1,5 @@
 #include "cpu.h"
-
-#include "ppu.h"
+#include <thread>
 
 using std::cout;
 using std::setw;
@@ -179,7 +178,7 @@ uint16_t CPU::next2()
     return v | ((uint16_t)read(PC++) << 8);
 }
 
-CPU::CPU(IBus *bus, IAPU *apu, PPU *ppu, IROM *rom, IController *controller0, IController *controller1)
+CPU::CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController *controller0, IController *controller1)
     : bus(bus)
     , apu(apu)
     , ppu(ppu)
@@ -236,7 +235,6 @@ void CPU::run()
         P |= I_FLAG;
         PC = read(0xfffe) | (read(0xffff) << 8);
     }
-
     else if (do_NMI)
     {
         do_NMI = false;

@@ -2,7 +2,6 @@
 #define NES_H
 
 #include "bus.h"
-#include "ppu.h"
 
 #include <chrono>
 #include <memory>
@@ -39,13 +38,16 @@ private:
     std::array<std::unique_ptr<IController>, 2> controller;
     std::vector<std::shared_ptr<IInputDevice>> input;
     std::unique_ptr<IROM> rom;
-    PPU ppu;
+    std::unique_ptr<IPPU> ppu;
     std::unique_ptr<IAPU> apu;
     std::unique_ptr<ICPU> cpu;
     
+    time_point _last_frame;
+#if DEBUG
     time_point _last_second;
     size_t _frame_counter;
     size_t _last_fps;
+#endif
 };
 
 #endif

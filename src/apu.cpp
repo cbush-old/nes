@@ -46,15 +46,12 @@ void APU::tick()
     {
         _pulse[0].update();
         _pulse[1].update();
-        _triangle.update();
         _noise.update();
         _dmc.update();
     }
-    else
-    {
-        // triangle is updated at CPU rate
-        _triangle.update();
-    }
+
+    // triangle is updated at CPU rate
+    _triangle.update();
 
     ++_cycle;
 
@@ -67,17 +64,9 @@ void APU::tick()
         tick_five_frame();
     }
 
-    static size_t i = 0;
-    ++i;
-    if (i % 3)
-    {
-        return;
-    }
-    i = 0;
-
     int16_t sample = mix();
 
-    audio->put_sample(sample);
+    audio->put_sample(sample, 1'789'773);
 }
 
 void APU::tick_four_frame()
