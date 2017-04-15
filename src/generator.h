@@ -25,7 +25,7 @@ protected:
     union
     {
         // Common
-        bit<0, 8> reg0;
+        bit<0, 8> reg0{0};
         bit<8, 8> reg1;
         bit<16, 8> reg2;
         bit<24, 8> reg3;

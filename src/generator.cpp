@@ -35,7 +35,6 @@ void Generator::reg1_write(uint8_t value)
     reg1 = value;
 }
 
-
 int16_t Generator::mixed_sample() const
 {
     return (static_cast<int16_t>(_sample) - 0x80) * _channel_volume;

@@ -10,6 +10,9 @@ template <size_t position, size_t length = 1, typename T = uint32_t>
 class bit
 {
 public:
+    bit() = default;
+    explicit bit(T v): _value(v) {}
+
     constexpr T mask() const
     {
         return (1u << length) - 1u;
