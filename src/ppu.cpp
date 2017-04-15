@@ -32,10 +32,8 @@ const Renderf_array PPU::renderfuncs
 #undef X
 #undef Y
 
-PPU::PPU(IBus *bus, IROM *rom, IVideoDevice *video)
-    : bus(bus)
-    , rom(rom)
-    , video(video)
+PPU::PPU(IBus *bus)
+    : _bus(bus)
     , tick_renderer(renderfuncs.begin())
 {
     reg.PPUCTRL = 0x00;
@@ -134,13 +132,13 @@ void PPU::render_copy_vertical()
 
 void PPU::render_set_vblank()
 {
-    bus->on_frame();
+    _bus->on_frame();
 
     reg.vblanking = true;
 
     if (reg.NMI_enabled)
     {
-        bus->pull_NMI();
+        _bus->pull_NMI();
     }
 }
 
@@ -445,7 +443,7 @@ void PPU::render_pixel()
 
     pixel = _palette[(attr * 4 + pixel) & 0x1f] & (0x30 + !reg.grayscale * 0x0f);
 
-    video->put_pixel(_cycle, _scanline, pixel & 0x3f);
+    _bus->put_pixel(_cycle, _scanline, pixel & 0x3f);
 }
 
 void PPU::write(uint8_t value, uint16_t addr)
@@ -456,12 +454,12 @@ void PPU::write(uint8_t value, uint16_t addr)
     if (addr < 0x2000)
     { // Pattern table (CHR RAM/ROM)
 
-        rom->write_chr(value, addr);
+        _bus->write_chr(value, addr);
     }
     else if (addr < 0x3f00)
     { // Name table
 
-        rom->write_nt(value, addr - 0x2000);
+        _bus->write_nt(value, addr - 0x2000);
     }
     else
     { // _palette
@@ -479,12 +477,12 @@ uint8_t PPU::read(uint16_t addr, bool no_palette /* = false */) const
     if (addr < 0x2000)
     { // Pattern table
 
-        return rom->read_chr(addr);
+        return _bus->read_chr(addr);
     }
     else if (addr < 0x3f00 + no_palette * 0xff)
     { // Name table
 
-        return rom->read_nt(addr - 0x2000);
+        return _bus->read_nt(addr - 0x2000);
     }
     else
     { // _palette http://wiki.nesdev.com/w/index.php/PPU_palettes

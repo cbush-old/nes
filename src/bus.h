@@ -363,6 +363,12 @@ public: // Events
      **/
     virtual uint8_t cpu_read(uint16_t addr) const = 0;
 
+    virtual uint8_t read_chr(uint16_t addr) const = 0;
+    virtual uint8_t read_nt(uint16_t addr) const = 0;
+    virtual void write_chr(uint8_t value, uint16_t addr) = 0;
+    virtual void write_nt(uint8_t value, uint16_t addr) = 0;
+    virtual void put_pixel(uint8_t x, uint8_t y, PaletteIndex i) = 0;
+
 public: // Emulation settings
     /**
      * @brief get the rate of emulation
@@ -375,6 +381,11 @@ public: // Emulation settings
      * @param rate the rate modifier: 1.0 for normal speed; higher = faster
      **/
     virtual void set_rate(double rate) = 0;
+
+    /*!
+     \brief Set rewind state.
+    */
+    virtual void rewind(bool on) = 0;
 };
 
 /**

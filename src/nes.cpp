@@ -41,30 +41,29 @@ public:
 };
 
 NES::NES(const char *rom_path, std::istream &script)
-    : video(new SDLVideoDevice)
-    //: video(new NoVideoDevice)
-    , audio(new SDLAudioDevice(this))
-    //, audio(new NoAudioDevice)
-    , controller{
+    : _video(new SDLVideoDevice)
+    , _audio(new SDLAudioDevice(this))
+    , _controller{
         std::unique_ptr<IController>{new Std_controller()},
         std::unique_ptr<IController>{new Std_controller()},
     }
-    , input
+    , _input
     {
 #if SCRIPT_INPUT
-        std::shared_ptr<IInputDevice>{new ScriptInputDevice(*controller[0], script)},
+        std::shared_ptr<IInputDevice>{new ScriptInputDevice(*_controller[0], script)},
 #else
-        std::shared_ptr<IInputDevice>{new SDLInputDevice(*this, *controller[0])},
+        std::shared_ptr<IInputDevice>{new SDLInputDevice(*this, *_controller[0])},
 #endif
-    // new ScriptRecorder(*controller[0]),
+    // new ScriptRecorder(*_controller[0]),
     }
-    , rom(load_ROM(this, rom_path))
-    , ppu(this, rom.get(), video.get())
-    , apu(this, audio.get())
-    , cpu(this, &apu, &ppu, rom.get(), controller[0].get(), controller[1].get())
+    , _rom(load_ROM(this, rom_path))
+    , ppu(this)
+    , apu(this, _audio.get())
+    , cpu(this, &apu, &ppu, _rom.get(), _controller[0].get(), _controller[1].get())
     , _last_frame(clock::now())
     , _last_second(clock::now())
     , _frame_counter(0)
+    , _rewinding(false)
 {
 }
 
@@ -95,9 +94,9 @@ void NES::on_frame()
 {
     ++_frame_counter;
 
-    video->on_frame();
+    _video->on_frame();
 
-    for (auto &i : input)
+    for (auto &i : _input)
     {
         i->tick();
     }
@@ -120,6 +119,35 @@ void NES::on_frame()
         ;
 
     _last_frame = clock::now();
+    
+    if (_rewinding)
+    {
+        if (_cpu_states.size())
+        {
+            cpu = _cpu_states.back();
+            ppu = _ppu_states.back();
+            if (_cpu_states.size() > 1)
+            {
+                _cpu_states.pop_back();
+                _ppu_states.pop_back();
+            }
+        }
+    }
+    else
+    {
+        if (_ppu_states.size() > 1024)
+        {
+            _cpu_states.erase(_cpu_states.begin());
+            _ppu_states.erase(_ppu_states.begin());
+        }
+        _cpu_states.emplace_back(cpu);
+        _ppu_states.emplace_back(ppu);
+    }
+}
+
+void NES::rewind(bool on)
+{
+    _rewinding = on;
 }
 
 void NES::on_cpu_tick()
@@ -151,4 +179,29 @@ void NES::run()
     {
         std::cout << "stop" << std::endl;
     }
+}
+
+uint8_t NES::read_chr(uint16_t addr) const
+{
+    return _rom->read_chr(addr);
+}
+
+uint8_t NES::read_nt(uint16_t addr) const
+{
+    return _rom->read_nt(addr);
+}
+
+void NES::write_chr(uint8_t value, uint16_t addr)
+{
+    _rom->write_chr(value, addr);
+}
+
+void NES::write_nt(uint8_t value, uint16_t addr)
+{
+    _rom->write_nt(value, addr);
+}
+
+void NES::put_pixel(uint8_t x, uint8_t y, PaletteIndex i)
+{
+    _video->put_pixel(x, y, i);
 }

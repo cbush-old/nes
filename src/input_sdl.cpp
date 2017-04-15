@@ -48,7 +48,7 @@ void SDLInputDevice::tick()
             }
             else if (e.key.keysym.sym == SDLK_w)
             {
-                _bus.set_rate(e.type == SDL_KEYDOWN ? 4.0 : 1.0);
+                _bus.rewind(e.type == SDL_KEYDOWN);
             }
         }
         else if (e.type == SDL_QUIT)

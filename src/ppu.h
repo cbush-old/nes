@@ -22,7 +22,7 @@ public:
     using ObjectAttributeMemory = std::array<uint8_t, 0x100>;
     using Palette = std::array<uint8_t, 0x20>;
 
-    PPU(IBus *bus, IROM *rom, IVideoDevice *video);
+    PPU(IBus *bus);
 
     PPU(PPU const &) = default;
     PPU(PPU &&) = default;
@@ -53,7 +53,7 @@ private:
         uint8_t y;
         uint8_t index;
         union {
-            uint8_t attr;
+            uint8_t attr{0};
             bit<0, 2, uint8_t> _palette;
             bit<5, 1, uint8_t> priority;
             bit<6, 1, uint8_t> flip_horizontally;
@@ -113,9 +113,7 @@ private:
 
     static const Renderf_array renderfuncs;
 
-    IBus *bus;
-    IROM *rom;
-    IVideoDevice *video;
+    IBus *_bus;
 
     union
     {
