@@ -63,10 +63,8 @@ NES::NES(const char *rom_path, std::istream &script)
     , apu(new APU(this, audio.get()))
     , cpu(new CPU(this, apu.get(), ppu.get(), rom.get(), controller[0].get(), controller[1].get()))
     , _last_frame(clock::now())
-#if DEBUG
     , _last_second(clock::now())
     , _frame_counter(0)
-#endif
 {
 }
 
@@ -105,7 +103,6 @@ void NES::on_frame()
         i->tick();
     }
 
-#if DEBUG
     ++_frame_counter;
     auto dt = clock::now() - _last_second;
     if (dt >= std::chrono::seconds(1))
@@ -118,7 +115,6 @@ void NES::on_frame()
         }
         _frame_counter = 0;
     }
-#endif
     
     /*
     static const auto TARGET_FRAME_DURATION = std::chrono::seconds(1) / 60.0;
