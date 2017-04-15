@@ -9,8 +9,8 @@ public:
     void update();
 
 private:
-    virtual void reg1_write(uint8_t value) override;
-    virtual void reg3_write(uint8_t value) override;
+    virtual void on_reg1_write(uint8_t value) override;
+    virtual void on_reg3_write(uint8_t value) override;
 
     void adjust_period();
     

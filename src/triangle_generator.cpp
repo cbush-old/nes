@@ -30,7 +30,7 @@ bool Triangle::get_length_counter_halt() const
     return _triangle_length_counter_halt;
 }
 
-void Triangle::reg3_write(uint8_t value)
+void Triangle::on_reg3_write(uint8_t value)
 {
     reg3 = value;
     _triangle_length_counter_halt = true;

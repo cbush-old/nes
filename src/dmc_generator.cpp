@@ -29,13 +29,13 @@ void DMC::update()
     if (!_silence)
     {
         bool inc = _shift & 1;
-        if (inc && output_level <= 125)
+        if (inc && _output_level <= 125)
         {
-            output_level = output_level + 2;
+            _output_level += 2;
         }
-        else if (!inc && output_level >= 2)
+        else if (!inc && _output_level >= 2)
         {
-            output_level = output_level - 2;
+            _output_level -= 2;
         }
     }
 
@@ -86,7 +86,7 @@ void DMC::update()
             --_bytes_remaining;
         }
     }
-    _sample = output_level;
+    _sample = _output_level;
 }
 
 void DMC::disable()
@@ -104,7 +104,7 @@ void DMC::enable()
     }
 }
 
-void DMC::reg3_write(uint8_t value)
+void DMC::on_reg3_write(uint8_t value)
 {
     reg3 = value;
     _sample_address = value;

@@ -8,7 +8,7 @@ static const uint8_t PULSE_WAVES[]
     0x9f, // 1 0 0 1 1 1 1 1 (25% negated)
 };
 
-void Pulse::reg3_write(uint8_t value)
+void Pulse::on_reg3_write(uint8_t value)
 {
     reg3 = value;
     reload_length_counter();
@@ -17,15 +17,14 @@ void Pulse::reg3_write(uint8_t value)
     start_envelope();
 }
 
-void Pulse::reg1_write(uint8_t value)
+void Pulse::on_reg1_write(uint8_t value)
 {
-    reg1 = value;
     adjust_period();
 }
 
 void Pulse::adjust_period()
 {
-    _target = _timer + (sweep_negative ? -1 : 1) * (_timer >> sweep_shift);
+    _target = _timer + (_sweep_negative ? -1 : 1) * (_timer >> _sweep_shift);
     if (_timer < 8 || _target > 0x7ff)
     {
         _silenced = true;
@@ -38,12 +37,12 @@ void Pulse::on_half_frame()
     if (_sweep_reload)
     {
 
-        if (!_sweep_divider && sweep_enabled)
+        if (!_sweep_divider && _sweep_enabled)
         {
             adjust_period();
         }
 
-        _sweep_divider = sweep_period + 1;
+        _sweep_divider = _sweep_period + 1;
         _sweep_reload = false;
     }
     else
@@ -51,11 +50,11 @@ void Pulse::on_half_frame()
 
         if (!_sweep_divider)
         {
-            if (sweep_enabled)
+            if (_sweep_enabled)
             {
-                _sweep_divider = sweep_period + 1;
+                _sweep_divider = _sweep_period + 1;
                 adjust_period();
-                if (!_silenced && sweep_shift)
+                if (!_silenced && _sweep_shift)
                 {
                     set_timer(_target);
                 }

@@ -44,28 +44,27 @@ protected:
         bool _triangle_control;
         bool _enable_IRQ;
     };
-    
+
+    // reg1
+    uint8_t _sweep_shift; // 0, 3
+    bool _sweep_negative; // 4, 1
+    uint8_t _sweep_period; // 5, 3
+    bool _sweep_enabled; // 7, 1
+    uint8_t _output_level; // 0, 7
+
     // reg2
     union
     {
-        uint8_t _timer_low; // 16, 8
+        uint8_t _timer_low; // 0, 8
         uint8_t _sample_address;
     };
-    uint16_t _timer; // 16, 11
-    uint8_t _noise_period; // 16, 4
-    bool _noise_mode; // 23, 1
+    uint16_t _timer; // 0, 11
+    uint8_t _noise_period; // 0, 4
+    bool _noise_mode; // 7, 1
 
     union
     {
-        // Common
-        bit<8, 8> reg1;
         bit<24, 8> reg3;
-
-        // Pulse only
-        bit<8, 3> sweep_shift;
-        bit<11, 1> sweep_negative;
-        bit<12, 3> sweep_period;
-        bit<15, 1> sweep_enabled;
 
         // Pulse and triangle
         bit<24, 3> timer_high;
@@ -74,7 +73,6 @@ protected:
         bit<27, 5> length_counter_load;
 
         // DMC only
-        bit<8, 7> output_level;
         bit<24, 8> sample_length;
     };
 
@@ -85,9 +83,9 @@ protected:
     void set_timer(uint16_t value);
 
 private:
-    virtual void reg1_write(uint8_t value);
+    virtual void on_reg1_write(uint8_t value);
 
-    virtual void reg3_write(uint8_t value) = 0;
+    virtual void on_reg3_write(uint8_t value);
 
     int16_t _channel_volume{0x100};
 };
