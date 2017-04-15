@@ -66,6 +66,7 @@ private:
     
     std::vector<CPU> _cpu_states;
     std::vector<PPU> _ppu_states;
+    std::vector<std::unique_ptr<IROM>> _rom_states;
 
     time_point _last_frame;
     time_point _last_second;

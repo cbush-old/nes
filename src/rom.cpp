@@ -18,7 +18,7 @@ uint8_t ROM::read_prg(uint16_t addr) const
     else
     {
         addr -= 0x8000;
-        return prg_bank[addr / 0x4000][addr & 0x3fff];
+        return mirrored_prg(addr, 0x4000);
     }
 }
 
@@ -31,7 +31,7 @@ void ROM::write_prg(uint8_t value, uint16_t addr)
     else
     {
         addr -= 0x8000;
-        prg_bank[addr / 0x4000][addr & 0x3fff] = value;
+        mirrored_prg(addr, 0x4000) = value;
     }
 }
 
@@ -40,24 +40,22 @@ void ROM::write_prg(uint8_t value, uint16_t addr)
 //
 void ROM::write_chr(uint8_t value, uint16_t addr)
 {
-    chr_bank[addr / 0x1000][addr % 0x1000] = value;
+    mirrored_chr(addr, 0x1000) = value;
 }
 
 uint8_t ROM::read_chr(uint16_t addr) const
 {
-    return chr_bank[addr / 0x1000][addr % 0x1000];
+    return mirrored_chr(addr, 0x1000);
 }
 
 void ROM::write_nt(uint8_t value, uint16_t addr)
 {
-    uint16_t table = (addr >> 10) & 3;
-    nametable[table][addr & 0x3ff] = value;
+    mirrored_nt(addr, 0x400) = value;
 }
 
 uint8_t ROM::read_nt(uint16_t addr) const
 {
-    uint16_t table = (addr >> 10) & 3;
-    return nametable[table][addr & 0x3ff];
+    return mirrored_nt(addr, 0x400);
 }
 
 ROM::ROM()
@@ -74,17 +72,16 @@ void ROM::set_prg(uint8_t count)
 
     prg.resize(count * 0x4000);
 
-    prg_bank.push_back(prg.data() + 0x0);
-    prg_bank.push_back(prg.data() + (count > 1 ? 0x4000 : 0));
+    prg_bank.emplace_back(0x0);
+    prg_bank.emplace_back(count > 1 ? 0x4000 : 0);
 }
 
 void ROM::set_chr(uint8_t count)
 {
-
     chr.resize(count ? count * 0x2000 : 0x4000);
 
-    chr_bank.push_back(chr.data());
-    chr_bank.push_back(chr.data() + 0x1000);
+    chr_bank.emplace_back(0);
+    chr_bank.emplace_back(0x1000);
 }
 
 uint8_t *ROM::get_prg_data()
@@ -112,42 +109,42 @@ void ROM::set_mirroring(MirrorMode mode)
     if (mode == FOUR_SCREEN)
     {
         std::cout << "4s mirroring\n";
-        nametable[0] = nt.data();
-        nametable[1] = nt.data();
-        nametable[2] = nt.data() + 0x400;
-        nametable[3] = nt.data() + 0x400;
+        nametable[0] = 0;
+        nametable[1] = 0;
+        nametable[2] = 0x400;
+        nametable[3] = 0x400;
     }
     else if (mode == HORIZONTAL)
     {
         // std::cout << "Horizontal mirroring\n";
-        nametable[0] = nt.data();
-        nametable[1] = nt.data();
-        nametable[2] = nt.data() + 0x400;
-        nametable[3] = nt.data() + 0x400;
+        nametable[0] = 0;
+        nametable[1] = 0;
+        nametable[2] = 0x400;
+        nametable[3] = 0x400;
     }
     else if (mode == VERTICAL)
     {
         // std::cout << "Vertical mirroring\n";
-        nametable[0] = nt.data();
-        nametable[1] = nt.data() + 0x400;
-        nametable[2] = nt.data();
-        nametable[3] = nt.data() + 0x400;
+        nametable[0] = 0;
+        nametable[1] = 0x400;
+        nametable[2] = 0;
+        nametable[3] = 0x400;
     }
     else if (mode == SINGLE_SCREEN_A)
     {
         std::cout << "1sa mirroring\n";
-        nametable[0] = nt.data();
-        nametable[1] = nt.data();
-        nametable[2] = nt.data();
-        nametable[3] = nt.data();
+        nametable[0] = 0;
+        nametable[1] = 0;
+        nametable[2] = 0;
+        nametable[3] = 0;
     }
     else if (mode == SINGLE_SCREEN_B)
     {
         std::cout << "1sb mirroring\n";
-        nametable[0] = nt.data() + 0x400;
-        nametable[1] = nt.data() + 0x400;
-        nametable[2] = nt.data() + 0x400;
-        nametable[3] = nt.data() + 0x400;
+        nametable[0] = 0x400;
+        nametable[1] = 0x400;
+        nametable[2] = 0x400;
+        nametable[3] = 0x400;
     }
 }
 
@@ -228,3 +225,39 @@ IROM *load_ROM(IBus *bus, const char *path)
 
     return rom;
 }
+
+uint8_t const &ROM::mirrored(std::vector<uint8_t> const &source, std::vector<size_t> const &mirror, uint16_t addr, uint16_t mod) const
+{
+    return source.at(mirror.at(addr / mod) + (addr % mod));
+}
+
+uint8_t &ROM::mirrored(std::vector<uint8_t> &source, std::vector<size_t> const &mirror, uint16_t addr, uint16_t mod)
+{
+    return const_cast<uint8_t &>(static_cast<ROM const *>(this)->mirrored(source, mirror, addr, mod));
+}
+
+#define IMPLEMENT_ROM_MIRROR(NAME, SOURCE, MIRROR) \
+    uint8_t const &ROM::mirrored_##NAME(uint16_t addr, uint16_t mod) const \
+    { \
+        return mirrored(SOURCE, MIRROR, addr, mod); \
+    } \
+    \
+    uint8_t &ROM::mirrored_##NAME(uint16_t addr, uint16_t mod) \
+    { \
+        return mirrored(SOURCE, MIRROR, addr, mod); \
+    }
+
+IMPLEMENT_ROM_MIRROR(chr, chr, chr_bank);
+IMPLEMENT_ROM_MIRROR(prg, prg, prg_bank);
+
+uint8_t const &ROM::mirrored_nt(uint16_t addr, uint16_t mod) const
+{
+    const auto i = (addr >> 10) & 3;
+    return nt.at(nametable.at(i) + (addr % mod));
+}
+
+uint8_t &ROM::mirrored_nt(uint16_t addr, uint16_t mod)
+{
+    return const_cast<uint8_t &>(static_cast<ROM const *>(this)->mirrored_nt(addr, mod));
+}
+

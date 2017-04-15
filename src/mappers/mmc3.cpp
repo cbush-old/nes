@@ -36,7 +36,7 @@ uint8_t MMC3::read_prg(uint16_t addr) const
     else
     {
         addr -= 0x8000;
-        return prg_bank[addr / 0x2000][addr % 0x2000];
+        return mirrored_prg(addr, 0x2000);
     }
 }
 
@@ -69,7 +69,7 @@ uint8_t MMC3::read_chr(uint16_t addr) const
         return 0;
     }
 
-    return chr_bank.at(addr / 0x400)[addr % 0x400];
+    return mirrored_chr(addr, 0x400);
 }
 
 void MMC3::set_prg(uint8_t count)
@@ -77,10 +77,10 @@ void MMC3::set_prg(uint8_t count)
     std::cout << "MMC set prg\n";
     prg.resize(count * 0x4000);
     std::cout << std::hex << prg.size() << "<\n";
-    prg_bank.push_back(prg.data());
-    prg_bank.push_back(prg.data());
-    prg_bank.push_back(prg.data());
-    prg_bank.push_back(prg.data() + prg.size() - PRG_PAGE_SIZE);
+    prg_bank.emplace_back(0);
+    prg_bank.emplace_back(0);
+    prg_bank.emplace_back(0);
+    prg_bank.emplace_back(prg.size() - PRG_PAGE_SIZE);
 }
 
 void MMC3::set_chr(uint8_t count)
@@ -90,14 +90,14 @@ void MMC3::set_chr(uint8_t count)
         count = 0x2000 / CHR_PAGE_SIZE;
     }
     chr.resize(count * 0x2000);
-    chr_bank.push_back(chr.data());
-    chr_bank.push_back(chr.data());
-    chr_bank.push_back(chr.data());
-    chr_bank.push_back(chr.data());
-    chr_bank.push_back(chr.data());
-    chr_bank.push_back(chr.data());
-    chr_bank.push_back(chr.data());
-    chr_bank.push_back(chr.data());
+    chr_bank.emplace_back(0);
+    chr_bank.emplace_back(0);
+    chr_bank.emplace_back(0);
+    chr_bank.emplace_back(0);
+    chr_bank.emplace_back(0);
+    chr_bank.emplace_back(0);
+    chr_bank.emplace_back(0);
+    chr_bank.emplace_back(0);
 
     write_prg(0, 0x8000);
     write_prg(0, 0x8001);
@@ -184,17 +184,17 @@ void MMC3::setup()
     std::array<uint8_t, 8> &R = _reg8001;
     if (!_prg_mode_1)
     {
-        prg_bank[0] = prg.data() + R[6] * PRG_PAGE_SIZE;
-        prg_bank[1] = prg.data() + R[7] * PRG_PAGE_SIZE;
-        prg_bank[2] = prg.data() + prg.size() - PRG_PAGE_SIZE * 2;
-        prg_bank[3] = prg.data() + prg.size() - PRG_PAGE_SIZE;
+        prg_bank[0] = R[6] * PRG_PAGE_SIZE;
+        prg_bank[1] = R[7] * PRG_PAGE_SIZE;
+        prg_bank[2] = prg.size() - PRG_PAGE_SIZE * 2;
+        prg_bank[3] = prg.size() - PRG_PAGE_SIZE;
     }
     else
     {
-        prg_bank[0] = prg.data() + prg.size() - PRG_PAGE_SIZE * 2;
-        prg_bank[1] = prg.data() + R[7] * PRG_PAGE_SIZE;
-        prg_bank[2] = prg.data() + R[6] * PRG_PAGE_SIZE;
-        prg_bank[3] = prg.data() + prg.size() - PRG_PAGE_SIZE;
+        prg_bank[0] = prg.size() - PRG_PAGE_SIZE * 2;
+        prg_bank[1] = R[7] * PRG_PAGE_SIZE;
+        prg_bank[2] = R[6] * PRG_PAGE_SIZE;
+        prg_bank[3] = prg.size() - PRG_PAGE_SIZE;
     }
 
     auto R0_a = R[0] & 0xfe;
@@ -203,24 +203,24 @@ void MMC3::setup()
     auto R1_b = R[1] | 1;
     if (!_chr_mode_1)
     {
-        chr_bank[0] = chr.data() + R0_a * CHR_PAGE_SIZE;
-        chr_bank[1] = chr.data() + R0_b * CHR_PAGE_SIZE;
-        chr_bank[2] = chr.data() + R1_a * CHR_PAGE_SIZE;
-        chr_bank[3] = chr.data() + R1_b * CHR_PAGE_SIZE;
-        chr_bank[4] = chr.data() + R[2] * CHR_PAGE_SIZE;
-        chr_bank[5] = chr.data() + R[3] * CHR_PAGE_SIZE;
-        chr_bank[6] = chr.data() + R[4] * CHR_PAGE_SIZE;
-        chr_bank[7] = chr.data() + R[5] * CHR_PAGE_SIZE;
+        chr_bank[0] = R0_a * CHR_PAGE_SIZE;
+        chr_bank[1] = R0_b * CHR_PAGE_SIZE;
+        chr_bank[2] = R1_a * CHR_PAGE_SIZE;
+        chr_bank[3] = R1_b * CHR_PAGE_SIZE;
+        chr_bank[4] = R[2] * CHR_PAGE_SIZE;
+        chr_bank[5] = R[3] * CHR_PAGE_SIZE;
+        chr_bank[6] = R[4] * CHR_PAGE_SIZE;
+        chr_bank[7] = R[5] * CHR_PAGE_SIZE;
     }
     else
     {
-        chr_bank[0] = chr.data() + R[2] * CHR_PAGE_SIZE;
-        chr_bank[1] = chr.data() + R[3] * CHR_PAGE_SIZE;
-        chr_bank[2] = chr.data() + R[4] * CHR_PAGE_SIZE;
-        chr_bank[3] = chr.data() + R[5] * CHR_PAGE_SIZE;
-        chr_bank[4] = chr.data() + R0_a * CHR_PAGE_SIZE;
-        chr_bank[5] = chr.data() + R0_b * CHR_PAGE_SIZE;
-        chr_bank[6] = chr.data() + R1_a * CHR_PAGE_SIZE;
-        chr_bank[7] = chr.data() + R1_b * CHR_PAGE_SIZE;
+        chr_bank[0] = R[2] * CHR_PAGE_SIZE;
+        chr_bank[1] = R[3] * CHR_PAGE_SIZE;
+        chr_bank[2] = R[4] * CHR_PAGE_SIZE;
+        chr_bank[3] = R[5] * CHR_PAGE_SIZE;
+        chr_bank[4] = R0_a * CHR_PAGE_SIZE;
+        chr_bank[5] = R0_b * CHR_PAGE_SIZE;
+        chr_bank[6] = R1_a * CHR_PAGE_SIZE;
+        chr_bank[7] = R1_b * CHR_PAGE_SIZE;
     }
 }

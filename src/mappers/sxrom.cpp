@@ -45,8 +45,8 @@ void SxROM::set_prg(uint8_t count)
 {
     prg.resize(count * 0x4000);
     std::cout << std::hex << prg.size() << "<\n";
-    prg_bank.push_back(prg.data());
-    prg_bank.push_back(prg.data());
+    prg_bank.emplace_back(0);
+    prg_bank.emplace_back(0);
 }
 
 void SxROM::set_chr(uint8_t count)
@@ -54,8 +54,8 @@ void SxROM::set_chr(uint8_t count)
 
     chr.resize(count ? count * 0x2000 : 0x4000);
     std::cout << std::hex << "prg: " << prg.size() << "<\n";
-    chr_bank.push_back(chr.data());
-    chr_bank.push_back(chr.data() + 0x1000);
+    chr_bank.emplace_back(0);
+    chr_bank.emplace_back(0x1000);
 
     regw(0xff, 0xe000);
     regw(0xff, 0xc000);
@@ -105,12 +105,12 @@ void SxROM::regw(uint8_t value, uint16_t addr)
     switch (_chr_mode)
     {
     case 0:
-        chr_bank[0] = chr.data() + _regA * 0x1000;
-        chr_bank[1] = chr.data() + _regA * 0x1000 + 0x1000;
+        chr_bank[0] = _regA * 0x1000;
+        chr_bank[1] = _regA * 0x1000 + 0x1000;
         break;
     case 1:
-        chr_bank[0] = chr.data() + _regA * 0x1000;
-        chr_bank[1] = chr.data() + _regC * 0x1000;
+        chr_bank[0] = _regA * 0x1000;
+        chr_bank[1] = _regC * 0x1000;
         break;
     }
 
@@ -118,20 +118,20 @@ void SxROM::regw(uint8_t value, uint16_t addr)
     switch (_prg_size)
     {
     case 0:
-        prg_bank[0] = prg.data() + (_prg_reg & ~1) * size;
-        prg_bank[1] = prg.data() + (_prg_reg & ~1) * size + size;
+        prg_bank[0] = (_prg_reg & ~1) * size;
+        prg_bank[1] = (_prg_reg & ~1) * size + size;
         break;
 
     case 1:
         if (!_slot_select)
         {
-            prg_bank[0] = prg.data();
-            prg_bank[1] = prg.data() + _prg_reg * size;
+            prg_bank[0] = 0;
+            prg_bank[1] = _prg_reg * size;
         }
         else
         {
-            prg_bank[0] = prg.data() + _prg_reg * size;
-            prg_bank[1] = prg.data() + prg.size() - size;
+            prg_bank[0] = _prg_reg * size;
+            prg_bank[1] = prg.size() - size;
         }
         break;
     }

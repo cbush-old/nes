@@ -37,16 +37,29 @@ public:
     virtual void set_mirroring(MirrorMode);
 
 protected:
+    uint8_t const &mirrored_chr(uint16_t addr, uint16_t mod) const;
+    uint8_t &mirrored_chr(uint16_t addr, uint16_t mod);
+    uint8_t const &mirrored_prg(uint16_t addr, uint16_t mod) const;
+    uint8_t &mirrored_prg(uint16_t addr, uint16_t mod);
+    uint8_t const &mirrored_nt(uint16_t addr, uint16_t mod) const;
+    uint8_t &mirrored_nt(uint16_t addr, uint16_t mod);
+
     // Real memory
     std::vector<uint8_t> nt;
     std::vector<uint8_t> prg;
     std::vector<uint8_t> chr;
     std::vector<uint8_t> ram;
 
-    // Mirrors
-    std::vector<uint8_t *> nametable;
-    std::vector<uint8_t *> prg_bank;
-    std::vector<uint8_t *> chr_bank;
+    // Mirrors (indices)
+    std::vector<size_t> nametable;
+    std::vector<size_t> prg_bank;
+    std::vector<size_t> chr_bank;
+    
+private:
+    uint8_t const &mirrored(std::vector<uint8_t> const &source, std::vector<size_t> const &mirror, uint16_t addr, uint16_t mod) const;
+
+    uint8_t &mirrored(std::vector<uint8_t> &source, std::vector<size_t> const &mirror, uint16_t addr, uint16_t mod);
+
 };
 
 IROM *load_ROM(IBus *, const char *);
