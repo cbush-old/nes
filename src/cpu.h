@@ -2,7 +2,6 @@
 #define CPU_H
 
 #include "bus.h"
-#include "observable.h"
 
 #include <array>
 #include <cctype>
@@ -47,15 +46,15 @@ private:
         C_FLAG = 0x01
     };
 
-    std::array<observable<uint8_t>, 0x800> memory;
+    std::array<uint8_t, 0x800> memory;
 
-    observable<uint8_t>
+    uint8_t
         P{ 0x34 },
         A{ 0 },
         X{ 0 },
         Y{ 0 },
         SP{ 0xfd };
-    observable<uint16_t> PC{ 0xC000 };
+    uint16_t PC{ 0xC000 };
     uint16_t cyc{ 0 };
     uint16_t last_PC;
     uint8_t last_op;
@@ -86,8 +85,6 @@ private:
 
 public:
     uint8_t read(uint16_t) const override;
-    void set_observer16(IObserver<uint16_t> *observer);
-    void set_observer(IObserver<uint8_t> *observer);
 
 private:
     void write(uint8_t, uint16_t);

@@ -17,7 +17,6 @@ int main(int argc, char *argv[])
     }
     catch (int)
     {
-
         std::cout << "died\n";
     }
 }
