@@ -27,7 +27,7 @@ void Noise::update()
         shift |= feedback << 13;
     }
     
-    if (!_enabled || !length_counter_active())
+    if (!length_counter_active() || !_enabled)
     {
         _sample = 0;
     }

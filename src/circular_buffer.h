@@ -45,6 +45,7 @@ public:
         {
             n = std::min(count, writer - reader);
             auto consumed = process(_buffer.data() + reader, n);
+            (void)consumed;
             assert(consumed == n);
         }
         else if (writer < reader)

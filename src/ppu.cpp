@@ -9,6 +9,46 @@ const uint16_t NAME_TABLE_BASE_ADDR = 0x2000;
 const uint16_t NAME_TABLE_SIZE = 0x400;
 const uint16_t PATTERN_TABLE_SIZE = 0x1000;
 
+static const std::array<std::vector<Renderf>, 32> renderers{};
+
+// template <int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256, bool X_LT_337>
+#define X(a) (&PPU::render<                                                                                                                                        \
+              (((a) == 0) || ((a) == 1) || ((a) == 256) || ((a) == 257) || ((a) == 328) || ((a) == 336) || ((a) == 337) ? (a) : (280 <= a && a < 305) ? 304 : -1), \
+              ((a)&7),                                                                                                                                             \
+              ((1 <= (a) && (a) <= 257) || (321 <= (a) && (a) <= 340)),                                                                                            \
+              bool(((a)&1) && ((a) >= 64) && ((a) < 256)),                                                                                                         \
+              bool((a) < 256),                                                                                                                                     \
+              bool((a) < 337)>)
+
+#define Y(a) X(a) \
+             , X(a + 1), X(a + 2), X(a + 3), X(a + 4), X(a + 5), X(a + 6), X(a + 7), X(a + 8), X(a + 9)
+static const Renderf_array renderfuncs
+{
+    Y(0), Y(10), Y(20), Y(30), Y(40), Y(50), Y(60), Y(70), Y(80), Y(90),
+    Y(100), Y(110), Y(120), Y(130), Y(140), Y(150), Y(160), Y(170), Y(180), Y(190),
+    Y(200), Y(210), Y(220), Y(230), Y(240), Y(250), Y(260), Y(270), Y(280), Y(290),
+    Y(300), Y(310), Y(320), Y(330), X(340), X(341)
+};
+#undef X
+#undef Y
+
+PPU::PPU(IBus *bus, IROM *rom, IVideoDevice *video)
+    : bus(bus)
+    , rom(rom)
+    , video(video)
+    , tick_renderer(renderfuncs.begin())
+{
+    for (auto &i : framebuffer)
+    {
+        i = 0x008000ff;
+    }
+
+    reg.PPUCTRL = 0x00;
+    reg.PPUMASK = 0x00;
+    reg.PPUSTATUS = 0x00;
+    reg.OAMADDR = 0;
+}
+
 void PPU::render_load_shift_registers()
 {
     bg_shift_pat &= 0xffff0000;
@@ -191,7 +231,6 @@ void PPU::render_OAM_write()
 template <int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256, bool X_LT_337>
 void PPU::render()
 {
-
     if (X && X_LT_337)
     {
         bg_shift_pat <<= 2;
@@ -362,35 +401,15 @@ void PPU::render()
     }
 }
 
-//<int X, int X_MOD_8, int Tile_Decode_Mode, bool X_ODD_64_TO_256, bool X_LT_256, bool X_LT_337>
-#define X(a) (&PPU::render<                                                                                                                                        \
-              (((a) == 0) || ((a) == 1) || ((a) == 256) || ((a) == 257) || ((a) == 328) || ((a) == 336) || ((a) == 337) ? (a) : (280 <= a && a < 305) ? 304 : -1), \
-              ((a)&7),                                                                                                                                             \
-              ((1 <= (a) && (a) <= 257) || (321 <= (a) && (a) <= 340)),                                                                                            \
-              bool(((a)&1) && ((a) >= 64) && ((a) < 256)),                                                                                                         \
-              bool((a) < 256),                                                                                                                                     \
-              bool((a) < 337)>)
-
-#define Y(a) X(a) \
-             , X(a + 1), X(a + 2), X(a + 3), X(a + 4), X(a + 5), X(a + 6), X(a + 7), X(a + 8), X(a + 9)
-const PPU::Renderf_array PPU::renderfuncs{
-    { Y(0), Y(10), Y(20), Y(30), Y(40), Y(50), Y(60), Y(70), Y(80), Y(90),
-      Y(100), Y(110), Y(120), Y(130), Y(140), Y(150), Y(160), Y(170), Y(180), Y(190),
-      Y(200), Y(210), Y(220), Y(230), Y(240), Y(250), Y(260), Y(270), Y(280), Y(290),
-      Y(300), Y(310), Y(320), Y(330), X(340), X(341) }
-};
-#undef X
-#undef Y
-
 void PPU::render_pixel()
 {
-
-    bool edge = !(8 <= cycle && cycle < 248);
+    bool edge = !(8 <= _cycle && _cycle < 248);
     bool showbg = ((!edge) || reg.show_bg8) && reg.show_bg;
     bool showsp = ((!edge) || reg.show_sp8) && reg.show_sp;
 
     unsigned fx = scroll.xfine;
-    unsigned pixel{ 0 }, attr{ 0 };
+    unsigned pixel = 0;
+    unsigned attr = 0;
 
     if (showbg)
     {
@@ -409,7 +428,7 @@ void PPU::render_pixel()
         {
             auto &s = OAM3[sno];
 
-            unsigned xdiff = cycle - s.x;
+            unsigned xdiff = _cycle - s.x;
 
             if (xdiff >= 8)
                 continue;
@@ -439,7 +458,7 @@ void PPU::render_pixel()
 
     pixel = palette[(attr * 4 + pixel) & 0x1f] & (0x30 + (!reg.grayscale) * 0x0f);
 
-    video->put_pixel(cycle, scanline, pixel & 0x3f);
+    video->put_pixel(_cycle, scanline, pixel & 0x3f);
 }
 
 void PPU::write(uint8_t value, uint16_t addr)
@@ -489,35 +508,37 @@ uint8_t PPU::read(uint16_t addr, bool no_palette /* = false */) const
     }
 }
 
-void PPU::tick()
+void PPU::tick3()
 {
-
-    if (cycle == 1)
+    for (size_t i = 0; i < 3; ++i)
     {
-        if (scanline == 241)
+        if (_cycle == 1)
         {
-            render_set_vblank();
+            if (scanline == 241)
+            {
+                render_set_vblank();
+            }
+            else if (scanline == 261)
+            {
+                render_clear_vblank();
+            }
         }
-        else if (scanline == 261)
+
+        if (reg.rendering_enabled && scanline < 240)
         {
-            render_clear_vblank();
+            (*tick_renderer)(*this);
+            ++tick_renderer;
         }
-    }
 
-    if (reg.rendering_enabled && scanline < 240)
-    {
-        (*tick_renderer)(*this);
-        ++tick_renderer;
-    }
+        ++_cycle;
 
-    ++cycle;
+        if (_cycle == 341)
+        {
 
-    if (cycle == 341)
-    {
-
-        cycle = (reg.rendering_enabled && (scanline == -1) && odd_frame); // || ((scanline & 1) && reg.show_bg);
-        tick_renderer = renderfuncs.begin() + cycle;
-        ++scanline;
+            _cycle = (reg.rendering_enabled && (scanline == -1) && odd_frame); // || ((scanline & 1) && reg.show_bg);
+            tick_renderer = renderfuncs.begin() + _cycle;
+            ++scanline;
+        }
     }
 }
 
@@ -595,21 +616,4 @@ uint8_t PPU::regr_data()
     read_buffer = read(vram.raw, true);
     vram.raw = vram.raw + (!!reg.vramincr * 31 + 1);
     return result;
-}
-
-PPU::PPU(IBus *bus, IROM *rom, IVideoDevice *video)
-    : bus(bus)
-    , rom(rom)
-    , video(video)
-    , tick_renderer(renderfuncs.begin())
-{
-    for (auto &i : framebuffer)
-    {
-        i = 0x008000ff;
-    }
-
-    reg.PPUCTRL = 0x00;
-    reg.PPUMASK = 0x00;
-    reg.PPUSTATUS = 0x00;
-    reg.OAMADDR = 0;
 }

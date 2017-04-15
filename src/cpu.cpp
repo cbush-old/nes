@@ -1,5 +1,6 @@
 #include "cpu.h"
-#include <thread>
+
+#include "ppu.h"
 
 using std::cout;
 using std::setw;
@@ -178,7 +179,7 @@ uint16_t CPU::next2()
     return v | ((uint16_t)read(PC++) << 8);
 }
 
-CPU::CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController *controller0, IController *controller1)
+CPU::CPU(IBus *bus, IAPU *apu, PPU *ppu, IROM *rom, IController *controller0, IController *controller1)
     : bus(bus)
     , apu(apu)
     , ppu(ppu)

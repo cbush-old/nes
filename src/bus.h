@@ -42,9 +42,9 @@ public:
 
 public:
     /**
-     * @brief advance the component's internal clock
+     * @brief advance the component's internal clock 3 times
      **/
-    virtual void tick() = 0;
+    virtual void tick3() = 0;
 
 public: // Register write
     /**

@@ -59,9 +59,9 @@ NES::NES(const char *rom_path, std::istream &script)
     // new ScriptRecorder(*controller[0]),
     }
     , rom(load_ROM(this, rom_path))
-    , ppu(new PPU(this, rom.get(), video.get()))
+    , ppu(this, rom.get(), video.get())
     , apu(new APU(this, audio.get()))
-    , cpu(new CPU(this, apu.get(), ppu.get(), rom.get(), controller[0].get(), controller[1].get()))
+    , cpu(new CPU(this, apu.get(), &ppu, rom.get(), controller[0].get(), controller[1].get()))
     , _last_second(clock::now())
     , _frame_counter(0)
 {
@@ -124,9 +124,7 @@ void NES::on_frame()
 void NES::on_cpu_tick()
 {
     apu->tick();
-    ppu->tick();
-    ppu->tick();
-    ppu->tick();
+    ppu.tick3();
 }
 
 void NES::set_rate(double rate)

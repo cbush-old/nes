@@ -9,33 +9,96 @@
 #include "bit.h"
 #include "bus.h"
 
-class PPU : public IPPU
+class PPU;
+
+// Render functions
+using Renderf = std::function<void(PPU &)>;
+using Renderf_array = std::array<Renderf, 342>;
+
+class PPU
 {
 public:
     using ObjectAttributeMemory = std::array<uint8_t, 0x100>;
     using Palette = std::array<uint8_t, 0x20>;
 
+    PPU(IBus *bus, IROM *rom, IVideoDevice *video);
+
+    /*!
+     \brief Advance the component's internal clock 3 times.
+    */
+    void tick3();
+
+    // Register read/write
+    void regw_control(uint8_t value);
+    void regw_mask(uint8_t value);
+    void regw_OAM_address(uint8_t value);
+    void regw_OAM_data(uint8_t value);
+    void regw_scroll(uint8_t value);
+    void regw_address(uint8_t value);
+    void regw_data(uint8_t value);
+    uint8_t regr_status();
+    uint8_t regr_OAM_data();
+    uint8_t regr_data();
+
+    template<int X, char X_MOD_8, bool TileDecodeMode, bool X_ODD_64_TO_256, bool X_LT_256, bool X_LT_337>
+    void render();
+
 private:
+    /*!
+     \brief (internal) write to vram
+     \param value the value to write
+     \param addr target location of the write
+    */
+    void write(uint8_t value, uint16_t addr);
+
+    /*!
+     \brief (internal) read from vram
+     \param addr the vram address to look up
+     \param no_palette whether to treat the memory space above $3f00 as mirror of nametable below (usually no).
+     \return the value at the given address
+    */
+    uint8_t read(uint16_t addr, bool no_palette = false) const;
+
+
+    void render_pixel();
+    void release_frame();
+    void render_nt_lookup_0();
+    void render_nt_lookup_1();
+    void render_attr_lookup_0();
+    void render_attr_lookup_1();
+    void render_fetch_bg_low_0();
+    void render_fetch_bg_low_1();
+    void render_fetch_bg_high_0();
+    void render_fetch_bg_high_1();
+    void render_incr_horizontal();
+    void render_copy_horizontal();
+    void render_incr_vertical();
+    void render_copy_vertical();
+    void render_set_vblank();
+    void render_clear_vblank();
+    void render_fetch_sprite_low_0();
+    void render_fetch_sprite_low_1();
+    void render_fetch_sprite_high_0();
+    void render_fetch_sprite_high_1();
+
+    void render_OAM_clear();
+    void render_OAM_read_0();
+    void render_OAM_read_1();
+    void render_OAM_write();
+
+    void render_load_shift_registers();
+    void render_skip_cycle();
+
     IBus *bus;
     IROM *rom;
     IVideoDevice *video;
 
-public:
-    PPU(IBus *bus, IROM *rom, IVideoDevice *video);
-
-public:
-    /**
-     * @brief advance the PPU by one step.
-     **/
-    void tick();
-
-private:
     int frameskip{ 0 };
     int frameskip_count{ 0 };
 
-    mutable union {
-
-        uint32_t raw;
+    union
+    {
+        uint32_t raw{0};
 
         bit<0, 8> PPUCTRL;
         bit<0, 2> base_nta;
@@ -66,8 +129,9 @@ private:
 
     } reg;
 
-    mutable union {
-        uint32_t data{ 0 };
+    union
+    {
+        uint32_t data{0};
 
         bit<3, 16> raw;
         bit<0, 8> xscroll;
@@ -85,13 +149,12 @@ private:
 
     } scroll, vram;
 
-    bool loopy_w{ false };
+    bool loopy_w{false};
 
-    int cycle{ 0 };
-    int scanline{ 241 };
-    int scanline_end{ 341 };
-
-    mutable int read_buffer{ 0 };
+    int _cycle{0};
+    int scanline{241};
+    int scanline_end{341};
+    int read_buffer{0};
 
     ObjectAttributeMemory OAM;
     Palette palette;
@@ -117,79 +180,9 @@ private:
         uint16_t pattern;
     } OAM2[8], OAM3[8];
 
-    void render_pixel();
-
-    void release_frame();
-
-public: // Register read/write
-    void regw_control(uint8_t value);
-    void regw_mask(uint8_t value);
-    void regw_OAM_address(uint8_t value);
-    void regw_OAM_data(uint8_t value);
-    void regw_scroll(uint8_t value);
-    void regw_address(uint8_t value);
-    void regw_data(uint8_t value);
-    uint8_t regr_status();
-    uint8_t regr_OAM_data();
-    uint8_t regr_data();
-
-protected: // Render functions
-    using Renderf = std::function<void(PPU &)>;
-    using Renderf_array = std::array<Renderf, 342>;
-
-    static const std::array<std::vector<Renderf>, 32> renderers;
-    static std::array<std::vector<Renderf> *, 88740> rendererps;
-
-    template <int, char, bool, bool, bool, bool>
-    void render();
-
-    static const Renderf_array renderfuncs;
     Renderf_array::const_iterator tick_renderer;
 
-    void render_nt_lookup_0();
-    void render_nt_lookup_1();
-    void render_attr_lookup_0();
-    void render_attr_lookup_1();
-    void render_fetch_bg_low_0();
-    void render_fetch_bg_low_1();
-    void render_fetch_bg_high_0();
-    void render_fetch_bg_high_1();
-    void render_incr_horizontal();
-    void render_copy_horizontal();
-    void render_incr_vertical();
-    void render_copy_vertical();
-    void render_set_vblank();
-    void render_clear_vblank();
-    void render_fetch_sprite_low_0();
-    void render_fetch_sprite_low_1();
-    void render_fetch_sprite_high_0();
-    void render_fetch_sprite_high_1();
-
-    void render_OAM_clear();
-    void render_OAM_read_0();
-    void render_OAM_read_1();
-    void render_OAM_write();
-
-    void render_load_shift_registers();
-    void render_skip_cycle();
-
     bool odd_frame{ 0 };
-
-protected:
-    /**
-     * @brief (internal) write to vram
-     * @param value the value to write
-     * @param addr target location of the write
-     **/
-    void write(uint8_t value, uint16_t addr);
-
-    /**
-     * @brief (internal) read from vram
-     * @param addr the vram address to look up
-     * @param no_palette whether to treat the memory space above $3f00 as mirror of nametable below (usually no).
-     * @return the value at the given address
-     **/
-    uint8_t read(uint16_t addr, bool no_palette = false) const;
 };
 
 #endif

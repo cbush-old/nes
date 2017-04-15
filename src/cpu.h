@@ -1,35 +1,37 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include <iostream>
-#include <thread>
-#include <cmath>
-#include <ctime>
-#include <map>
-#include <iomanip>
-#include <functional>
-#include <cctype>
-#include <fstream>
-#include <vector>
-#include <array>
-#include <string>
-#include <stdexcept>
-#include <sstream>
+#include "bus.h"
 #include "observable.h"
 
-#include "bus.h"
+#include <array>
+#include <cctype>
+#include <cmath>
+#include <ctime>
+#include <fstream>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <thread>
+#include <vector>
+
+class PPU;
 
 class CPU : public ICPU, public IRestorable
 {
 private:
     IBus *bus;
     IAPU *apu;
-    IPPU *ppu;
+    PPU *ppu;
     IROM *rom;
     IController *controller[2];
 
 public:
-    CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController *controller0, IController *controller1);
+    CPU(IBus *bus, IAPU *apu, PPU *ppu, IROM *rom, IController *controller0, IController *controller1);
 
 public:
     void stop() override;
