@@ -12,14 +12,14 @@ void Triangle::on_quarter_frame()
 {
     if (_linear_counter_reload)
     {
-        _linear_counter = _linear_counter_reload_value;
+        _linear_counter = linear_counter_reload_value;
     }
     else if (_linear_counter > 0)
     {
         --_linear_counter;
     }
 
-    if (_triangle_control)
+    if (triangle_control)
     {
         _linear_counter_reload = false;
     }
@@ -27,20 +27,20 @@ void Triangle::on_quarter_frame()
 
 bool Triangle::get_length_counter_halt() const
 {
-    return _triangle_length_counter_halt;
+    return triangle_length_counter_halt;
 }
 
 void Triangle::reg3_write(uint8_t value)
 {
     reg3 = value;
-    _triangle_length_counter_halt = true;
+    triangle_length_counter_halt = 1;
     reload_length_counter();
     _linear_counter_reload = true;
 }
 
 void Triangle::update()
 {
-    if (++t > _timer)
+    if (++t > timer)
     {
         t = 0;
         if (length_counter_active() && _linear_counter > 0)
@@ -49,5 +49,5 @@ void Triangle::update()
         }
     }
     
-    _sample = (!_enabled || !length_counter_active() || _timer < 2) ? 0 : TRIANGLE_STEPS[step];
+    _sample = (!_enabled || !length_counter_active() || timer < 2) ? 0 : TRIANGLE_STEPS[step];
 }

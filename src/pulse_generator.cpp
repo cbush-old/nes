@@ -25,8 +25,8 @@ void Pulse::reg1_write(uint8_t value)
 
 void Pulse::adjust_period()
 {
-    _target = _timer + (sweep_negative ? -1 : 1) * (_timer >> sweep_shift);
-    if (_timer < 8 || _target > 0x7ff)
+    _target = timer + (sweep_negative ? -1 : 1) * (timer >> sweep_shift);
+    if (timer < 8 || _target > 0x7ff)
     {
         _silenced = true;
     }
@@ -57,7 +57,7 @@ void Pulse::on_half_frame()
                 adjust_period();
                 if (!_silenced && sweep_shift)
                 {
-                    set_timer(_target);
+                    timer = _target;
                 }
             }
         }
@@ -71,10 +71,10 @@ void Pulse::on_half_frame()
 
 void Pulse::update()
 {
-    if (++t > _timer)
+    if (++t > timer)
     {
         t = 0;
         ++shift;
     }
-    _sample = (_silenced || !length_counter_active()) ? 0 : bool(PULSE_WAVES[_duty] & (1 << (shift & 7))) * envelope_sample();
+    _sample = (_silenced || !length_counter_active()) ? 0 : bool(PULSE_WAVES[duty] & (1 << (shift & 7))) * envelope_sample();
 }

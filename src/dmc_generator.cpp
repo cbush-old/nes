@@ -14,7 +14,7 @@ DMC::DMC(IBus &bus)
 
 void DMC::update()
 {
-    if (++_t <= DMC_RATE[_frequency_index])
+    if (++_t <= DMC_RATE[frequency_index])
     {
         return;
     }
@@ -61,12 +61,12 @@ void DMC::update()
 
         if (!_bytes_remaining)
         {
-            if (_loop_sample)
+            if (loop_sample)
             {
-                _address = (_sample_address << 13) | 0xC000;
+                _address = (sample_address << 13) | 0xC000;
                 _bytes_remaining = (sample_length << 11) | 1;
             }
-            else if (_enable_IRQ)
+            else if (IRQ_enable)
             {
                 _interrupt = true;
             }
@@ -99,7 +99,7 @@ void DMC::enable()
 {
     if (!_bytes_remaining)
     {
-        _address = (_sample_address << 13) | 0xC000;
+        _address = (sample_address << 13) | 0xC000;
         _bytes_remaining = (sample_length << 11) | 1;
     }
 }
@@ -107,5 +107,5 @@ void DMC::enable()
 void DMC::reg3_write(uint8_t value)
 {
     reg3 = value;
-    _sample_address = value;
+    sample_address = value;
 }

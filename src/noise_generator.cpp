@@ -18,10 +18,10 @@ void Noise::reg3_write(uint8_t value)
 //   +------------- - bit 6 if mode
 void Noise::update()
 {
-    if (++t > NOISE_PERIODS[_noise_period])
+    if (++t > NOISE_PERIODS[noise_period])
     {
         t = 0;
-        bool feedback = bool(shift & 1) ^ bool(shift & (2 << (_noise_mode * 5)));
+        bool feedback = bool(shift & 1) ^ bool(shift & (2 << (noise_mode * 5)));
         shift >>= 1;
         shift &= 0x1fff;
         shift |= feedback << 13;

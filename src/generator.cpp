@@ -13,34 +13,11 @@ void Generator::regw(size_t r, uint8_t value)
 {
     switch (r & 0x3)
     {
-        case 0:
-            _volume = value & 0b1111;
-            _constant_volume = bool(value & (1 << 4));
-            _length_counter_halt = bool(value & (1 << 5));
-            _loop_sample = bool(value & (1 << 6));
-            _duty = (value >> 6) & 0b11;
-            _linear_counter_reload_value = value & 0x7f;
-            _triangle_length_counter_halt = bool(value & 0x80);
-            break;
+        case 0: reg0 = value; break;
         case 1: reg1_write(value); break;
-        case 2:
-            _timer_low = value;
-            _timer = (_timer & ~0xff) | value;
-            _noise_period = value & 0b1111;
-            _noise_mode = bool(value & 0x80);
-            break;
-        case 3:
-            _timer = (_timer & ~0xff00) | ((value & 0b111) << 8);
-            reg3_write(value);
-            break;
+        case 2: reg2 = value; break;
+        case 3: reg3_write(value); break;
     }
-}
-
-void Generator::set_timer(uint16_t value)
-{
-    _timer = value;
-    timer_high = (value >> 8) & 0b111;
-    regw(2, _timer & 0xff);
 }
 
 void Generator::set_channel_volume(int16_t v)
@@ -97,7 +74,7 @@ void Generator_with_length_counter::disable()
 
 bool Generator_with_length_counter::get_length_counter_halt() const
 {
-    return _length_counter_halt;
+    return length_counter_halt;
 }
 
 bool Generator_with_length_counter::length_counter_active() const
@@ -115,7 +92,7 @@ void Generator_with_length_counter::clock_length_counter()
 
 void Generator_with_envelope::divider_reload()
 {
-    _divider_counter = _divider_period;
+    _divider_counter = divider_period;
 }
 
 void Generator_with_envelope::divider_clock()
@@ -135,7 +112,7 @@ void Generator_with_envelope::on_divider_output_clock()
 {
     if (_counter == 0)
     {
-        if (_envelope_loop)
+        if (envelope_loop)
         {
             _counter = 15;
         }
@@ -148,7 +125,7 @@ void Generator_with_envelope::on_divider_output_clock()
 
 uint8_t Generator_with_envelope::envelope_sample() const
 {
-    return _constant_volume ? _volume : _counter;
+    return constant_volume ? volume : _counter;
 }
 
 void Generator_with_envelope::on_quarter_frame()
