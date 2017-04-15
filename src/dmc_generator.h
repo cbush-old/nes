@@ -13,7 +13,7 @@ public:
 private:
     virtual void enable() override;
     virtual void disable() override;
-    virtual void on_reg3_write(uint8_t value) override;
+    virtual void reg3_write(uint8_t value) override;
 
     IBus &_bus;
     uint8_t _sample{ 0 };

@@ -13,7 +13,7 @@ public:
 private:
     virtual bool get_length_counter_halt() const override;
 
-    virtual void on_reg3_write(uint8_t value) override;
+    virtual void reg3_write(uint8_t value) override;
 
     uint16_t t{ 0 };
     uint8_t step{ 0 };

@@ -22,14 +22,7 @@ void Generator::regw(size_t r, uint8_t value)
             _linear_counter_reload_value = value & 0x7f;
             _triangle_length_counter_halt = bool(value & 0x80);
             break;
-        case 1:
-            _sweep_shift = value & 0b111;
-            _sweep_negative = bool(value & 0x8);
-            _sweep_period = (value >> 5) & 0b111;
-            _sweep_enabled = bool(value & 0x80);
-            _output_level = value & 0x7f;
-            on_reg1_write(value);
-            break;
+        case 1: reg1_write(value); break;
         case 2:
             _timer_low = value;
             _timer = (_timer & ~0xff) | value;
@@ -38,7 +31,7 @@ void Generator::regw(size_t r, uint8_t value)
             break;
         case 3:
             _timer = (_timer & ~0xff00) | ((value & 0b111) << 8);
-            on_reg3_write(value);
+            reg3_write(value);
             break;
     }
 }
@@ -60,6 +53,12 @@ int16_t Generator::get_channel_volume() const
     return _channel_volume;
 }
 
+void Generator::reg1_write(uint8_t value)
+{
+    reg1 = value;
+}
+
+
 int16_t Generator::mixed_sample() const
 {
     return (static_cast<int16_t>(_sample) - 0x80) * _channel_volume;
@@ -74,12 +73,6 @@ void Generator::disable()
 {
     _enabled = false;
 }
-
-void Generator::on_reg1_write(uint8_t value)
-{}
-
-void Generator::on_reg3_write(uint8_t value)
-{}
 
 Generator_with_length_counter::~Generator_with_length_counter() = default;
 

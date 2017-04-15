@@ -5,7 +5,7 @@ static const uint16_t NOISE_PERIODS[]
     4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
 };
 
-void Noise::on_reg3_write(uint8_t value)
+void Noise::reg3_write(uint8_t value)
 {
     reg3 = value;
     reload_length_counter();
