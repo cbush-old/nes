@@ -2,6 +2,7 @@
 #define ROM_H
 
 #include "bus.h"
+#include "clone_ptr.h"
 
 class ROM : public IROM
 {
@@ -62,8 +63,6 @@ private:
 
 };
 
-IROM *load_ROM(IBus *, const char *);
-
-void unload_ROM(IROM *);
+ClonePtr<IROM> load_ROM(IBus *, const char *);
 
 #endif

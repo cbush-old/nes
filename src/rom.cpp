@@ -1,6 +1,7 @@
 #include "rom.h"
-#include "bit.h"
 
+#include "bit.h"
+#include "clone_ptr.h"
 #include "mappers/mappers.h"
 
 #include <iostream>
@@ -69,7 +70,6 @@ ROM::ROM()
 
 void ROM::set_prg(uint8_t count)
 {
-
     prg.resize(count * 0x4000);
 
     prg_bank.emplace_back(0x0);
@@ -154,9 +154,8 @@ ROM::~ROM()
     file.write(reinterpret_cast<const char *>(ram.data()), ram.size());
 }
 
-IROM *load_ROM(IBus *bus, const char *path)
+ClonePtr<IROM> load_ROM(IBus *bus, const char *path)
 {
-
     std::ifstream file(path);
 
     if (!(
@@ -223,12 +222,12 @@ IROM *load_ROM(IBus *bus, const char *path)
     file.read((char *)rom->get_prg_data(), rom->get_prg_size());
     file.read((char *)rom->get_chr_data(), rom->get_chr_size());
 
-    return rom;
+    return ClonePtr<IROM>(rom);
 }
 
 uint8_t const &ROM::mirrored(std::vector<uint8_t> const &source, std::vector<size_t> const &mirror, uint16_t addr, uint16_t mod) const
 {
-    return source.at(mirror.at(addr / mod) + (addr % mod));
+    return source[mirror[addr / mod] + (addr % mod)];
 }
 
 uint8_t &ROM::mirrored(std::vector<uint8_t> &source, std::vector<size_t> const &mirror, uint16_t addr, uint16_t mod)
@@ -253,7 +252,7 @@ IMPLEMENT_ROM_MIRROR(prg, prg, prg_bank);
 uint8_t const &ROM::mirrored_nt(uint16_t addr, uint16_t mod) const
 {
     const auto i = (addr >> 10) & 3;
-    return nt.at(nametable.at(i) + (addr % mod));
+    return nt[nametable[i] + (addr % mod)];
 }
 
 uint8_t &ROM::mirrored_nt(uint16_t addr, uint16_t mod)

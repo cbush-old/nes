@@ -3,7 +3,7 @@
 
 #include "apu.h"
 #include "bus.h"
-#include "circular_buffer.h"
+#include "clone_ptr.h"
 #include "cpu.h"
 #include "ppu.h"
 
@@ -59,14 +59,14 @@ private:
     std::unique_ptr<IAudioDevice> _audio;
     std::array<std::unique_ptr<IController>, 2> _controller;
     std::vector<std::shared_ptr<IInputDevice>> _input;
-    std::unique_ptr<IROM> _rom;
+    ClonePtr<IROM> _rom;
     PPU ppu;
     APU apu;
     CPU cpu;
     
     std::vector<CPU> _cpu_states;
     std::vector<PPU> _ppu_states;
-    std::vector<std::unique_ptr<IROM>> _rom_states;
+    std::vector<ClonePtr<IROM>> _rom_states;
 
     time_point _last_frame;
     time_point _last_second;
