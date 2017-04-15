@@ -1,28 +1,38 @@
 #pragma once
 
+#include <cassert>
 #include <memory>
 
 template<typename T>
 class ClonePtr
 {
 public:
+    ClonePtr() = default;
+
     template<typename ConcreteType>
     explicit ClonePtr(ConcreteType *p) // takes ownership
         : _model(new Model<ConcreteType>(p))
     {}
-    
+
     ClonePtr &operator=(ClonePtr const &) = delete;
     ClonePtr &operator=(ClonePtr &&) = default;
     ClonePtr(ClonePtr const &) = delete;
     ClonePtr(ClonePtr &&) = default;
+    ~ClonePtr() = default;
 
-    std::unique_ptr<T> clone()
+    template<typename ConcreteType>
+    void reset(ConcreteType *p)
+    {
+        _model.reset(new Model<ConcreteType>(p));
+    }
+
+    ClonePtr clone() const
     {
         if (!_model)
         {
             return {};
         }
-        return {_model->clone()};
+        return _model->clone();
     }
 
     T &operator*() const
@@ -33,6 +43,7 @@ public:
 
     T *operator->() const
     {
+        assert(_model);
         return _model->p.operator->();
     }
 
@@ -41,7 +52,7 @@ private:
     {
         Concept(T *p): p(p) {}
         virtual ~Concept() = default;
-        virtual T *clone() const = 0;
+        virtual ClonePtr<T> clone() const = 0;
         std::unique_ptr<T> p;
     };
 
@@ -52,9 +63,9 @@ private:
             : Concept(p)
         {}
 
-        virtual ConcreteType *clone() const override
+        virtual ClonePtr clone() const override
         {
-            return new ConcreteType(static_cast<ConcreteType const &>(*this->p));
+            return ClonePtr(new ConcreteType(static_cast<ConcreteType const &>(*this->p)));
         }
     };
 

@@ -2,7 +2,7 @@
 #define ROM_H
 
 #include "bus.h"
-#include "clone_ptr.h"
+#include "inline_polymorph.h"
 
 class ROM : public IROM
 {
@@ -10,15 +10,13 @@ public:
     ROM();
     virtual ~ROM();
 
-public:
-    virtual void write_nt(uint8_t value, uint16_t addr);
-    virtual void write_prg(uint8_t value, uint16_t addr);
-    virtual void write_chr(uint8_t value, uint16_t addr);
-    virtual uint8_t read_prg(uint16_t addr) const;
-    virtual uint8_t read_chr(uint16_t addr) const;
-    virtual uint8_t read_nt(uint16_t addr) const;
+    virtual void write_nt(uint8_t value, uint16_t addr) override;
+    virtual void write_prg(uint8_t value, uint16_t addr) override;
+    virtual void write_chr(uint8_t value, uint16_t addr) override;
+    virtual uint8_t read_prg(uint16_t addr) const override;
+    virtual uint8_t read_chr(uint16_t addr) const override;
+    virtual uint8_t read_nt(uint16_t addr) const override;
 
-public:
     virtual void set_prg(uint8_t);
     virtual void set_chr(uint8_t);
     virtual uint8_t *get_prg_data();
@@ -63,6 +61,6 @@ private:
 
 };
 
-ClonePtr<IROM> load_ROM(IBus *, const char *);
+InlinePolymorph<ROM> load_ROM(IBus *, const char *);
 
 #endif

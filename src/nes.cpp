@@ -126,10 +126,12 @@ void NES::on_frame()
         {
             cpu = _cpu_states.back();
             ppu = _ppu_states.back();
+            _rom = std::move(_rom_states.back());
             if (_cpu_states.size() > 1)
             {
                 _cpu_states.pop_back();
                 _ppu_states.pop_back();
+                _rom_states.pop_back();
             }
         }
     }
@@ -139,9 +141,11 @@ void NES::on_frame()
         {
             _cpu_states.erase(_cpu_states.begin());
             _ppu_states.erase(_ppu_states.begin());
+            _rom_states.erase(_rom_states.begin());
         }
         _cpu_states.emplace_back(cpu);
         _ppu_states.emplace_back(ppu);
+        _rom_states.push_back(_rom);
     }
 }
 

@@ -30,8 +30,8 @@ uint8_t MMC3::read_prg(uint16_t addr) const
     }
     else if (addr < 0x8000)
     {
-
-        return _ram[addr % 0x2000];
+        return 0;
+        //return _ram[addr % 0x2000];
     }
     else
     {
@@ -122,7 +122,7 @@ void MMC3::write_prg(uint8_t value, uint16_t addr)
     else if (addr < 0x8000)
     {
 
-        _ram[addr % 0x2000] = value;
+        //_ram[addr % 0x2000] = value;
     }
     else
     {

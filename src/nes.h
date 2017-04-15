@@ -3,9 +3,10 @@
 
 #include "apu.h"
 #include "bus.h"
-#include "clone_ptr.h"
 #include "cpu.h"
+#include "inline_polymorph.h"
 #include "ppu.h"
+#include "rom.h"
 
 #include <chrono>
 #include <memory>
@@ -59,14 +60,14 @@ private:
     std::unique_ptr<IAudioDevice> _audio;
     std::array<std::unique_ptr<IController>, 2> _controller;
     std::vector<std::shared_ptr<IInputDevice>> _input;
-    ClonePtr<IROM> _rom;
+    InlinePolymorph<ROM> _rom;
     PPU ppu;
     APU apu;
     CPU cpu;
     
     std::vector<CPU> _cpu_states;
     std::vector<PPU> _ppu_states;
-    std::vector<ClonePtr<IROM>> _rom_states;
+    std::vector<InlinePolymorph<ROM>> _rom_states;
 
     time_point _last_frame;
     time_point _last_second;

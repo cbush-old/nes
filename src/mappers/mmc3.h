@@ -28,11 +28,11 @@ protected:
 
 protected:
     mutable IBus *_bus;
-    std::array<uint8_t, 0x2000> _ram;
+    //std::array<uint8_t, 0x2000> _ram;
 
     union
     {
-        bit<0, 8> _reg8000;
+        bit<0, 8> _reg8000{0};
         bit<0, 3> _address;
         bit<6, 1> _prg_mode_1;
         bit<7, 1> _chr_mode_1;

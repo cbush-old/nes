@@ -154,7 +154,7 @@ ROM::~ROM()
     file.write(reinterpret_cast<const char *>(ram.data()), ram.size());
 }
 
-ClonePtr<IROM> load_ROM(IBus *bus, const char *path)
+InlinePolymorph<ROM> load_ROM(IBus *bus, const char *path)
 {
     std::ifstream file(path);
 
@@ -188,26 +188,26 @@ ClonePtr<IROM> load_ROM(IBus *bus, const char *path)
     std::cout << "prg banks: " << (int)prg_rom_size << '\n';
     std::cout << "chr banks: " << (int)chr_rom_size << '\n';
 
-    ROM *rom;
+    InlinePolymorph<ROM> rom;
     switch (mapper_id)
     {
     case 0:
-        rom = new NROM();
+        rom.emplace<NROM>();
         break;
     case 1:
-        rom = new SxROM();
+        rom.emplace<SxROM>();
         break;
     case 2:
-        rom = new UxROM();
+        rom.emplace<UxROM>();
         break;
     case 3:
-        rom = new CNROM();
+        rom.emplace<CNROM>();
         break;
     case 4:
-        rom = new MMC3(bus);
+        rom.emplace<MMC3>(bus);
         break;
     case 71:
-        rom = new Camerica();
+        rom.emplace<Camerica>();
         break;
     default:
         throw std::runtime_error("Unsupported mapper");
@@ -222,7 +222,7 @@ ClonePtr<IROM> load_ROM(IBus *bus, const char *path)
     file.read((char *)rom->get_prg_data(), rom->get_prg_size());
     file.read((char *)rom->get_chr_data(), rom->get_chr_size());
 
-    return ClonePtr<IROM>(rom);
+    return rom;
 }
 
 uint8_t const &ROM::mirrored(std::vector<uint8_t> const &source, std::vector<size_t> const &mirror, uint16_t addr, uint16_t mod) const
