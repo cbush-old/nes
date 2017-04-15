@@ -52,7 +52,7 @@ void SDLAudioDevice::put_sample(int16_t sample)
     static int x = 0;
     ++x;
     
-    const auto ratio = (1789773.0 / OUTPUT_FREQUENCY);
+    const auto ratio = (596591.0 / OUTPUT_FREQUENCY);
     if (x >= ratio)
     {
         f /= ratio;

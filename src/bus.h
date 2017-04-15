@@ -261,6 +261,9 @@ public:
     virtual ~IAudioDevice() {}
 
 public:
+    /*!
+     \brief Receive a mono sample at 1,789,773Hz / 3 == 596591.0Hz
+    */
     virtual void put_sample(int16_t) = 0;
 };
 

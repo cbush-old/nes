@@ -4,26 +4,25 @@
 #include "bus.h"
 #include "observable.h"
 
-class SDLVideoDevice : public IVideoDevice, public IObserver<uint8_t>, public IObserver<uint16_t>
+#include "SDL.h"
+
+class SDLVideoDevice
+    : public IVideoDevice
 {
 public:
     SDLVideoDevice();
     ~SDLVideoDevice();
 
-public:
-    void on_frame() override;
-    void put_pixel(uint8_t x, uint8_t y, PaletteIndex i) override;
-
-public:
-    void on_change(observable<uint16_t> const *, uint16_t, uint16_t) override;
-    void on_change(observable<uint8_t> const *, uint8_t, uint8_t) override;
+    virtual void on_frame() override;
+    virtual void put_pixel(uint8_t x, uint8_t y, PaletteIndex i) override;
 
 private:
-    struct SDL_Window *window;
-    void *glcon;
-    uint32_t texture;
+    void screenshot();
+
+    struct SDL_Window *_window;
+    SDL_GLContext _gl_context;
+    uint32_t _texture;
     Framebuffer _buffer;
-    Framebuffer _buffer2;
 };
 
 #endif

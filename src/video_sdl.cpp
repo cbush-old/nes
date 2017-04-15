@@ -1,8 +1,6 @@
 #include "video_sdl.h"
-#include "SDL.h"
 
-#include <iostream>
-#include <cmath>
+#include "image.h"
 
 #ifndef GL_GLEXT_PROTOTYPES
 #define GL_GLEXT_PROTOTYPES
@@ -10,6 +8,11 @@
 
 #include <gl.h>
 #include <glext.h>
+
+#include <iostream>
+#include <cmath>
+#include <sstream>
+#include <ctime>
 
 // Lookup table for palette index to 32-bit RGB
 static const uint32_t RGB[64]
@@ -30,18 +33,9 @@ uint32_t palette_index_to_rgba(PaletteIndex i)
 }
 
 SDLVideoDevice::SDLVideoDevice()
-    : window(
-          SDL_CreateWindow(
-              "",
-              SDL_WINDOWPOS_UNDEFINED,
-              SDL_WINDOWPOS_UNDEFINED,
-              512,
-              480,
-              SDL_WINDOW_OPENGL))
-    , glcon(
-          new SDL_GLContext(SDL_GL_CreateContext(window)))
+    : _window{SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 512, 480, SDL_WINDOW_OPENGL)}
+    , _gl_context(SDL_GL_CreateContext(_window))
 {
-
     SDL_GL_SetSwapInterval(0);
 
     glMatrixMode(GL_PROJECTION | GL_MODELVIEW);
@@ -51,12 +45,8 @@ SDLVideoDevice::SDLVideoDevice()
     glClear(GL_COLOR_BUFFER_BIT);
     glEnable(GL_TEXTURE_2D);
 
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    for (auto &i : _buffer2)
-    {
-        i = 0;
-    }
+    glGenTextures(1, &_texture);
+    glBindTexture(GL_TEXTURE_2D, _texture);
     glTexImage2D(
         GL_TEXTURE_2D,
         0,
@@ -66,114 +56,52 @@ SDLVideoDevice::SDLVideoDevice()
         0,
         GL_RGBA,
         GL_UNSIGNED_INT_8_8_8_8,
-        _buffer2.data());
+        _buffer.data()
+    );
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
 SDLVideoDevice::~SDLVideoDevice()
 {
-    glDeleteTextures(1, &texture);
-    SDL_GL_DeleteContext(*static_cast<SDL_GLContext *>(glcon));
-    delete static_cast<SDL_GLContext *>(glcon);
-    SDL_DestroyWindow(window);
+    glDeleteTextures(1, &_texture);
+    SDL_GL_DeleteContext(_gl_context);
+    SDL_DestroyWindow(_window);
 }
-
-static Framebuffer buffer;
 
 void SDLVideoDevice::put_pixel(uint8_t x, uint8_t y, PaletteIndex i)
 {
-    buffer.at(y * 256 + (x % 256)) = RGB[i];
+    _buffer[y * 256 + (x & 0xff)] = RGB[i];
 }
 
 void SDLVideoDevice::on_frame()
 {
-    glTexImage2D(
+    glTexSubImage2D(
         GL_TEXTURE_2D,
-        0,
-        GL_RGBA,
-        256,
-        240,
-        0,
+        0, // level
+        0, // xoffset
+        0, // yoffset
+        256, // width
+        240, // height
         GL_RGBA,
         GL_UNSIGNED_INT_8_8_8_8,
-        static_cast<const GLvoid *>(buffer.data()));
+        static_cast<const GLvoid *>(_buffer.data())
+    );
     glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0.0, 0.0f);
-    glVertex2i(0, 0);
-    glTexCoord2f(1.0, 0.0f);
-    glVertex2i(256, 0);
-    glTexCoord2f(0.0, 1.0f);
-    glVertex2i(0, 240);
-    glTexCoord2f(1.0, 1.0f);
-    glVertex2i(256, 240);
+    glTexCoord2f(0.0, 0.0f); glVertex2i(0, 0);
+    glTexCoord2f(1.0, 0.0f); glVertex2i(256, 0);
+    glTexCoord2f(0.0, 1.0f); glVertex2i(0, 240);
+    glTexCoord2f(1.0, 1.0f); glVertex2i(256, 240);
     glEnd();
 
-    glTexImage2D(
-        GL_TEXTURE_2D,
-        0,
-        GL_RGBA,
-        256,
-        240,
-        0,
-        GL_RGBA,
-        GL_UNSIGNED_INT_8_8_8_8,
-        static_cast<const GLvoid *>(_buffer2.data()));
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0.0, 0.0f);
-    glVertex2i(256, 0);
-    glTexCoord2f(1.0, 0.0f);
-    glVertex2i(512, 0);
-    glTexCoord2f(0.0, 1.0f);
-    glVertex2i(256, 240);
-    glTexCoord2f(1.0, 1.0f);
-    glVertex2i(512, 240);
-    glEnd();
-
-    SDL_GL_SwapWindow(window);
+    SDL_GL_SwapWindow(_window);
     glClear(GL_COLOR_BUFFER_BIT);
-
-    for (auto &c : _buffer2)
-    {
-        c *= 0.7;
-    }
 }
-
-#include "image.h"
-#include <sstream>
-#include <ctime>
 
 void screenshot()
 {
     std::stringstream ss;
     ss << "nes-snap-" << time(NULL) << ".png";
     logi("create %s", ss.str().c_str());
-    save_image(ss.str().c_str(), 256, 240, buffer.data());
-}
-
-void SDLVideoDevice::on_change(observable<uint16_t> const *pc, uint16_t was, uint16_t is)
-{
-    _buffer2[was & 0xefff] -= 0x10000000;
-    _buffer2[is & 0xefff] = 0xff0000ff;
-}
-
-void SDLVideoDevice::on_change(observable<uint8_t> const *p, uint8_t was, uint8_t is)
-{
-    static size_t a = 0;
-    if (!a)
-    {
-        a = (size_t)p;
-    }
-
-    auto c = (int)((is / 255.0) * 0xffffff00) | 0xff;
-    auto i = ((size_t)p - a) / sizeof(observable<uint8_t>);
-    i *= 4;
-
-    for (int j = 0; j < 4; ++j)
-    {
-        for (int k = 0; k < 4; ++k)
-        {
-            _buffer2[i + 256 * (i / 256) * 3 + 256 * j + k] = c;
-        }
-    }
+    //save_image(ss.str().c_str(), 256, 240, _buffer.data());
 }

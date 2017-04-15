@@ -26,6 +26,10 @@ public:
     virtual void write(uint8_t, uint8_t) override;
 
 private:
+    void tick_four_frame();
+    void tick_five_frame();
+    int16_t mix() const;
+    
     void on_quarter_frame();
     void on_half_frame();
 

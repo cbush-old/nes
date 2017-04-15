@@ -60,75 +60,96 @@ void APU::tick()
 
     if (!_frame_counter.five_frame_sequence)
     {
-
-        if ((_cycle == 3728.5 * 2) || (_cycle == 11185.5 * 2))
-        {
-            on_quarter_frame();
-        }
-        else if (_cycle == 7456.5 * 2)
-        {
-            on_quarter_frame();
-            on_half_frame();
-        }
-        else if (_cycle == 14914 * 2)
-        {
-            if (!_frame_counter.interrupt_inhibit)
-            {
-                bus->pull_IRQ();
-            }
-        }
-        else if (_cycle == 14914.5 * 2)
-        {
-            on_quarter_frame();
-            on_half_frame();
-
-            if (!_frame_counter.interrupt_inhibit)
-            {
-                bus->pull_IRQ();
-            }
-        }
-        else if (_cycle >= 14915 * 2)
-        {
-            if (!_frame_counter.interrupt_inhibit)
-            {
-                bus->pull_IRQ();
-            }
-            _cycle = 0;
-        }
+        tick_four_frame();
     }
     else
     {
-        // five-step sequence
-        const bool quarter_frame = (_cycle == 3728.5 * 2) || (_cycle == 7456.5 * 2) || (_cycle == 11185.5 * 2) || (_cycle == 18640.5 * 2);
-
-        const bool half_frame = (_cycle == 7456.5 * 2) || (_cycle == 18640.5 * 2);
-
-        if (quarter_frame)
-        {
-            on_quarter_frame();
-        }
-        
-        if (half_frame)
-        {
-            on_half_frame();
-        }
-
-        if (_cycle >= 18641)
-        {
-            _cycle = 0;
-        }
+        tick_five_frame();
     }
 
-    // Mix sample
+    static size_t i = 0;
+    ++i;
+    if (i % 3)
+    {
+        return;
+    }
+    i = 0;
 
+    int16_t sample = mix();
+
+    audio->put_sample(sample);
+}
+
+void APU::tick_four_frame()
+{
+    if ((_cycle == 3728.5 * 2) || (_cycle == 11185.5 * 2))
+    {
+        on_quarter_frame();
+    }
+    else if (_cycle == 7456.5 * 2)
+    {
+        on_quarter_frame();
+        on_half_frame();
+    }
+    else if (_cycle == 14914 * 2)
+    {
+        if (!_frame_counter.interrupt_inhibit)
+        {
+            bus->pull_IRQ();
+        }
+    }
+    else if (_cycle == 14914.5 * 2)
+    {
+        on_quarter_frame();
+        on_half_frame();
+
+        if (!_frame_counter.interrupt_inhibit)
+        {
+            bus->pull_IRQ();
+        }
+    }
+    else if (_cycle >= 14915 * 2)
+    {
+        if (!_frame_counter.interrupt_inhibit)
+        {
+            bus->pull_IRQ();
+        }
+        _cycle = 0;
+    }
+}
+
+void APU::tick_five_frame()
+{
+    // five-step sequence
+    const bool quarter_frame = (_cycle == 3728.5 * 2) || (_cycle == 7456.5 * 2) || (_cycle == 11185.5 * 2) || (_cycle == 18640.5 * 2);
+
+    const bool half_frame = (_cycle == 7456.5 * 2) || (_cycle == 18640.5 * 2);
+
+    if (quarter_frame)
+    {
+        on_quarter_frame();
+    }
+    
+    if (half_frame)
+    {
+        on_half_frame();
+    }
+
+    if (_cycle >= 18641)
+    {
+        _cycle = 0;
+    }
+}
+
+int16_t APU::mix() const
+{
     int16_t sample = 0;
     sample += _pulse[0].mixed_sample();
     sample += _pulse[1].mixed_sample();
     sample += _triangle.mixed_sample();
     sample += _noise.mixed_sample();
     sample += _dmc.mixed_sample();
-
-    audio->put_sample(sample);
+    return sample;
 }
 
 uint8_t APU::read() const
