@@ -245,7 +245,7 @@ uint8_t CPU::read<&CPU::IMM>()
     return (uint8_t)IMM();
 }
 
-void CPU::print_status()
+void CPU::print_status() const
 {
     cout
         << hex << std::uppercase << std::setfill('0')
@@ -296,45 +296,4 @@ void CPU::dump_memory() const
         std::printf("%02x ", (uint8_t)memory[i]);
     }
     std::printf("\n");
-}
-
-struct CPU_state : public IRestorable::State
-{
-    std::array<uint8_t, 0x800> memory;
-    uint8_t P, A, X, Y, SP;
-    uint16_t PC;
-};
-
-IRestorable::State const *CPU::get_state() const
-{
-    CPU_state *state = new CPU_state();
-    for (size_t i = 0; i < memory.size(); ++i)
-    {
-        state->memory[i] = static_cast<uint8_t>(memory[i]);
-    }
-
-    state->P = P;
-    state->A = A;
-    state->X = X;
-    state->Y = Y;
-    state->SP = SP;
-    state->PC = PC;
-
-    return state;
-}
-
-void CPU::restore_state(IRestorable::State const *s)
-{
-    CPU_state const *state = static_cast<CPU_state const *>(s);
-    for (size_t i = 0; i < memory.size(); ++i)
-    {
-        memory[i] = state->memory[i];
-    }
-
-    P = state->P;
-    A = state->A;
-    X = state->X;
-    Y = state->Y;
-    SP = state->SP;
-    PC = state->PC;
 }

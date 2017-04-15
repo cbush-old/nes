@@ -38,11 +38,6 @@ PPU::PPU(IBus *bus, IROM *rom, IVideoDevice *video)
     , video(video)
     , tick_renderer(renderfuncs.begin())
 {
-    for (auto &i : framebuffer)
-    {
-        i = 0x008000ff;
-    }
-
     reg.PPUCTRL = 0x00;
     reg.PPUMASK = 0x00;
     reg.PPUSTATUS = 0x00;
@@ -51,45 +46,45 @@ PPU::PPU(IBus *bus, IROM *rom, IVideoDevice *video)
 
 void PPU::render_load_shift_registers()
 {
-    bg_shift_pat &= 0xffff0000;
-    bg_shift_pat |= tilepat;
-    bg_shift_attr &= 0xffff0000;
-    bg_shift_attr |= 0x5555 * tileattr;
+    _bg_shift_pat &= 0xffff0000;
+    _bg_shift_pat |= _tilepat;
+    _bg_shift_attr &= 0xffff0000;
+    _bg_shift_attr |= 0x5555 * _tileattr;
 }
 
 void PPU::render_nt_lookup_0()
 {
-    ioaddr = NAME_TABLE_BASE_ADDR + (vram.raw & 0xfff);
+    _ioaddr = NAME_TABLE_BASE_ADDR + (vram.raw & 0xfff);
 }
 
 void PPU::render_nt_lookup_1()
 {
-    pat_addr = PATTERN_TABLE_SIZE * reg.bg_addr + 16 * read(ioaddr) + vram.yfine;
+    _pat_addr = PATTERN_TABLE_SIZE * reg.bg_addr + 16 * read(_ioaddr) + vram.yfine;
 }
 
 void PPU::render_attr_lookup_0()
 {
-    ioaddr = ATTRIBUTE_TABLE_BASE_ADDR + NAME_TABLE_SIZE * vram.base_nta + 8 * (vram.ycoarse / 4) + (vram.xcoarse / 4);
+    _ioaddr = ATTRIBUTE_TABLE_BASE_ADDR + NAME_TABLE_SIZE * vram.base_nta + 8 * (vram.ycoarse / 4) + (vram.xcoarse / 4);
 }
 
 void PPU::render_attr_lookup_1()
 {
-    tileattr = (read(ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse & 2))) & 3;
+    _tileattr = (read(_ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse & 2))) & 3;
 }
 
 void PPU::render_fetch_bg_low_0()
 {
-    tilepat = read(pat_addr);
+    _tilepat = read(_pat_addr);
 }
 
 void PPU::render_fetch_bg_low_1()
 {
     // Interlace the two patterns (temp) // directly lifted from bisqwit
-    unsigned p = tilepat | (read(pat_addr + 8) << 8);
+    unsigned p = _tilepat | (read(_pat_addr + 8) << 8);
     p = (p & 0xf00f) | ((p & 0x0f00) >> 4) | ((p & 0x00f0) << 4);
     p = (p & 0xc3c3) | ((p & 0x3030) >> 2) | ((p & 0x0c0c) << 2);
     p = (p & 0x9999) | ((p & 0x4444) >> 1) | ((p & 0x2222) << 1);
-    tilepat = p;
+    _tilepat = p;
 }
 
 void PPU::render_fetch_bg_high_0()
@@ -115,7 +110,7 @@ void PPU::render_copy_horizontal()
     {
         vram.xcoarse = (unsigned)scroll.xcoarse;
         vram.base_nta_x = (unsigned)scroll.base_nta_x;
-        sprrenpos = 0;
+        _sprrenpos = 0;
     }
 }
 
@@ -128,7 +123,7 @@ void PPU::render_incr_vertical()
     }
 }
 
-// Pre-render scanline only
+// Pre-render _scanline only
 void PPU::render_copy_vertical()
 {
     if (reg.show_bg)
@@ -139,20 +134,6 @@ void PPU::render_copy_vertical()
 
 void PPU::render_set_vblank()
 {
-
-    double rate = bus->get_rate();
-    double remainder = fmod(1.0, rate);
-    static int s = 0;
-
-    if (++frameskip_count >= 1.0 * rate)
-    {
-        frameskip_count = 0;
-        if (rate > 1.0 && remainder > 0.001 && s++ >= 1.0 / remainder)
-        {
-            s = 0;
-        }
-    }
-
     bus->on_frame();
 
     reg.vblanking = true;
@@ -165,8 +146,8 @@ void PPU::render_set_vblank()
 
 void PPU::render_clear_vblank()
 {
-    scanline = -1;
-    odd_frame ^= 1;
+    _scanline = -1;
+    _odd_frame ^= 1;
     reg.PPUSTATUS = 0;
 }
 
@@ -184,7 +165,7 @@ void PPU::render_fetch_sprite_high_1()
 
 void PPU::render_OAM_clear()
 {
-    sprinpos = sproutpos = 0;
+    _sprinpos = _sproutpos = 0;
     if (reg.show_sp)
     {
         reg.OAMADDR = 0;
@@ -193,13 +174,13 @@ void PPU::render_OAM_clear()
 
 void PPU::render_OAM_read_0()
 {
-    if (sprrenpos < sproutpos)
+    if (_sprrenpos < _sproutpos)
     {
 
-        auto &object = OAM3[sprrenpos];
-        memcpy(&object, &OAM2[sprrenpos], sizeof(object));
+        auto &object = OAM3[_sprrenpos];
+        memcpy(&object, &OAM2[_sprrenpos], sizeof(object));
 
-        unsigned y = scanline - object.y;
+        unsigned y = _scanline - object.y;
 
         if (object.flip_vertically)
         {
@@ -209,29 +190,29 @@ void PPU::render_OAM_read_0()
         if (reg.sprite_size)
         {
 
-            pat_addr = PATTERN_TABLE_SIZE * (object.index & 1) + 0x10 * (object.index & 0xfe);
+            _pat_addr = PATTERN_TABLE_SIZE * (object.index & 1) + 0x10 * (object.index & 0xfe);
         }
         else
         {
 
-            pat_addr = PATTERN_TABLE_SIZE * reg.sp_addr + 0x10 * (object.index & 0xff);
+            _pat_addr = PATTERN_TABLE_SIZE * reg.sp_addr + 0x10 * (object.index & 0xff);
         }
 
-        pat_addr += (y & 7) + (y & 8) * 2;
+        _pat_addr += (y & 7) + (y & 8) * 2;
     }
 }
 
 void PPU::render_OAM_read_1()
 {
-    if (sprrenpos < sproutpos)
+    if (_sprrenpos < _sproutpos)
     {
-        OAM3[sprrenpos++].pattern = tilepat;
+        OAM3[_sprrenpos++].pattern = _tilepat;
     }
 }
 
 void PPU::render_OAM_write()
 {
-    sprtmp = OAM[reg.OAMADDR];
+    _sprtmp = _oam[reg.OAMADDR];
 }
 
 template <int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256, bool X_LT_337>
@@ -239,8 +220,8 @@ void PPU::render()
 {
     if (X && X_LT_337)
     {
-        bg_shift_pat <<= 2;
-        bg_shift_attr <<= 2;
+        _bg_shift_pat <<= 2;
+        _bg_shift_attr <<= 2;
     }
 
     // Prepare fetch pattern from the NT
@@ -249,7 +230,7 @@ void PPU::render()
         render_nt_lookup_0();
     }
 
-    // Also, 2nd fetch in cycle is another NT byte at the end of the scanline
+    // Also, 2nd fetch in cycle is another NT byte at the end of the _scanline
     // ...TODO...
 
     if (X_MOD_8 == 2)
@@ -293,7 +274,7 @@ void PPU::render()
         render_incr_horizontal();
     }
 
-    // End of scanline: copy temp horizontal data to main vram
+    // End of _scanline: copy temp horizontal data to main vram
     if (X == 257)
     {
         render_copy_horizontal();
@@ -305,9 +286,9 @@ void PPU::render()
         render_incr_vertical();
     }
 
-    // Pre-render scanline: copy temp vertical data to main vram
+    // Pre-render _scanline: copy temp vertical data to main vram
     // From 280 - 304
-    if (X == 304 && scanline == -1)
+    if (X == 304 && _scanline == -1)
     {
         render_copy_vertical();
     }
@@ -337,7 +318,7 @@ void PPU::render()
 
     if (X == 256)
     {
-        // hack for mmc3 scanline counter
+        // hack for mmc3 _scanline counter
         read(0x1000);
     }
 
@@ -349,45 +330,45 @@ void PPU::render()
         {
         case 0:
             // Primary OAM can hold 64 sprites per frame
-            if (sprinpos >= 64)
+            if (_sprinpos >= 64)
             {
                 reg.OAMADDR = 0;
                 break;
             }
 
-            ++sprinpos;
+            ++_sprinpos;
 
-            // Secondary OAM holds max 8 sprites per scanline
-            OAM2[sproutpos].y = sprtmp;
-            OAM2[sproutpos].sprindex = reg.OAM_index;
+            // Secondary _oam holds max 8 sprites per _scanline
+            OAM2[_sproutpos].y = _sprtmp;
+            OAM2[_sproutpos].sprindex = reg.OAM_index;
 
-            // If the sprite is not on this scanline, skip ahead in memory
-            if (!(sprtmp <= scanline && scanline < sprtmp + (reg.sprite_size ? 16 : 8)))
+            // If the sprite is not on this _scanline, skip ahead in memory
+            if (!(_sprtmp <= _scanline && _scanline < _sprtmp + (reg.sprite_size ? 16 : 8)))
             {
-                reg.OAMADDR = sprinpos != 2 ? reg.OAMADDR + 3 : 8;
+                reg.OAMADDR = _sprinpos != 2 ? reg.OAMADDR + 3 : 8;
             }
 
             break;
 
         case 1:
-            OAM2[sproutpos].index = sprtmp;
+            OAM2[_sproutpos].index = _sprtmp;
             break;
 
         case 2:
-            OAM2[sproutpos].attr = sprtmp;
+            OAM2[_sproutpos].attr = _sprtmp;
             break;
 
         case 3:
-            if (sproutpos < 8)
+            if (_sproutpos < 8)
             {
-                OAM2[sproutpos++].x = sprtmp;
+                OAM2[_sproutpos++].x = _sprtmp;
             }
             else
             {
                 reg.spr_overflow = true;
             }
 
-            if (sprinpos == 2)
+            if (_sprinpos == 2)
             {
                 reg.OAMADDR = 8;
             }
@@ -401,7 +382,7 @@ void PPU::render()
         render_OAM_write();
     }
 
-    if (X_LT_256 && scanline >= 0)
+    if (X_LT_256 && _scanline >= 0)
     {
         render_pixel();
     }
@@ -420,8 +401,8 @@ void PPU::render_pixel()
     if (showbg)
     {
 
-        pixel = (bg_shift_pat >> (30 - fx * 2)) & 3;
-        attr = (bg_shift_attr >> (30 - fx * 2)) & (pixel ? 3 : 0);
+        pixel = (_bg_shift_pat >> (30 - fx * 2)) & 3;
+        attr = (_bg_shift_attr >> (30 - fx * 2)) & (pixel ? 3 : 0);
     }
     else if ((vram.raw & 0x3f00) == 0x3f00 && !reg.rendering_enabled)
     {
@@ -430,7 +411,7 @@ void PPU::render_pixel()
 
     if (showsp)
     {
-        for (int sno = 0; sno < sprrenpos; ++sno)
+        for (int sno = 0; sno < _sprrenpos; ++sno)
         {
             auto &s = OAM3[sno];
 
@@ -454,7 +435,7 @@ void PPU::render_pixel()
 
             if (!pixel || !s.priority)
             {
-                attr = s.palette + 4;
+                attr = s._palette + 4;
                 pixel = spritepixel;
             }
 
@@ -462,9 +443,9 @@ void PPU::render_pixel()
         }
     }
 
-    pixel = palette[(attr * 4 + pixel) & 0x1f] & (0x30 + !reg.grayscale * 0x0f);
+    pixel = _palette[(attr * 4 + pixel) & 0x1f] & (0x30 + !reg.grayscale * 0x0f);
 
-    video->put_pixel(_cycle, scanline, pixel & 0x3f);
+    video->put_pixel(_cycle, _scanline, pixel & 0x3f);
 }
 
 void PPU::write(uint8_t value, uint16_t addr)
@@ -483,9 +464,9 @@ void PPU::write(uint8_t value, uint16_t addr)
         rom->write_nt(value, addr - 0x2000);
     }
     else
-    { // Palette
+    { // _palette
 
-        palette[addr & (0xf | (((addr & 3) != 0) << 4))] = value;
+        _palette[addr & (0xf | (((addr & 3) != 0) << 4))] = value;
     }
 }
 
@@ -506,11 +487,11 @@ uint8_t PPU::read(uint16_t addr, bool no_palette /* = false */) const
         return rom->read_nt(addr - 0x2000);
     }
     else
-    { // Palette http://wiki.nesdev.com/w/index.php/PPU_palettes
+    { // _palette http://wiki.nesdev.com/w/index.php/PPU_palettes
 
-        // Retrieve the palette index; address above 0x3f20 are mirrors of 0x3f00 to 0x3f1f.
+        // Retrieve the _palette index; address above 0x3f20 are mirrors of 0x3f00 to 0x3f1f.
         // Additionally, index 10, 14, 18 and 1C are mirrors of 0, 4, 8 and C respectively.
-        return palette[addr & (0xf | (((addr & 3) != 0) << 4))];
+        return _palette[addr & (0xf | (((addr & 3) != 0) << 4))];
     }
 }
 
@@ -520,17 +501,17 @@ void PPU::tick3()
     {
         if (_cycle == 1)
         {
-            if (scanline == 241)
+            if (_scanline == 241)
             {
                 render_set_vblank();
             }
-            else if (scanline == 261)
+            else if (_scanline == 261)
             {
                 render_clear_vblank();
             }
         }
 
-        if (reg.rendering_enabled && scanline < 240)
+        if (reg.rendering_enabled && _scanline < 240)
         {
             (*tick_renderer)(*this);
             ++tick_renderer;
@@ -541,9 +522,9 @@ void PPU::tick3()
         if (_cycle == 341)
         {
 
-            _cycle = (reg.rendering_enabled && (scanline == -1) && odd_frame); // || ((scanline & 1) && reg.show_bg);
+            _cycle = (reg.rendering_enabled && (_scanline == -1) && _odd_frame); // || ((_scanline & 1) && reg.show_bg);
             tick_renderer = renderfuncs.begin() + _cycle;
-            ++scanline;
+            ++_scanline;
         }
     }
 }
@@ -566,12 +547,12 @@ void PPU::regw_OAM_address(uint8_t value)
 
 void PPU::regw_OAM_data(uint8_t value)
 {
-    OAM[reg.OAMADDR++] = value;
+    _oam[reg.OAMADDR++] = value;
 }
 
 void PPU::regw_scroll(uint8_t value)
 {
-    if (loopy_w)
+    if (_loopy_w)
     {
         scroll.yfine = value & 7;
         scroll.ycoarse = value >> 3;
@@ -580,12 +561,12 @@ void PPU::regw_scroll(uint8_t value)
     {
         scroll.xscroll = value;
     }
-    loopy_w ^= 1;
+    _loopy_w ^= 1;
 }
 
 void PPU::regw_address(uint8_t value)
 {
-    if (loopy_w)
+    if (_loopy_w)
     {
         scroll.vaddr_lo = value;
         vram.raw = (unsigned)scroll.raw;
@@ -594,7 +575,7 @@ void PPU::regw_address(uint8_t value)
     {
         scroll.vaddr_hi = value & 0x3f;
     }
-    loopy_w ^= 1;
+    _loopy_w ^= 1;
 }
 
 void PPU::regw_data(uint8_t value)
@@ -607,19 +588,19 @@ uint8_t PPU::regr_status()
 {
     uint8_t result{ static_cast<uint8_t>(reg.PPUSTATUS) };
     reg.vblanking = false;
-    loopy_w = false;
+    _loopy_w = false;
     return result;
 }
 
 uint8_t PPU::regr_OAM_data()
 {
-    return OAM[reg.OAMADDR] & (reg.OAM_data == 2 ? 0xE3 : 0xFF);
+    return _oam[reg.OAMADDR] & (reg.OAM_data == 2 ? 0xE3 : 0xFF);
 }
 
 uint8_t PPU::regr_data()
 {
-    uint8_t result = read_buffer;
-    read_buffer = read(vram.raw, true);
+    uint8_t result = _read_buffer;
+    _read_buffer = read(vram.raw, true);
     vram.raw = vram.raw + (!!reg.vramincr * 31 + 1);
     return result;
 }

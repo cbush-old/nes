@@ -45,7 +45,6 @@ void SDLInputDevice::tick()
             else if (e.key.keysym.sym == SDLK_q)
             {
                 _bus.set_rate(e.type == SDL_KEYDOWN ? 0.4 : 1.0);
-        
             }
             else if (e.key.keysym.sym == SDLK_w)
             {

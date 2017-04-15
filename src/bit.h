@@ -12,6 +12,12 @@ class bit
 public:
     bit() = default;
     explicit bit(T v): _value(v) {}
+    
+    bit(bit const &) = default;
+    bit(bit &&) = default;
+    bit &operator=(bit const &) = default;
+    bit &operator=(bit &&) = default;
+    ~bit() = default;
 
     constexpr T mask() const
     {

@@ -20,19 +20,34 @@
 
 class CPU
     : public ICPU
-    , public IRestorable
 {
-private:
-    IBus *bus;
-    IAPU *apu;
-    IPPU *ppu;
-    IROM *rom;
-    IController *controller[2];
-
 public:
     CPU(IBus *bus, IAPU *apu, IPPU *ppu, IROM *rom, IController *controller0, IController *controller1);
+    
+    CPU(CPU const &) = default;
+    CPU(CPU &&) = default;
+    CPU &operator=(CPU const &) = default;
+    CPU &operator=(CPU &&) = default;
+    virtual ~CPU() = default;
+
+    virtual uint8_t read(uint16_t) const override;
+
+    virtual void pull_NMI() override;
+
+    virtual void pull_IRQ() override;
+
+    virtual void release_IRQ() override;
+
+    virtual void update(double rate) override;
 
 private:
+    typedef void (CPU::*op)();               // operation
+    typedef uint16_t (CPU::*mode)();         // addressing mode
+    typedef uint8_t (CPU::*regr)();          // register read
+    typedef void (CPU::*regw)(uint8_t);      // register write
+    typedef uint8_t (CPU::*condition)();     // branch condition
+    typedef uint8_t (CPU::*rmw_op)(uint8_t); // read-modify-write
+
     enum Flag
     {
         N_FLAG = 0x80,
@@ -42,28 +57,6 @@ private:
         Z_FLAG = 0x02,
         C_FLAG = 0x01
     };
-
-    std::array<uint8_t, 0x800> memory;
-
-    uint8_t
-        P{ 0x34 },
-        A{ 0 },
-        X{ 0 },
-        Y{ 0 },
-        SP{ 0xfd };
-    uint16_t PC{ 0xC000 };
-    uint16_t cyc{ 0 };
-    uint16_t last_PC;
-    uint8_t last_op;
-    int result_cycle{ 0 };
-
-private:
-    typedef void (CPU::*op)();               // operation
-    typedef uint16_t (CPU::*mode)();         // addressing mode
-    typedef uint8_t (CPU::*regr)();          // register read
-    typedef void (CPU::*regw)(uint8_t);      // register write
-    typedef uint8_t (CPU::*condition)();     // branch condition
-    typedef uint8_t (CPU::*rmw_op)(uint8_t); // read-modify-write
 
     template <Flag F>
     inline void set_if(bool cond)
@@ -80,10 +73,6 @@ private:
         set_if<N_FLAG>(x & 0x80);
     }
 
-public:
-    uint8_t read(uint16_t) const override;
-
-private:
     void write(uint8_t, uint16_t);
     void push(uint8_t);
     void push2(uint16_t);
@@ -94,22 +83,6 @@ private:
 
     void addcyc();
 
-    template <typename T>
-    inline uint16_t sum_check_pgx(uint16_t addr, T const &x)
-    {
-        uint16_t r = addr + x;
-        if ((r & 0xff00) != (addr & 0xff00))
-            addcyc();
-        return r;
-    }
-
-public:
-    virtual void pull_NMI() override;
-    virtual void pull_IRQ() override;
-    virtual void release_IRQ() override;
-    virtual void update(double rate) override;
-
-private:
     // addressing modes
     inline uint16_t ACC() { return 0; } // template only
     inline uint16_t X__() { return 0; }
@@ -174,16 +147,42 @@ private:
 
 #include "cpu-ops.cc"
 
+    template <typename T>
+    inline uint16_t sum_check_pgx(uint16_t addr, T const &x)
+    {
+        uint16_t r = addr + x;
+        if ((r & 0xff00) != (addr & 0xff00))
+            addcyc();
+        return r;
+    }
+
+    void print_status() const;
+    void dump_memory() const;
+
     static const op ops[256];
     static const char *const opasm[256];
 
-    void print_status();
-    void dump_memory() const;
-    bool IRQ{ false };
+    IBus *bus;
+    IAPU *apu;
+    IPPU *ppu;
+    IROM *rom;
+    IController *controller[2];
 
-public:
-    IRestorable::State const *get_state() const override;
-    void restore_state(IRestorable::State const *) override;
+    std::array<uint8_t, 0x800> memory;
+
+    uint8_t
+        P{ 0x34 },
+        A{ 0 },
+        X{ 0 },
+        Y{ 0 },
+        SP{ 0xfd };
+    uint16_t PC{ 0xC000 };
+    uint16_t cyc{ 0 };
+    uint16_t last_PC;
+    uint8_t last_op;
+    int result_cycle{ 0 };
+
+    bool IRQ{ false };
 };
 
 template <>

@@ -93,6 +93,8 @@ void NES::release_IRQ()
 
 void NES::on_frame()
 {
+    ++_frame_counter;
+
     video->on_frame();
 
     for (auto &i : input)
@@ -100,7 +102,6 @@ void NES::on_frame()
         i->tick();
     }
 
-    ++_frame_counter;
     auto dt = clock::now() - _last_second;
     if (dt >= std::chrono::seconds(1))
     {

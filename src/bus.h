@@ -9,26 +9,6 @@
 
 using Framebuffer = std::array<uint32_t, 256 * 240>;
 
-/*!
- \brief Interface of a restorable class
- */
-class IRestorable
-{
-public:
-    class State
-    {
-    public:
-        virtual ~State() = 0;
-    };
-
-    virtual ~IRestorable() {}
-
-    virtual State const *get_state() const = 0;
-    virtual void restore_state(State const *) = 0;
-};
-
-inline IRestorable::State::~State() {}
-
 /**
  * @brief Interface of a picture processing unit
  **/

@@ -24,6 +24,12 @@ public:
 
     PPU(IBus *bus, IROM *rom, IVideoDevice *video);
 
+    PPU(PPU const &) = default;
+    PPU(PPU &&) = default;
+    PPU &operator=(PPU const &) = default;
+    PPU &operator=(PPU &&) = default;
+    ~PPU() = default;
+
     /*!
      \brief Advance the component's internal clock 3 times.
     */
@@ -42,6 +48,22 @@ public:
     virtual uint8_t regr_data() override;
 
 private:
+    struct ObjectAttributeMemory2
+    {
+        uint8_t y;
+        uint8_t index;
+        union {
+            uint8_t attr;
+            bit<0, 2, uint8_t> _palette;
+            bit<5, 1, uint8_t> priority;
+            bit<6, 1, uint8_t> flip_horizontally;
+            bit<7, 1, uint8_t> flip_vertically;
+        };
+        uint8_t x;
+        uint8_t sprindex;
+        uint16_t pattern;
+    };
+
     /*!
      \brief (internal) write to vram
      \param value the value to write
@@ -89,12 +111,11 @@ private:
     void render_load_shift_registers();
     void render_skip_cycle();
 
+    static const Renderf_array renderfuncs;
+
     IBus *bus;
     IROM *rom;
     IVideoDevice *video;
-
-    int frameskip{ 0 };
-    int frameskip_count{ 0 };
 
     union
     {
@@ -149,41 +170,30 @@ private:
 
     } scroll, vram;
 
-    bool loopy_w{false};
+    bool _loopy_w{false};
 
     int _cycle{0};
-    int scanline{241};
-    int scanline_end{341};
-    int read_buffer{0};
+    int _scanline{241};
+    int _read_buffer{0};
 
-    ObjectAttributeMemory OAM;
-    Palette palette;
-    Framebuffer framebuffer;
+    ObjectAttributeMemory _oam;
+    Palette _palette;
 
-    int16_t pat_addr, sprinpos, sproutpos, sprrenpos, sprtmp;
-    uint16_t tileattr, tilepat, ioaddr;
-    uint32_t bg_shift_pat, bg_shift_attr;
+    int16_t _pat_addr;
+    int16_t _sprinpos;
+    int16_t _sproutpos;
+    int16_t _sprrenpos;
+    int16_t _sprtmp;
+    uint16_t _tileattr;
+    uint16_t _tilepat;
+    uint16_t _ioaddr;
+    uint32_t _bg_shift_pat;
+    uint32_t _bg_shift_attr;
 
-    struct
-    {
-        uint8_t y;
-        uint8_t index;
-        union {
-            uint8_t attr;
-            bit<0, 2, uint8_t> palette;
-            bit<5, 1, uint8_t> priority;
-            bit<6, 1, uint8_t> flip_horizontally;
-            bit<7, 1, uint8_t> flip_vertically;
-        };
-        uint8_t x;
-        uint8_t sprindex;
-        uint16_t pattern;
-    } OAM2[8], OAM3[8];
-
-    static const Renderf_array renderfuncs;
+    std::array<ObjectAttributeMemory2, 8> OAM2, OAM3;
     Renderf_array::const_iterator tick_renderer;
 
-    bool odd_frame{ 0 };
+    bool _odd_frame{ 0 };
 };
 
 #endif
