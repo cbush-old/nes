@@ -23,6 +23,7 @@ private:
     SDL_GLContext _gl_context;
     uint32_t _texture;
     Framebuffer _buffer;
+    bool _buffer_dirty;
 };
 
 #endif

@@ -36,8 +36,10 @@ uint32_t palette_index_to_rgba(PaletteIndex i)
 SDLVideoDevice::SDLVideoDevice()
     : _window{SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 512, 480, SDL_WINDOW_OPENGL)}
     , _gl_context(SDL_GL_CreateContext(_window))
+    , _texture(0)
+    , _buffer_dirty(false)
 {
-    SDL_GL_SetSwapInterval(0);
+    SDL_GL_SetSwapInterval(1);
 
     glMatrixMode(GL_PROJECTION | GL_MODELVIEW);
     glLoadIdentity();
@@ -72,22 +74,29 @@ SDLVideoDevice::~SDLVideoDevice()
 
 void SDLVideoDevice::put_pixel(uint8_t x, uint8_t y, PaletteIndex i)
 {
-    _buffer[y * 256 + (x & 0xff)] = RGB[i];
+    auto &pixel_in_buffer = _buffer[y * 256 + (x & 0xff)];
+    auto p = RGB[i];
+    _buffer_dirty |= (pixel_in_buffer != p);
+    pixel_in_buffer = p;
 }
 
 void SDLVideoDevice::on_frame()
 {
-    glTexSubImage2D(
-        GL_TEXTURE_2D,
-        0, // level
-        0, // xoffset
-        0, // yoffset
-        256, // width
-        240, // height
-        GL_RGBA,
-        GL_UNSIGNED_INT_8_8_8_8,
-        static_cast<const GLvoid *>(_buffer.data())
-    );
+    if (_buffer_dirty)
+    {
+        glTexSubImage2D(
+            GL_TEXTURE_2D,
+            0, // level
+            0, // xoffset
+            0, // yoffset
+            256, // width
+            240, // height
+            GL_RGBA,
+            GL_UNSIGNED_INT_8_8_8_8,
+            static_cast<const GLvoid *>(_buffer.data())
+        );
+        _buffer_dirty = false;
+    }
     glBegin(GL_TRIANGLE_STRIP);
     glTexCoord2f(0.0, 0.0f); glVertex2i(0, 0);
     glTexCoord2f(1.0, 0.0f); glVertex2i(256, 0);

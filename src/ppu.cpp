@@ -9,32 +9,29 @@ const uint16_t NAME_TABLE_BASE_ADDR = 0x2000;
 const uint16_t NAME_TABLE_SIZE = 0x400;
 const uint16_t PATTERN_TABLE_SIZE = 0x1000;
 
-static const std::array<std::vector<Renderf>, 32> renderers{};
-
 // template <int X, char X_MOD_8, bool TDM, bool X_ODD_64_TO_256, bool X_LT_256, bool X_LT_337>
-#define X(a) (&PPU::render<                                                                                                                                        \
+#define X(a) case a: PPU::render<                                                                                                                                        \
               (((a) == 0) || ((a) == 1) || ((a) == 256) || ((a) == 257) || ((a) == 328) || ((a) == 336) || ((a) == 337) ? (a) : (280 <= a && a < 305) ? 304 : -1), \
               ((a)&7),                                                                                                                                             \
               ((1 <= (a) && (a) <= 257) || (321 <= (a) && (a) <= 340)),                                                                                            \
               bool(((a)&1) && ((a) >= 64) && ((a) < 256)),                                                                                                         \
               bool((a) < 256),                                                                                                                                     \
-              bool((a) < 337)>)
+              bool((a) < 337)>(); break
 
-#define Y(a) X(a) \
-             , X(a + 1), X(a + 2), X(a + 3), X(a + 4), X(a + 5), X(a + 6), X(a + 7), X(a + 8), X(a + 9)
-const Renderf_array PPU::renderfuncs
-{
-    Y(0), Y(10), Y(20), Y(30), Y(40), Y(50), Y(60), Y(70), Y(80), Y(90),
-    Y(100), Y(110), Y(120), Y(130), Y(140), Y(150), Y(160), Y(170), Y(180), Y(190),
-    Y(200), Y(210), Y(220), Y(230), Y(240), Y(250), Y(260), Y(270), Y(280), Y(290),
-    Y(300), Y(310), Y(320), Y(330), X(340), X(341)
-};
-#undef X
-#undef Y
+#define Y(a) X(a); \
+             X(a + 1); X(a + 2); X(a + 3); X(a + 4); X(a + 5); X(a + 6); X(a + 7); X(a + 8); X(a + 9)
+
+#define RENDER_SWITCH(a) \
+    switch (a) \
+    { \
+        Y(0); Y(10); Y(20); Y(30); Y(40); Y(50); Y(60); Y(70); Y(80); Y(90); \
+        Y(100); Y(110); Y(120); Y(130); Y(140); Y(150); Y(160); Y(170); Y(180); Y(190); \
+        Y(200); Y(210); Y(220); Y(230); Y(240); Y(250); Y(260); Y(270); Y(280); Y(290); \
+        Y(300); Y(310); Y(320); Y(330); X(340); X(341); \
+    }
 
 PPU::PPU(IBus *bus)
     : _bus(bus)
-    , tick_renderer(renderfuncs.begin())
 {
     reg.PPUCTRL = 0x00;
     reg.PPUMASK = 0x00;
@@ -376,7 +373,6 @@ void PPU::render()
     }
     else
     {
-
         render_OAM_write();
     }
 
@@ -398,7 +394,6 @@ void PPU::render_pixel()
 
     if (showbg)
     {
-
         pixel = (_bg_shift_pat >> (30 - fx * 2)) & 3;
         attr = (_bg_shift_attr >> (30 - fx * 2)) & (pixel ? 3 : 0);
     }
@@ -511,8 +506,7 @@ void PPU::tick3()
 
         if (reg.rendering_enabled && _scanline < 240)
         {
-            (*tick_renderer)(*this);
-            ++tick_renderer;
+            RENDER_SWITCH(_cycle)
         }
 
         ++_cycle;
@@ -521,7 +515,6 @@ void PPU::tick3()
         {
 
             _cycle = (reg.rendering_enabled && (_scanline == -1) && _odd_frame); // || ((_scanline & 1) && reg.show_bg);
-            tick_renderer = renderfuncs.begin() + _cycle;
             ++_scanline;
         }
     }

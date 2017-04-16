@@ -9,12 +9,6 @@
 #include "bit.h"
 #include "bus.h"
 
-class PPU;
-
-// Render functions
-using Renderf = std::function<void(PPU &)>;
-using Renderf_array = std::array<Renderf, 342>;
-
 class PPU
     : public IPPU
 {
@@ -111,8 +105,6 @@ private:
     void render_load_shift_registers();
     void render_skip_cycle();
 
-    static const Renderf_array renderfuncs;
-
     IBus *_bus;
 
     union
@@ -189,7 +181,6 @@ private:
     uint32_t _bg_shift_attr;
 
     std::array<ObjectAttributeMemory2, 8> OAM2, OAM3;
-    Renderf_array::const_iterator tick_renderer;
 
     bool _odd_frame{ 0 };
 };

@@ -181,24 +181,23 @@ void CPU::update(double rate)
     for (int i = 0; i < cycles[last_op] + result_cycle; ++i)
     {
         bus->on_cpu_tick();
+        if (IRQ && ((P & I_FLAG) == 0))
+        {
+            push2(PC);
+            stack_push<&CPU::ProcStatus>();
+            P |= I_FLAG;
+            PC = read(0xfffe) | (read(0xffff) << 8);
+        }
+        else if (do_NMI)
+        {
+            do_NMI = false;
+            push2(PC);
+            stack_push<&CPU::ProcStatus>();
+            PC = read(0xfffa) | (read(0xfffb) << 8);
+        }
     }
 
     result_cycle = 0;
-
-    if (IRQ && ((P & I_FLAG) == 0))
-    {
-        push2(PC);
-        stack_push<&CPU::ProcStatus>();
-        P |= I_FLAG;
-        PC = read(0xfffe) | (read(0xffff) << 8);
-    }
-    else if (do_NMI)
-    {
-        do_NMI = false;
-        push2(PC);
-        stack_push<&CPU::ProcStatus>();
-        PC = read(0xfffa) | (read(0xfffb) << 8);
-    }
 }
 
 template <>

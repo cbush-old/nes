@@ -13,6 +13,8 @@
 #include <memory>
 #include <vector>
 
+#define REWIND 1
+
 /**
  * @brief a basic system
  **/
@@ -65,10 +67,12 @@ private:
     PPU ppu;
     APU apu;
     CPU cpu;
-    
+
+#if REWIND
     std::deque<CPU> _cpu_states;
     std::deque<PPU> _ppu_states;
     std::deque<InlinePolymorph<ROM>> _rom_states;
+#endif
 
     time_point _last_frame;
     time_point _last_second;

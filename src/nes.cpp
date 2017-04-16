@@ -117,13 +117,15 @@ void NES::on_frame()
         _frame_counter = 0;
     }
 
+/*
     const auto target_frame_duration = std::chrono::seconds(1) / (60.0 * _rate);
 
     while ((clock::now() - _last_frame) < target_frame_duration)
         ;
-
+*/
     _last_frame = clock::now();
-    
+
+#if REWIND
     if (_rewinding)
     {
         if (_cpu_states.size())
@@ -155,6 +157,7 @@ void NES::on_frame()
         _ppu_states.emplace_back(ppu);
         _rom_states.push_back(_rom);
     }
+#endif
 }
 
 void NES::rewind(bool on)
