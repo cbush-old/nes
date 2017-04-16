@@ -63,6 +63,8 @@ NES::NES(const char *rom_path, std::istream &script)
     , _last_frame(clock::now())
     , _last_second(clock::now())
     , _frame_counter(0)
+    , _frame_drop(0)
+    , _last_frame_drop(0)
     , _rewinding(false)
 {
     logi("sizeof CPU: %lu", sizeof(CPU));
@@ -98,8 +100,6 @@ void NES::on_frame()
 {
     ++_frame_counter;
 
-    _video->on_frame();
-
     for (auto &i : _input)
     {
         i->tick();
@@ -114,16 +114,15 @@ void NES::on_frame()
             std::printf("fps: %lu\n", _frame_counter);
             _last_fps = _frame_counter;
         }
+        
+        if (_last_frame_drop != _frame_drop)
+        {
+            std::printf("dropped %lu frames\n", _frame_drop);
+            _last_frame_drop = _frame_drop;
+        }
         _frame_counter = 0;
+        _frame_drop = 0;
     }
-
-/*
-    const auto target_frame_duration = std::chrono::seconds(1) / (60.0 * _rate);
-
-    while ((clock::now() - _last_frame) < target_frame_duration)
-        ;
-*/
-    _last_frame = clock::now();
 
 #if REWIND
     if (_rewinding)
@@ -158,6 +157,19 @@ void NES::on_frame()
         _rom_states.push_back(_rom);
     }
 #endif
+
+    const auto target_frame_duration = std::chrono::seconds(1) / (60.0 * _rate);
+
+    if ((clock::now() - _last_frame) < target_frame_duration)
+    {
+        _video->on_frame();
+    }
+    else
+    {
+        ++_frame_drop;
+    }
+
+    _last_frame = clock::now();
 }
 
 void NES::rewind(bool on)
@@ -167,8 +179,6 @@ void NES::rewind(bool on)
 
 void NES::on_cpu_tick()
 {
-    apu.tick(_rate);
-    ppu.tick3();
 }
 
 void NES::set_rate(double rate)
@@ -188,6 +198,8 @@ void NES::run()
         for (;;)
         {
             cpu.update(_rate);
+            apu.tick(_rate);
+            ppu.tick3();
         }
     }
     catch (std::runtime_error const &e)

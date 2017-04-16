@@ -169,18 +169,24 @@ void CPU::pull_NMI()
 
 void CPU::update(double rate)
 {
-    _last_PC = _PC;
-    _last_op = next();
-
-#ifdef DEBUG_CPU
-    print_status();
-#endif
-
-    (this->*s_ops[_last_op])();
-
-    for (int i = 0; i < cycles[_last_op] + _result_cycle; ++i)
+    if (_last_op_cycles == 0)
     {
-        _bus->on_cpu_tick();
+        _last_PC = _PC;
+        _last_op = next();
+
+    #ifdef DEBUG_CPU
+        print_status();
+    #endif
+
+        (this->*s_ops[_last_op])();
+        _last_op_cycles = cycles[_last_op] + _result_cycle;
+        _result_cycle = 0;
+        
+        --_last_op_cycles; // this tick counts
+    }
+    else
+    {
+        --_last_op_cycles;
         if (_irq && ((_P & I_FLAG) == 0))
         {
             push2(_PC);
@@ -196,8 +202,6 @@ void CPU::update(double rate)
             _PC = read(0xfffa) | (read(0xfffb) << 8);
         }
     }
-
-    _result_cycle = 0;
 }
 
 template <>

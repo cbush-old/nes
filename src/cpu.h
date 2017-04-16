@@ -177,8 +177,8 @@ private:
     uint16_t _cyc{0};
     uint16_t _last_PC;
     uint8_t _last_op;
-    int _result_cycle{ 0 };
-
+    uint8_t _last_op_cycles{0};
+    int _result_cycle{0};
     bool _irq{ false };
 };
 

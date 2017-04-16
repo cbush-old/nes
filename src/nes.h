@@ -77,6 +77,8 @@ private:
     time_point _last_frame;
     time_point _last_second;
     size_t _frame_counter;
+    size_t _frame_drop;
+    size_t _last_frame_drop;
     size_t _last_fps;
     
     bool _rewinding;

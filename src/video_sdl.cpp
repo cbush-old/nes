@@ -105,7 +105,7 @@ void SDLVideoDevice::on_frame()
     glEnd();
 
     SDL_GL_SwapWindow(_window);
-    glClear(GL_COLOR_BUFFER_BIT);
+    // glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void screenshot()

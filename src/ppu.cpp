@@ -478,8 +478,6 @@ uint8_t PPU::read(uint16_t addr, bool no_palette /* = false */) const
 
     if (addr < 0x2000)
     { // Pattern table
-
-        assert(false);
         return _bus->read_chr(addr);
     }
     else if (addr < 0x3f00 + no_palette * 0xff)

@@ -14,6 +14,10 @@ SxROM::SxROM()
 
 SxROM::~SxROM() {}
 
+void SxROM::write_chr(uint8_t value, uint16_t addr)
+{
+}
+
 void SxROM::write_prg(uint8_t value, uint16_t addr)
 {
     if (addr < 0x8000)

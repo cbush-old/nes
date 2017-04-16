@@ -17,6 +17,8 @@ public:
     DEFAULT_MOVE_AND_COPY(SxROM);
     virtual ~SxROM();
 
+    virtual void write_chr(uint8_t value, uint16_t addr) override;
+
     virtual void write_prg(uint8_t value, uint16_t addr) override;
 
 private:
