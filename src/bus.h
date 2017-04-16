@@ -7,6 +7,21 @@
 #include <vector>
 #include <array>
 
+#define DECLARE_NO_COPY(Class) \
+    Class(Class const &) = delete; \
+    Class &operator=(Class const &) = delete
+
+#define DEFAULT_MOVE_AND_COPY(Class) \
+    Class(Class const &) = default; \
+    Class(Class &&) = default; \
+    Class &operator=(Class const &) = default; \
+    Class &operator=(Class &&) = default
+
+#define DEFAULT_MOVE_NO_COPY(Class) \
+    DECLARE_NO_COPY(Class); \
+    Class(Class &&) = default; \
+    Class &operator=(Class &&) = default
+
 using Framebuffer = std::array<uint32_t, 256 * 240>;
 
 /**

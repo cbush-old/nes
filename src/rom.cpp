@@ -14,7 +14,8 @@ uint8_t ROM::read_prg(uint16_t addr) const
 {
     if (addr < 0x8000)
     {
-        return ram[addr % 0x4000];
+        return 0;
+        //return ram[addr % 0x4000];
     }
     else
     {
@@ -27,12 +28,13 @@ void ROM::write_prg(uint8_t value, uint16_t addr)
 {
     if (addr < 0x8000)
     {
-        ram[addr % 0x4000] = value;
+        // ram[addr % 0x4000] = value;
     }
     else
     {
-        addr -= 0x8000;
-        mirrored_prg(addr, 0x4000) = value;
+        assert(false);
+        //addr -= 0x8000;
+        //mirrored_prg(addr, 0x4000) = value;
     }
 }
 
@@ -41,7 +43,7 @@ void ROM::write_prg(uint8_t value, uint16_t addr)
 //
 void ROM::write_chr(uint8_t value, uint16_t addr)
 {
-    mirrored_chr(addr, 0x1000) = value;
+    assert(false); //mirrored_chr(addr, 0x1000) = value;
 }
 
 uint8_t ROM::read_chr(uint16_t addr) const
@@ -60,48 +62,35 @@ uint8_t ROM::read_nt(uint16_t addr) const
 }
 
 ROM::ROM()
-    : nt(0x800)
-    , ram(0x4000)
-    , nametable(4)
 {
-    std::ifstream file("save.hex");
-    file.read(reinterpret_cast<char *>(ram.data()), ram.size());
+    // std::ifstream file("save.hex");
+    // file.read(reinterpret_cast<char *>(ram.data()), ram.size());
 }
 
-void ROM::set_prg(uint8_t count)
+size_t ROM::get_prg_size_for_count(uint8_t count) const
 {
-    prg.resize(count * 0x4000);
-
-    prg_bank.emplace_back(0x0);
-    prg_bank.emplace_back(count > 1 ? 0x4000 : 0);
+    return count * 0x4000;
 }
 
-void ROM::set_chr(uint8_t count)
+size_t ROM::get_chr_size_for_count(uint8_t count) const
 {
-    chr.resize(count ? count * 0x2000 : 0x4000);
-
-    chr_bank.emplace_back(0);
-    chr_bank.emplace_back(0x1000);
+    return count ? count * 0x2000 : 0x4000;
 }
 
-uint8_t *ROM::get_prg_data()
+void ROM::set_prg(uint8_t count, RomRef rom)
 {
-    return prg.data();
+    _prg = rom;
+    _prg_bank[0] = 0;
+    _prg_bank[1] = count > 1 ? 0x4000 : 0;
+    on_set_prg(count);
 }
 
-uint8_t *ROM::get_chr_data()
+void ROM::set_chr(uint8_t count, RomRef rom)
 {
-    return chr.data();
-}
-
-size_t ROM::get_prg_size() const
-{
-    return prg.size();
-}
-
-size_t ROM::get_chr_size() const
-{
-    return chr.size();
+    _chr = rom;
+    _chr_bank[0] = 0;
+    _chr_bank[1] = 0x1000;
+    on_set_chr(count);
 }
 
 void ROM::set_mirroring(MirrorMode mode)
@@ -109,49 +98,82 @@ void ROM::set_mirroring(MirrorMode mode)
     if (mode == FOUR_SCREEN)
     {
         std::cout << "4s mirroring\n";
-        nametable[0] = 0;
-        nametable[1] = 0;
-        nametable[2] = 0x400;
-        nametable[3] = 0x400;
+        _nametable[0] = 0;
+        _nametable[1] = 0;
+        _nametable[2] = 0x400;
+        _nametable[3] = 0x400;
     }
     else if (mode == HORIZONTAL)
     {
         // std::cout << "Horizontal mirroring\n";
-        nametable[0] = 0;
-        nametable[1] = 0;
-        nametable[2] = 0x400;
-        nametable[3] = 0x400;
+        _nametable[0] = 0;
+        _nametable[1] = 0;
+        _nametable[2] = 0x400;
+        _nametable[3] = 0x400;
     }
     else if (mode == VERTICAL)
     {
         // std::cout << "Vertical mirroring\n";
-        nametable[0] = 0;
-        nametable[1] = 0x400;
-        nametable[2] = 0;
-        nametable[3] = 0x400;
+        _nametable[0] = 0;
+        _nametable[1] = 0x400;
+        _nametable[2] = 0;
+        _nametable[3] = 0x400;
     }
     else if (mode == SINGLE_SCREEN_A)
     {
         std::cout << "1sa mirroring\n";
-        nametable[0] = 0;
-        nametable[1] = 0;
-        nametable[2] = 0;
-        nametable[3] = 0;
+        _nametable[0] = 0;
+        _nametable[1] = 0;
+        _nametable[2] = 0;
+        _nametable[3] = 0;
     }
     else if (mode == SINGLE_SCREEN_B)
     {
         std::cout << "1sb mirroring\n";
-        nametable[0] = 0x400;
-        nametable[1] = 0x400;
-        nametable[2] = 0x400;
-        nametable[3] = 0x400;
+        _nametable[0] = 0x400;
+        _nametable[1] = 0x400;
+        _nametable[2] = 0x400;
+        _nametable[3] = 0x400;
     }
 }
 
 ROM::~ROM()
 {
-    std::ofstream file("save.hex");
-    file.write(reinterpret_cast<const char *>(ram.data()), ram.size());
+    // std::ofstream file("save.hex");
+    // file.write(reinterpret_cast<const char *>(ram.data()), ram.size());
+}
+
+void ROM::on_set_prg(uint8_t)
+{}
+
+void ROM::on_set_chr(uint8_t)
+{}
+
+template<typename Mirror>
+uint8_t const &ROM::mirrored(RomRef const &source, Mirror const &mirror, uint16_t addr, uint16_t mod) const
+{
+    return source->operator[](mirror[addr / mod] + (addr % mod));
+}
+
+uint8_t const &ROM::mirrored_chr(uint16_t addr, uint16_t mod) const
+{
+    return mirrored(_chr, _chr_bank, addr, mod);
+}
+
+uint8_t const &ROM::mirrored_prg(uint16_t addr, uint16_t mod) const
+{
+    return mirrored(_prg, _prg_bank, addr, mod);
+}
+
+uint8_t const &ROM::mirrored_nt(uint16_t addr, uint16_t mod) const
+{
+    const auto i = (addr >> 10) & 3;
+    return _nt[_nametable[i] + (addr % mod)];
+}
+
+uint8_t &ROM::mirrored_nt(uint16_t addr, uint16_t mod)
+{
+    return const_cast<uint8_t &>(static_cast<ROM const *>(this)->mirrored_nt(addr, mod));
 }
 
 InlinePolymorph<ROM> load_ROM(IBus *bus, const char *path)
@@ -185,8 +207,8 @@ InlinePolymorph<ROM> load_ROM(IBus *bus, const char *path)
     int mapper_id{ (flag6 >> 4) | (flag7 & 0xf0) };
 
     std::cout << "Mapper " << mapper_id << '\n';
-    std::cout << "prg banks: " << (int)prg_rom_size << '\n';
-    std::cout << "chr banks: " << (int)chr_rom_size << '\n';
+    std::cout << "_prg banks: " << (int)prg_rom_size << '\n';
+    std::cout << "_chr banks: " << (int)chr_rom_size << '\n';
 
     InlinePolymorph<ROM> rom;
     switch (mapper_id)
@@ -213,50 +235,17 @@ InlinePolymorph<ROM> load_ROM(IBus *bus, const char *path)
         throw std::runtime_error("Unsupported mapper");
     }
 
-    rom->set_mirroring(
-        four_screen ? ROM::MirrorMode::FOUR_SCREEN : horizontal_mirroring ? ROM::MirrorMode::HORIZONTAL : ROM::MirrorMode::VERTICAL);
-    rom->set_prg(prg_rom_size);
-    rom->set_chr(chr_rom_size);
-    rom->write_prg(0xc, 0x8000); // fixme: move "set_prg" stuff to constructor
+    rom->set_mirroring(four_screen ? ROM::MirrorMode::FOUR_SCREEN : horizontal_mirroring ? ROM::MirrorMode::HORIZONTAL : ROM::MirrorMode::VERTICAL);
+    // rom->write_prg(0xc, 0x8000); // fixme: move "set_prg" stuff to constructor?
 
-    file.read((char *)rom->get_prg_data(), rom->get_prg_size());
-    file.read((char *)rom->get_chr_data(), rom->get_chr_size());
+    std::shared_ptr<std::vector<uint8_t>> _prg(new std::vector<uint8_t>(rom->get_prg_size_for_count(prg_rom_size)));
+    std::shared_ptr<std::vector<uint8_t>> _chr(new std::vector<uint8_t>(rom->get_chr_size_for_count(chr_rom_size)));
+
+    file.read(reinterpret_cast<char *>(_prg->data()), _prg->size());
+    file.read(reinterpret_cast<char *>(_chr->data()), _chr->size());
+
+    rom->set_prg(prg_rom_size, _prg);
+    rom->set_chr(chr_rom_size, _chr);
 
     return rom;
 }
-
-uint8_t const &ROM::mirrored(std::vector<uint8_t> const &source, std::vector<size_t> const &mirror, uint16_t addr, uint16_t mod) const
-{
-    return source[mirror[addr / mod] + (addr % mod)];
-}
-
-uint8_t &ROM::mirrored(std::vector<uint8_t> &source, std::vector<size_t> const &mirror, uint16_t addr, uint16_t mod)
-{
-    return const_cast<uint8_t &>(static_cast<ROM const *>(this)->mirrored(source, mirror, addr, mod));
-}
-
-#define IMPLEMENT_ROM_MIRROR(NAME, SOURCE, MIRROR) \
-    uint8_t const &ROM::mirrored_##NAME(uint16_t addr, uint16_t mod) const \
-    { \
-        return mirrored(SOURCE, MIRROR, addr, mod); \
-    } \
-    \
-    uint8_t &ROM::mirrored_##NAME(uint16_t addr, uint16_t mod) \
-    { \
-        return mirrored(SOURCE, MIRROR, addr, mod); \
-    }
-
-IMPLEMENT_ROM_MIRROR(chr, chr, chr_bank);
-IMPLEMENT_ROM_MIRROR(prg, prg, prg_bank);
-
-uint8_t const &ROM::mirrored_nt(uint16_t addr, uint16_t mod) const
-{
-    const auto i = (addr >> 10) & 3;
-    return nt[nametable[i] + (addr % mod)];
-}
-
-uint8_t &ROM::mirrored_nt(uint16_t addr, uint16_t mod)
-{
-    return const_cast<uint8_t &>(static_cast<ROM const *>(this)->mirrored_nt(addr, mod));
-}
-

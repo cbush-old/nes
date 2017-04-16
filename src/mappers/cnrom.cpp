@@ -8,7 +8,7 @@ void CNROM::write_prg(uint8_t value, uint16_t addr)
     }
 
     auto reg = value * 0x2000;
-    chr_bank[0] = reg;
-    chr_bank[1] = 0x1000 + reg;
+    _chr_bank[0] = reg;
+    _chr_bank[1] = 0x1000 + reg;
 }
 

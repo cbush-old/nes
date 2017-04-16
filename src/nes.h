@@ -9,6 +9,7 @@
 #include "rom.h"
 
 #include <chrono>
+#include <deque>
 #include <memory>
 #include <vector>
 
@@ -65,9 +66,9 @@ private:
     APU apu;
     CPU cpu;
     
-    std::vector<CPU> _cpu_states;
-    std::vector<PPU> _ppu_states;
-    std::vector<InlinePolymorph<ROM>> _rom_states;
+    std::deque<CPU> _cpu_states;
+    std::deque<PPU> _ppu_states;
+    std::deque<InlinePolymorph<ROM>> _rom_states;
 
     time_point _last_frame;
     time_point _last_second;

@@ -72,32 +72,29 @@ uint8_t MMC3::read_chr(uint16_t addr) const
     return mirrored_chr(addr, 0x400);
 }
 
-void MMC3::set_prg(uint8_t count)
+void MMC3::on_set_prg(uint8_t count)
 {
-    std::cout << "MMC set prg\n";
-    prg.resize(count * 0x4000);
-    std::cout << std::hex << prg.size() << "<\n";
-    prg_bank.emplace_back(0);
-    prg_bank.emplace_back(0);
-    prg_bank.emplace_back(0);
-    prg_bank.emplace_back(prg.size() - PRG_PAGE_SIZE);
+    _prg_bank[0] = 0;
+    _prg_bank[1] = 0;
+    _prg_bank[2] = 0;
+    _prg_bank[3] = _prg->size() - PRG_PAGE_SIZE;
 }
 
-void MMC3::set_chr(uint8_t count)
+size_t MMC3::get_chr_size_for_count(uint8_t count) const
 {
     if (!count)
     {
         count = 0x2000 / CHR_PAGE_SIZE;
     }
-    chr.resize(count * 0x2000);
-    chr_bank.emplace_back(0);
-    chr_bank.emplace_back(0);
-    chr_bank.emplace_back(0);
-    chr_bank.emplace_back(0);
-    chr_bank.emplace_back(0);
-    chr_bank.emplace_back(0);
-    chr_bank.emplace_back(0);
-    chr_bank.emplace_back(0);
+    return count * 0x2000;
+}
+
+void MMC3::on_set_chr(uint8_t count)
+{
+    for (size_t i = 0; i < 8; ++i)
+    {
+        _chr_bank[i] = 0;
+    }
 
     write_prg(0, 0x8000);
     write_prg(0, 0x8001);
@@ -184,17 +181,17 @@ void MMC3::setup()
     std::array<uint8_t, 8> &R = _reg8001;
     if (!_prg_mode_1)
     {
-        prg_bank[0] = R[6] * PRG_PAGE_SIZE;
-        prg_bank[1] = R[7] * PRG_PAGE_SIZE;
-        prg_bank[2] = prg.size() - PRG_PAGE_SIZE * 2;
-        prg_bank[3] = prg.size() - PRG_PAGE_SIZE;
+        _prg_bank[0] = R[6] * PRG_PAGE_SIZE;
+        _prg_bank[1] = R[7] * PRG_PAGE_SIZE;
+        _prg_bank[2] = _prg->size() - PRG_PAGE_SIZE * 2;
+        _prg_bank[3] = _prg->size() - PRG_PAGE_SIZE;
     }
     else
     {
-        prg_bank[0] = prg.size() - PRG_PAGE_SIZE * 2;
-        prg_bank[1] = R[7] * PRG_PAGE_SIZE;
-        prg_bank[2] = R[6] * PRG_PAGE_SIZE;
-        prg_bank[3] = prg.size() - PRG_PAGE_SIZE;
+        _prg_bank[0] = _prg->size() - PRG_PAGE_SIZE * 2;
+        _prg_bank[1] = R[7] * PRG_PAGE_SIZE;
+        _prg_bank[2] = R[6] * PRG_PAGE_SIZE;
+        _prg_bank[3] = _prg->size() - PRG_PAGE_SIZE;
     }
 
     auto R0_a = R[0] & 0xfe;
@@ -203,24 +200,24 @@ void MMC3::setup()
     auto R1_b = R[1] | 1;
     if (!_chr_mode_1)
     {
-        chr_bank[0] = R0_a * CHR_PAGE_SIZE;
-        chr_bank[1] = R0_b * CHR_PAGE_SIZE;
-        chr_bank[2] = R1_a * CHR_PAGE_SIZE;
-        chr_bank[3] = R1_b * CHR_PAGE_SIZE;
-        chr_bank[4] = R[2] * CHR_PAGE_SIZE;
-        chr_bank[5] = R[3] * CHR_PAGE_SIZE;
-        chr_bank[6] = R[4] * CHR_PAGE_SIZE;
-        chr_bank[7] = R[5] * CHR_PAGE_SIZE;
+        _chr_bank[0] = R0_a * CHR_PAGE_SIZE;
+        _chr_bank[1] = R0_b * CHR_PAGE_SIZE;
+        _chr_bank[2] = R1_a * CHR_PAGE_SIZE;
+        _chr_bank[3] = R1_b * CHR_PAGE_SIZE;
+        _chr_bank[4] = R[2] * CHR_PAGE_SIZE;
+        _chr_bank[5] = R[3] * CHR_PAGE_SIZE;
+        _chr_bank[6] = R[4] * CHR_PAGE_SIZE;
+        _chr_bank[7] = R[5] * CHR_PAGE_SIZE;
     }
     else
     {
-        chr_bank[0] = R[2] * CHR_PAGE_SIZE;
-        chr_bank[1] = R[3] * CHR_PAGE_SIZE;
-        chr_bank[2] = R[4] * CHR_PAGE_SIZE;
-        chr_bank[3] = R[5] * CHR_PAGE_SIZE;
-        chr_bank[4] = R0_a * CHR_PAGE_SIZE;
-        chr_bank[5] = R0_b * CHR_PAGE_SIZE;
-        chr_bank[6] = R1_a * CHR_PAGE_SIZE;
-        chr_bank[7] = R1_b * CHR_PAGE_SIZE;
+        _chr_bank[0] = R[2] * CHR_PAGE_SIZE;
+        _chr_bank[1] = R[3] * CHR_PAGE_SIZE;
+        _chr_bank[2] = R[4] * CHR_PAGE_SIZE;
+        _chr_bank[3] = R[5] * CHR_PAGE_SIZE;
+        _chr_bank[4] = R0_a * CHR_PAGE_SIZE;
+        _chr_bank[5] = R0_b * CHR_PAGE_SIZE;
+        _chr_bank[6] = R1_a * CHR_PAGE_SIZE;
+        _chr_bank[7] = R1_b * CHR_PAGE_SIZE;
     }
 }

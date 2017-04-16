@@ -11,22 +11,25 @@ class MMC3 : public ROM
 {
 public:
     MMC3(IBus *);
+    MMC3(MMC3 const &) = default;
+    MMC3 &operator=(MMC3 const &) = default;
+    MMC3(MMC3 &&) = default;
+    MMC3 &operator=(MMC3 &&) = default;
+
     ~MMC3();
 
-public:
     virtual void write_prg(uint8_t value, uint16_t addr) override;
     virtual void write_chr(uint8_t value, uint16_t addr) override;
     virtual uint8_t read_chr(uint16_t addr) const override;
     virtual uint8_t read_prg(uint16_t addr) const override;
+    virtual size_t get_chr_size_for_count(uint8_t count) const override;
 
-public:
-    virtual void set_prg(uint8_t) override;
-    virtual void set_chr(uint8_t) override;
-
-protected:
     void setup();
 
-protected:
+private:
+    virtual void on_set_prg(uint8_t) override;
+    virtual void on_set_chr(uint8_t) override;
+
     mutable IBus *_bus;
     //std::array<uint8_t, 0x2000> _ram;
 
@@ -51,7 +54,7 @@ protected:
     bool _IRQ_enabled{ true };
     mutable bool _IRQ_pending{ false };
     mutable bool _edge{ false };
-    mutable uint8_t _edge_counter{ 0 };
+    // mutable uint8_t _edge_counter{ 0 };
 };
 
 #endif

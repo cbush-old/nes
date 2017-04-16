@@ -65,6 +65,10 @@ NES::NES(const char *rom_path, std::istream &script)
     , _frame_counter(0)
     , _rewinding(false)
 {
+    logi("sizeof CPU: %lu", sizeof(CPU));
+    logi("sizeof PPU: %lu", sizeof(PPU));
+    logi("sizeof ROM: %lu", sizeof(_rom));
+    logi("sizeof total: %lu", sizeof(CPU) + sizeof(PPU) + sizeof(_rom));
 }
 
 NES::~NES()
@@ -126,12 +130,16 @@ void NES::on_frame()
         {
             cpu = _cpu_states.back();
             ppu = _ppu_states.back();
-            _rom = std::move(_rom_states.back());
             if (_cpu_states.size() > 1)
             {
                 _cpu_states.pop_back();
                 _ppu_states.pop_back();
+                _rom = std::move(_rom_states.back());
                 _rom_states.pop_back();
+            }
+            else
+            {
+                _rom = _rom_states.back();
             }
         }
     }

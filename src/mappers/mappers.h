@@ -14,19 +14,16 @@ class SxROM : public ROM
 {
 public:
     SxROM();
-    ~SxROM();
+    DEFAULT_MOVE_AND_COPY(SxROM);
+    virtual ~SxROM();
 
-public:
-    virtual void write_prg(uint8_t value, uint16_t addr);
-
-public:
-    virtual void set_prg(uint8_t);
-    virtual void set_chr(uint8_t);
-
-protected:
-    void regw(uint8_t value, uint16_t addr);
+    virtual void write_prg(uint8_t value, uint16_t addr) override;
 
 private:
+    virtual void on_set_chr(uint8_t) override;
+
+    void regw(uint8_t value, uint16_t addr);
+
     uint8_t _register{ 0 };
     uint8_t _write{ 0 };
     union
@@ -50,10 +47,10 @@ private:
 class UxROM : public ROM
 {
 public:
-    UxROM() {}
-    ~UxROM() {}
+    UxROM() = default;
+    DEFAULT_MOVE_AND_COPY(UxROM);
+    virtual ~UxROM() = default;
 
-public:
     virtual void write_prg(uint8_t value, uint16_t addr) override;
 };
 
@@ -61,8 +58,9 @@ public:
 class CNROM : public ROM
 {
 public:
-    CNROM() {}
-    ~CNROM() {}
+    CNROM() = default;
+    DEFAULT_MOVE_AND_COPY(CNROM);
+    ~CNROM() = default;
 
 public:
     virtual void write_prg(uint8_t value, uint16_t addr) override;

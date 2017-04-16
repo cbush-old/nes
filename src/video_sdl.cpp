@@ -37,7 +37,7 @@ SDLVideoDevice::SDLVideoDevice()
     : _window{SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 512, 480, SDL_WINDOW_OPENGL)}
     , _gl_context(SDL_GL_CreateContext(_window))
 {
-    SDL_GL_SetSwapInterval(1);
+    SDL_GL_SetSwapInterval(0);
 
     glMatrixMode(GL_PROJECTION | GL_MODELVIEW);
     glLoadIdentity();

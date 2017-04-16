@@ -34,7 +34,12 @@ public:
         other.copy_into(*this);
     }
 
-    InlinePolymorph &operator=(InlinePolymorph const &other) = delete;
+    InlinePolymorph &operator=(InlinePolymorph const &other)
+    {
+        clear();
+        other.copy_into(*this);
+        return *this;
+    }
 
     InlinePolymorph(InlinePolymorph &&other)
         : _object(nullptr)
