@@ -1,8 +1,9 @@
 #include "ppu.h"
-#include <thread>
+
+#include <cassert>
 #include <chrono>
-#include <cstring>
 #include <cmath>
+#include <cstring>
 
 const uint16_t ATTRIBUTE_TABLE_BASE_ADDR = 0x23c0;
 const uint16_t NAME_TABLE_BASE_ADDR = 0x2000;
@@ -50,41 +51,48 @@ void PPU::render_load_shift_registers()
 void PPU::render_nt_lookup_0()
 {
     _ioaddr = NAME_TABLE_BASE_ADDR + (vram.raw & 0xfff);
+    
+    // lookup 1
+    _pat_addr = PATTERN_TABLE_SIZE * reg.bg_addr + 16 * read(_ioaddr) + vram.yfine;
 }
 
 void PPU::render_nt_lookup_1()
 {
-    _pat_addr = PATTERN_TABLE_SIZE * reg.bg_addr + 16 * read(_ioaddr) + vram.yfine;
 }
 
 void PPU::render_attr_lookup_0()
 {
     _ioaddr = ATTRIBUTE_TABLE_BASE_ADDR + NAME_TABLE_SIZE * vram.base_nta + 8 * (vram.ycoarse / 4) + (vram.xcoarse / 4);
+    
+    // lookup 1
+    _tileattr = (read(_ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse & 2))) & 3;
 }
 
 void PPU::render_attr_lookup_1()
 {
-    _tileattr = (read(_ioaddr) >> ((vram.xcoarse & 2) + 2 * (vram.ycoarse & 2))) & 3;
 }
 
 void PPU::render_fetch_bg_low_0()
 {
-    _tilepat = read(_pat_addr);
-}
+    _tilepat = _bus->read_chr(_pat_addr); // read(_pat_addr);
 
-void PPU::render_fetch_bg_low_1()
-{
+    // fetch low 1 and high 0 and high 1
     // Interlace the two patterns (temp) // directly lifted from bisqwit
-    unsigned p = _tilepat | (read(_pat_addr + 8) << 8);
+    unsigned p = _tilepat | (_bus->read_chr(_pat_addr + 8) << 8);
     p = (p & 0xf00f) | ((p & 0x0f00) >> 4) | ((p & 0x00f0) << 4);
     p = (p & 0xc3c3) | ((p & 0x3030) >> 2) | ((p & 0x0c0c) << 2);
     p = (p & 0x9999) | ((p & 0x4444) >> 1) | ((p & 0x2222) << 1);
     _tilepat = p;
 }
 
+void PPU::render_fetch_bg_low_1()
+{
+    // Would fetch high byte, but it's done above
+}
+
 void PPU::render_fetch_bg_high_0()
 {
-    // TODO: move from interlaced emulation
+    // Interlaced above instead
 }
 
 void PPU::render_fetch_bg_high_1()
@@ -171,7 +179,6 @@ void PPU::render_OAM_read_0()
 {
     if (_sprrenpos < _sproutpos)
     {
-
         auto &object = OAM3[_sprrenpos];
         memcpy(&object, &OAM2[_sprrenpos], sizeof(object));
 
@@ -314,7 +321,7 @@ void PPU::render()
     if (X == 256)
     {
         // hack for mmc3 _scanline counter
-        read(0x1000);
+        _bus->read_chr(0x1000);
     }
 
     // Prepare sprite data
@@ -472,6 +479,7 @@ uint8_t PPU::read(uint16_t addr, bool no_palette /* = false */) const
     if (addr < 0x2000)
     { // Pattern table
 
+        assert(false);
         return _bus->read_chr(addr);
     }
     else if (addr < 0x3f00 + no_palette * 0xff)

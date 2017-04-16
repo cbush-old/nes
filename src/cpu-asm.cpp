@@ -1,6 +1,6 @@
 #include "cpu.h"
 
-const char* const CPU::opasm[]
+const char* const CPU::s_opasm[]
 {
   /* 0x00 */ "brk",
   /* 0x01 */ "ora (d,x)",

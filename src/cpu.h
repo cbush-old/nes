@@ -62,9 +62,9 @@ private:
     inline void set_if(bool cond)
     {
         if (cond)
-            P |= F;
+            _P |= F;
         else
-            P &= ~F;
+            _P &= ~F;
     }
 
     inline void setZN(uint8_t x)
@@ -89,21 +89,21 @@ private:
     inline uint16_t Y__() { return 0; }
     inline uint16_t IMM() { return next(); }
     inline uint16_t ZPG() { return next(); }
-    inline uint16_t ZPX() { return (next() + X) & 0xff; }
-    inline uint16_t ZPY() { return (next() + Y) & 0xff; }
+    inline uint16_t ZPX() { return (next() + _X) & 0xff; }
+    inline uint16_t ZPY() { return (next() + _Y) & 0xff; }
     inline uint16_t ABS() { return next2(); }
-    inline uint16_t ABX() { return next2() + X; }
-    inline uint16_t ABY() { return next2() + Y; }
+    inline uint16_t ABX() { return next2() + _X; }
+    inline uint16_t ABY() { return next2() + _Y; }
     inline uint16_t IDX()
     {
-        uint16_t addr = next() + X;
+        uint16_t addr = next() + _X;
         return read(addr & 0xff) | ((uint16_t)read((addr + 1) & 0xff) << 8);
     }
 
     inline uint16_t IDY()
     {
         uint16_t addr = next();
-        return ((uint16_t)read(addr) | (read((addr + 1) & 0xff) << 8)) + Y;
+        return ((uint16_t)read(addr) | (read((addr + 1) & 0xff) << 8)) + _Y;
     }
 
     inline uint16_t IND()
@@ -117,27 +117,27 @@ private:
     }
 
     // some modes add cycles if page crossed
-    inline uint16_t ABX_pgx() { return sum_check_pgx(next2(), X); }
-    inline uint16_t ABY_pgx() { return sum_check_pgx(next2(), Y); }
+    inline uint16_t ABX_pgx() { return sum_check_pgx(next2(), _X); }
+    inline uint16_t ABY_pgx() { return sum_check_pgx(next2(), _Y); }
     inline uint16_t IDY_pgx()
     {
 
         uint16_t addr{ next() };
-        return sum_check_pgx((uint16_t)read(addr) | (read((addr + 1) & 0xff) << 8), Y);
+        return sum_check_pgx((uint16_t)read(addr) | (read((addr + 1) & 0xff) << 8), _Y);
     }
 
     // register read/write
-    inline void Accumulator(uint8_t i) { setZN(A = i); }
-    inline void IndexRegX(uint8_t i) { setZN(X = i); }
-    inline void IndexRegY(uint8_t i) { setZN(Y = i); }
-    inline void ProcStatus(uint8_t i) { P = (i | 0x20) & ~0x10; }
-    inline void StackPointer(uint8_t i) { SP = i; }
-    inline uint8_t Accumulator() { return A; }
-    inline uint8_t IndexRegX() { return X; }
-    inline uint8_t IndexRegY() { return Y; }
-    inline uint8_t ProcStatus() { return P | 0x10; }
-    inline uint8_t StackPointer() { return SP; }
-    inline uint8_t AX() { return A & X; } // unofficial
+    inline void Accumulator(uint8_t i) { setZN(_A = i); }
+    inline void IndexRegX(uint8_t i) { setZN(_X = i); }
+    inline void IndexRegY(uint8_t i) { setZN(_Y = i); }
+    inline void ProcStatus(uint8_t i) { _P = (i | 0x20) & ~0x10; }
+    inline void StackPointer(uint8_t i) { _SP = i; }
+    inline uint8_t Accumulator() { return _A; }
+    inline uint8_t IndexRegX() { return _X; }
+    inline uint8_t IndexRegY() { return _Y; }
+    inline uint8_t ProcStatus() { return _P | 0x10; }
+    inline uint8_t StackPointer() { return _SP; }
+    inline uint8_t AX() { return _A & _X; } // unofficial
 
     template <mode M>
     uint8_t read()
@@ -159,27 +159,27 @@ private:
     void print_status() const;
     void dump_memory() const;
 
-    static const op ops[256];
-    static const char *const opasm[256];
+    static const op s_ops[256];
+    static const char *const s_opasm[256];
 
-    IBus *bus;
-    IController *controller[2];
+    IBus *_bus;
+    IController *_controller[2];
 
-    std::array<uint8_t, 0x800> memory;
+    std::array<uint8_t, 0x800> _memory;
 
     uint8_t
-        P{ 0x34 },
-        A{ 0 },
-        X{ 0 },
-        Y{ 0 },
-        SP{ 0xfd };
-    uint16_t PC{ 0xC000 };
-    uint16_t cyc{ 0 };
-    uint16_t last_PC;
-    uint8_t last_op;
-    int result_cycle{ 0 };
+        _P{0x34},
+        _A{0},
+        _X{0},
+        _Y{0},
+        _SP{0xfd};
+    uint16_t _PC{0xC000};
+    uint16_t _cyc{0};
+    uint16_t _last_PC;
+    uint8_t _last_op;
+    int _result_cycle{ 0 };
 
-    bool IRQ{ false };
+    bool _irq{ false };
 };
 
 template <>

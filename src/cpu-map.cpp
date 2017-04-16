@@ -70,7 +70,7 @@
 #define C_FLAG CPU::C_FLAG
 
 // a complete dispatch table
-const CPU::op CPU::ops[256]
+const CPU::op CPU::s_ops[256]
 {
     /* 0x00 */ BRK,
     /* 0x01 */ ORA<IDX>,

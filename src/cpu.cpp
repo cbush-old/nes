@@ -38,29 +38,29 @@ uint8_t CPU::read(uint16_t addr)
     if (addr < 0x2000)
     {
 
-        return memory[addr & 0x7ff];
+        return _memory[addr & 0x7ff];
     }
     if (addr < 0x4000)
     {
-        return bus->read_ppu(addr & 7);
+        return _bus->read_ppu(addr & 7);
     }
     else if (addr < 0x4020)
     {
         switch (addr & 0x1f)
         {
         case 0x15:
-            return bus->read_apu();
+            return _bus->read_apu();
         case 0x16:
-            return controller[0]->read();
+            return _controller[0]->read();
         case 0x17:
-            return controller[1]->read();
+            return _controller[1]->read();
         default:
             return 0;
         }
     }
     else
     {
-        return bus->read_prg(addr);
+        return _bus->read_prg(addr);
     }
 }
 
@@ -71,11 +71,11 @@ void CPU::write(uint8_t value, uint16_t addr)
     { // Internal RAM
 
         // $0800 to $1fff: mirrors of $0000 - $0800
-        memory[addr & 0x7ff] = value;
+        _memory[addr & 0x7ff] = value;
     }
     else if (addr < 0x4000)
     {
-        bus->write_ppu(value, addr & 7);
+        _bus->write_ppu(value, addr & 7);
     }
     else if (addr < 0x4020)
     {
@@ -86,78 +86,78 @@ void CPU::write(uint8_t value, uint16_t addr)
         { // DMA transfer
             for (int i = 0; i < 256; ++i)
             {
-                bus->write_ppu(read((value & 7) * 0x100 + i), 4 /* OAM_DATA */);
+                _bus->write_ppu(read((value & 7) * 0x100 + i), 4 /* OAM_DATA */);
             }
         }
         break;
         case 0x16:
-            controller[value & 1]->strobe();
+            _controller[value & 1]->strobe();
             break;
         default:
-            bus->write_apu(value, addr & 0x1f);
+            _bus->write_apu(value, addr & 0x1f);
             break;
         }
     }
     else
     {
-        bus->write_prg(value, addr);
+        _bus->write_prg(value, addr);
     }
 }
 
 void CPU::push(uint8_t x)
 {
-    memory[0x100 + SP--] = x;
+    _memory[0x100 + _SP--] = x;
 }
 
 void CPU::push2(uint16_t x)
 {
-    memory[0x100 + SP--] = (uint8_t)(x >> 8);
-    memory[0x100 + SP--] = (uint8_t)(x & 0xff);
+    _memory[0x100 + _SP--] = (uint8_t)(x >> 8);
+    _memory[0x100 + _SP--] = (uint8_t)(x & 0xff);
 }
 
 uint8_t CPU::pull()
 {
-    return memory[++SP + 0x100];
+    return _memory[++_SP + 0x100];
 }
 
 uint16_t CPU::pull2()
 {
-    uint16_t r = memory[++SP + 0x100];
-    return r | (memory[++SP + 0x100] << 8);
+    uint16_t r = _memory[++_SP + 0x100];
+    return r | (_memory[++_SP + 0x100] << 8);
 }
 
 void CPU::addcyc()
 {
-    ++result_cycle;
+    ++_result_cycle;
 }
 
 uint8_t CPU::next()
 {
-    return read(PC++);
+    return read(_PC++);
 }
 
 uint16_t CPU::next2()
 {
-    uint16_t v = (uint16_t)read(PC++);
-    return v | ((uint16_t)read(PC++) << 8);
+    uint16_t v = (uint16_t)read(_PC++);
+    return v | ((uint16_t)read(_PC++) << 8);
 }
 
-CPU::CPU(IBus *bus, IController *controller0, IController *controller1)
-    : bus(bus)
-    , controller
+CPU::CPU(IBus *_bus, IController *controller0, IController *controller1)
+    : _bus(_bus)
+    , _controller
     {
         controller0,
         controller1,
     }
 {
-    memory[0x008] = 0xf7;
-    memory[0x009] = 0xef;
-    memory[0x00a] = 0xdf;
-    memory[0x00f] = 0xbf;
-    memory[0x1fc] = 0x69;
+    _memory[0x008] = 0xf7;
+    _memory[0x009] = 0xef;
+    _memory[0x00a] = 0xdf;
+    _memory[0x00f] = 0xbf;
+    _memory[0x1fc] = 0x69;
 
-    PC = read(0xfffc) | (read(0xfffd) << 8);
-    logi("PC: %x", (uint16_t)PC);
+    _PC = read(0xfffc) | (read(0xfffd) << 8);
+    logi("_PC: %x", (uint16_t)_PC);
 }
 
 bool do_NMI{ false };
@@ -169,35 +169,35 @@ void CPU::pull_NMI()
 
 void CPU::update(double rate)
 {
-    last_PC = PC;
-    last_op = next();
+    _last_PC = _PC;
+    _last_op = next();
 
 #ifdef DEBUG_CPU
     print_status();
 #endif
 
-    (this->*ops[last_op])();
+    (this->*s_ops[_last_op])();
 
-    for (int i = 0; i < cycles[last_op] + result_cycle; ++i)
+    for (int i = 0; i < cycles[_last_op] + _result_cycle; ++i)
     {
-        bus->on_cpu_tick();
-        if (IRQ && ((P & I_FLAG) == 0))
+        _bus->on_cpu_tick();
+        if (_irq && ((_P & I_FLAG) == 0))
         {
-            push2(PC);
+            push2(_PC);
             stack_push<&CPU::ProcStatus>();
-            P |= I_FLAG;
-            PC = read(0xfffe) | (read(0xffff) << 8);
+            _P |= I_FLAG;
+            _PC = read(0xfffe) | (read(0xffff) << 8);
         }
         else if (do_NMI)
         {
             do_NMI = false;
-            push2(PC);
+            push2(_PC);
             stack_push<&CPU::ProcStatus>();
-            PC = read(0xfffa) | (read(0xfffb) << 8);
+            _PC = read(0xfffa) | (read(0xfffb) << 8);
         }
     }
 
-    result_cycle = 0;
+    _result_cycle = 0;
 }
 
 template <>
@@ -210,34 +210,34 @@ void CPU::print_status() const
 {
     cout
         << hex << std::uppercase << std::setfill('0')
-        << setw(4) << last_PC << "  "
-        << setw(2) << (int)last_op << "   "
+        << setw(4) << _last_PC << "  "
+        << setw(2) << (int)_last_op << "   "
         << std::setfill(' ') << setw(16)
-        << std::left << opasm[last_op]
+        << std::left << s_opasm[_last_op]
         << std::setfill('0')
-        << " A:" << setw(2) << (int)A
-        << " X:" << setw(2) << (int)X
-        << " Y:" << setw(2) << (int)Y
-        << " P:" << setw(2) << (int)P
-        << " SP:" << setw(2) << (int)SP
+        << " _A:" << setw(2) << (int)_A
+        << " _X:" << setw(2) << (int)_X
+        << " _Y:" << setw(2) << (int)_Y
+        << " _P:" << setw(2) << (int)_P
+        << " _SP:" << setw(2) << (int)_SP
         << std::setfill(' ')
-        << " CYC:" << setw(3) << std::dec << (int)cyc
-        //<< " SL:" << setw(3) << (int)bus::debug_ppu_get_scanline()
+        << " CYC:" << setw(3) << std::dec << (int)_cyc
+        //<< " SL:" << setw(3) << (int)_bus::debug_ppu_get_scanline()
         << hex << std::setfill('0')
-        << " ST0:" << setw(2) << (int)memory[0x101 + SP]
-        << " ST1:" << setw(2) << (int)memory[0x102 + SP]
-        << " ST2:" << setw(2) << (int)memory[0x103 + SP]
+        << " ST0:" << setw(2) << (int)_memory[0x101 + _SP]
+        << " ST1:" << setw(2) << (int)_memory[0x102 + _SP]
+        << " ST2:" << setw(2) << (int)_memory[0x103 + _SP]
         << '\n';
 }
 
 void CPU::pull_IRQ()
 {
-    IRQ = true;
+    _irq = true;
 }
 
 void CPU::release_IRQ()
 {
-    IRQ = false;
+    _irq = false;
 }
 
 void CPU::dump_memory() const
@@ -254,7 +254,7 @@ void CPU::dump_memory() const
         {
             std::printf("\n%03x   ", i);
         }
-        std::printf("%02x ", (uint8_t)memory[i]);
+        std::printf("%02x ", (uint8_t)_memory[i]);
     }
     std::printf("\n");
 }
